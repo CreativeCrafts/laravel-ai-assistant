@@ -1,0 +1,16 @@
+<?php
+
+namespace CreativeCrafts\LaravelAiAssistant\Facades;
+
+use Illuminate\Support\Facades\Facade;
+
+/**
+ * @see \CreativeCrafts\LaravelAiAssistant\LaravelAiAssistant
+ */
+class LaravelAiAssistant extends Facade
+{
+    protected static function getFacadeAccessor()
+    {
+        return \CreativeCrafts\LaravelAiAssistant\LaravelAiAssistant::class;
+    }
+}
