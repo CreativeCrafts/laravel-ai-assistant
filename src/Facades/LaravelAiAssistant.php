@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Facade;
  */
 class LaravelAiAssistant extends Facade
 {
-    protected static function getFacadeAccessor()
+    protected static function getFacadeAccessor(): string
     {
         return \CreativeCrafts\LaravelAiAssistant\LaravelAiAssistant::class;
     }
