@@ -2,9 +2,9 @@
 
 namespace CreativeCrafts\LaravelAiAssistant\Tests;
 
+use CreativeCrafts\LaravelAiAssistant\LaravelAiAssistantServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use CreativeCrafts\LaravelAiAssistant\LaravelAiAssistantServiceProvider;
 
 class TestCase extends Orchestra
 {

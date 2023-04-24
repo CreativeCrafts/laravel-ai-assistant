@@ -20,7 +20,7 @@ class Translate
         $apiKey = config('ai-assistant.api_key');
         $organisation = config('ai-assistant.organization');
 
-        $prompt = 'translate this'. ". $this->translationString . ". 'to'. $language;
+        $prompt = 'translate this'.". $this->translationString . ".'to'.$language;
 
         $attributes = [
             'model' => config('ai-assistant.model'),
@@ -32,7 +32,7 @@ class Translate
         ];
 
         $client = OpenAI::client($apiKey, $organisation);
+
         return $client->completions()->create($attributes)->choices[0]->text;
     }
-
 }

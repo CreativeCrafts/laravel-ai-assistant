@@ -14,7 +14,6 @@ class LaravelAiAssistantCommand extends Command
     {
         $this->comment('All done');
 
-
         return self::SUCCESS;
     }
 }

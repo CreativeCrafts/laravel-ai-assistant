@@ -2,9 +2,9 @@
 
 namespace CreativeCrafts\LaravelAiAssistant;
 
+use CreativeCrafts\LaravelAiAssistant\Commands\LaravelAiAssistantCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use CreativeCrafts\LaravelAiAssistant\Commands\LaravelAiAssistantCommand;
 
 class LaravelAiAssistantServiceProvider extends PackageServiceProvider
 {
