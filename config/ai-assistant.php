@@ -14,4 +14,8 @@ return [
     'max_tokens' => 400,
     'stream' => false,
     'echo' => false,
+    'n' => 1,
+    'chat_model' => 'gpt-3.5-turbo',
+    'ai_role' => 'assistant',
+    'user_role' => 'user',
 ];
