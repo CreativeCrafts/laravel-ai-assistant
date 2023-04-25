@@ -73,6 +73,7 @@ class AiAssistant
         ];
 
         self::cacheChatConversation($introMessage);
+
         return $introMessage;
     }
 
