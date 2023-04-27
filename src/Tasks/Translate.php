@@ -33,6 +33,6 @@ class Translate
 
         $client = OpenAI::client($apiKey, $organisation);
 
-        return $client->completions()->create($attributes)->choices[0]->text;
+        return trim($client->completions()->create($attributes)->choices[0]->text);
     }
 }
