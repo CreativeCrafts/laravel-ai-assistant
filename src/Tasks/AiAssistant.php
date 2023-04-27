@@ -11,12 +11,12 @@ class AiAssistant
     {
     }
 
-    public static function acceptQuestion(string $conversationString): self
+    public static function acceptPrompt(string $conversationString): self
     {
         return new self($conversationString);
     }
 
-    public function andRespondWith(): array
+    public function andRespond(): array
     {
         $apiKey = config('ai-assistant.api_key');
         $organisation = config('ai-assistant.organization');
