@@ -44,7 +44,7 @@ class AiAssistant
 
     public function translateTo(string $language): string
     {
-        $prompt = 'translate this'.". $this->prompt . ".'to'. $language;
+        $prompt = 'translate this'.". $this->prompt . ".'to'.$language;
 
         $attributes = [
             'model' => config('ai-assistant.model'),
@@ -77,6 +77,7 @@ class AiAssistant
         try {
             $response = $this->client->chat()->create($attributes)->choices[0]->message->toArray();
             self::cacheChatConversation($response);
+
             return $response;
         } catch (Throwable $e) {
             $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
