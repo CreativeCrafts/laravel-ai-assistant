@@ -5,7 +5,7 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 
-This package will provide a simple way to access and interact with Openai end point. it provides features such as translation, summarization, question answering, text generation, and more.
+This package will provide a simple way to access and interact with Openai end point. it provides features such as translation, summarization, question answering, text generation, chat and more.
 
 ## Installation
 
@@ -92,20 +92,49 @@ return [
 
 ```php
 //translate text to a specific language
-use CreativeCrafts\LaravelAiAssistant\Tasks\Translate;
-$translatedText = Translate::text('How are you?')->toLanguageName('swedish');
+use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
+$translatedText = AiAssistant::acceptPrompt()->translateTo('How are you?')->toLanguageName('swedish');
 
 //response will be a string
 //Hur mår du?
 
 // Chat with the AI
 use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
-$chat = AiAssistant::acceptPrompt('What is world health organisation?')->andRespond();
+$chat = AiAssistant::acceptPrompt('Who is Jane Austen?')->andRespond();
 
 //response will be an array. The role is based on your configuration
 [
-    'role' => 'assistant',
-    'content' => 'The World Health Organization (WHO) is a specialized agency of the United Nations (UN) that is responsible for international public health. It was established in 1948 and is headquartered in Geneva, Switzerland. The WHO works to promote and protect the health of people worldwide by providing leadership, coordinating health initiatives, and conducting research and development on health-related issues.'
+  "role" => "assistant"
+  "content" => "Jane Austen was an English novelist known for her witty and insightful portrayals of English middle-class life in the late 18th and early 19th centuries."
+]
+
+// You can ask a follow up question
+$chat = AiAssistant::acceptPrompt('did she win any award for her work?')->andRespond();
+
+//response
+[
+  "role" => "assistant"
+  "content" => "No, Jane Austen did not win any awards during her lifetime as literary awards did not exist in the way they do today. However, her novels have received numerous accolades and critical acclaim since their publication, and she is widely regarded as one of the greatest writers in English literature.
+]
+
+//brainstorming: generate ideas for a blog post for example
+use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
+$ideas = AiAssistant::acceptPrompt('How to make money online?')->brainstorm();
+
+// response
+[
+  "role" => "assistant"
+  "content" => """
+    There are various ways to make money online, including:
+    1. Freelancing: Offer your skills and services on freelance platforms like Upwork, Fiverr, or Freelancer.
+    2. Online surveys: Participate in online surveys and get paid for your opinions on websites like Swagbucks, Survey Junkie, or Vindale Research.
+    3. Affiliate marketing: Promote other people's products and earn a commission for each sale made through your unique affiliate link.
+    4. Online tutoring: Teach students online through platforms like Chegg, TutorMe, or VIPKid.
+    5. Selling products: Sell products online through marketplaces like Amazon, eBay, or Etsy.
+    6. Blogging: Start a blog and monetize it through advertising, sponsored content, or affiliate marketing.
+    7. Online courses: Create and sell online courses on platforms like Udemy, Teachable, or Skillshare.
+    Remember, making money online requires effort, time, and dedication.
+    """
 ]
 
 ```

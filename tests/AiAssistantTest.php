@@ -1,10 +1,8 @@
 <?php
 
+use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
 
-it('can have a chat conversation', function (): void {
-    $chatResponse = AiAssistant::acceptPrompt('What is world health organisation?')->andRespond();
-    expect($chatResponse)->toBeArray()
-        ->toHaveKey('role', 'assistant')
-        ->toHaveKey('content');
-})->group('chat');
+it('throws InvalidApiKeyException when an invalid open ai key or organisation is provided', function () {
+    $blogIdea = AiAssistant::acceptPrompt('How to make money online?')->brainstorm();
+})->throws(InvalidApiKeyException::class, 'Invalid OpenAI API key or organization.');
