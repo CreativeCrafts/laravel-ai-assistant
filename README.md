@@ -119,23 +119,16 @@ $chat = AiAssistant::acceptPrompt('did she win any award for her work?')->andRes
 
 //brainstorming: generate ideas for a blog post for example
 use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
-$ideas = AiAssistant::acceptPrompt('How to make money online?')->brainstorm();
+$ideas = AiAssistant::acceptPrompt('Write a blog about AI?')->draft();
 
 // response
-[
-  "role" => "assistant"
-  "content" => """
-    There are various ways to make money online, including:
-    1. Freelancing: Offer your skills and services on freelance platforms like Upwork, Fiverr, or Freelancer.
-    2. Online surveys: Participate in online surveys and get paid for your opinions on websites like Swagbucks, Survey Junkie, or Vindale Research.
-    3. Affiliate marketing: Promote other people's products and earn a commission for each sale made through your unique affiliate link.
-    4. Online tutoring: Teach students online through platforms like Chegg, TutorMe, or VIPKid.
-    5. Selling products: Sell products online through marketplaces like Amazon, eBay, or Etsy.
-    6. Blogging: Start a blog and monetize it through advertising, sponsored content, or affiliate marketing.
-    7. Online courses: Create and sell online courses on platforms like Udemy, Teachable, or Skillshare.
-    Remember, making money online requires effort, time, and dedication.
-    """
-]
+"""
+Artificial Intelligence (AI) is a rapidly growing field of technology that is revolutionizing the way we interact with the world around us. From self-driving cars to voice-activated home assistants, AI is making our lives easier and more efficient. But what exactly is AI, and how is it changing our lives?
+AI is a branch of computer science that focuses on creating intelligent machines that can think and act like humans. AI systems are designed to learn from their environment and make decisions based on what they learn. This means that AI can be used to automate tasks, such as recognizing faces or driving cars, and can even be used to create new products and services.
+AI is already being used in a variety of industries, from healthcare to finance. In healthcare, AI is being used to diagnose diseases and provide personalized treatments. In finance, AI is being used to detect fraud and improve customer service. AI is also being used in retail to create personalized shopping experiences and in manufacturing to automate tasks and increase efficiency.
+AI is also being used to improve our lives in more subtle ways. For example, AI can be used to create virtual assistants that can help us with everyday tasks, such as scheduling appointments or ordering groceries. AI can also be used to create more efficient search engines and to improve the accuracy of online translations.
+AI is an exciting and rapidly evolving field of technology that is changing the way we interact with the world around us. As AI continues to develop, it will open up new possibilities for how we live our lives and interact with each other.
+"""
 
 ```
 

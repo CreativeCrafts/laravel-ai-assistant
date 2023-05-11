@@ -9,3 +9,7 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
   - Translation
   - Brainstorming ideas
   - Chat
+
+## 0.0.2 - 2023-05-11
+
+- Added a draft functionality. This will allow the user to brainstorm ideas such as asking the AI to write a blog about a subject.

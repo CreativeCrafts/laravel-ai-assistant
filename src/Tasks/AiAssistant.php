@@ -23,7 +23,7 @@ class AiAssistant
         return new self($prompt);
     }
 
-    public function brainstorm(): string
+    public function draft(): string
     {
         $attributes = [
             'model' => config('ai-assistant.model'),
