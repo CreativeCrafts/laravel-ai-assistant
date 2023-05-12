@@ -2,7 +2,6 @@
 
 namespace CreativeCrafts\LaravelAiAssistant;
 
-use CreativeCrafts\LaravelAiAssistant\Commands\LaravelAiAssistantCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -12,7 +11,6 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('laravel-ai-assistant')
-            ->hasConfigFile()
-            ->hasCommand(LaravelAiAssistantCommand::class);
+            ->hasConfigFile();
     }
 }
