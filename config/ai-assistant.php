@@ -45,7 +45,11 @@ return [
     /** Echo back the prompt in addition to the completion */
     'echo' => false,
 
-    /** How many completions to generate for each prompt. (optional) */
+    /**
+     * How many completions to generate for each prompt. (optional)
+     * Note: Because this parameter generates many completions, it can quickly consume your token quota.
+     * Use carefully and ensure that you have reasonable settings for max_tokens and stop
+     */
     'n' => 1,
 
     /** Up to 4 sequences where the API will stop generating further tokens.
@@ -91,5 +95,8 @@ return [
     /** The role of the author of this message. it could be user or whatever you choose. */
     'user_role' => 'user',
 
+    /**
+     * ID of the model to use. You can use the text-davinci-edit-001 or code-davinci-edit-001 model with this endpoint.
+     */
     'edit_model' => 'text-davinci-edit-001',
 ];

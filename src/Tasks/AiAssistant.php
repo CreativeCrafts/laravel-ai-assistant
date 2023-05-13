@@ -13,28 +13,18 @@ class AiAssistant
 {
     protected Client $client;
 
-    protected array $textCompletionAttributes = [];
+    protected array $textGeneratorConfig = [];
 
-    protected array $chatCompletionAttributes = [];
+    protected array $chatTextGenerator = [];
+
+    protected array $editTextGenerator = [];
 
     public function __construct(protected string $prompt)
     {
         $this->client = AppConfig::openAiClient();
-        $this->textCompletionAttributes = [
-            'model' => config('ai-assistant.model'),
-            'max_tokens' => config('ai-assistant.max_tokens'),
-            'temperature' => config('ai-assistant.temperature'),
-            'stream' => config('ai-assistant.stream'),
-            'echo' => config('ai-assistant.echo'),
-            'n' => config('ai-assistant.n'),
-        ];
-        $this->chatCompletionAttributes = [
-            'model' => config('ai-assistant.chat_model'),
-            'max_tokens' => config('ai-assistant.max_tokens'),
-            'temperature' => config('ai-assistant.temperature'),
-            'stream' => config('ai-assistant.stream'),
-            'n' => config('ai-assistant.n'),
-        ];
+        $this->textGeneratorConfig = AppConfig::textGeneratorConfig();
+        $this->chatTextGenerator = AppConfig::chatTextGeneratorConfig();
+        $this->editTextGenerator = AppConfig::editTextGeneratorConfig();
     }
 
     public static function acceptPrompt(string $prompt): self
@@ -44,49 +34,30 @@ class AiAssistant
 
     public function draft(): string
     {
-        $this->textCompletionAttributes['prompt'] = $this->prompt;
+        $this->textGeneratorConfig['prompt'] = $this->prompt;
 
-        if ($this->textCompletionAttributes['stream']) {
-            return $this->streamedCompletion($this->textCompletionAttributes);
+        if ($this->textGeneratorConfig['stream']) {
+            return $this->streamedCompletion($this->textGeneratorConfig);
         }
 
-        try {
-            return trim($this->client->completions()->create($this->textCompletionAttributes)->choices[0]->text);
-        } catch (Throwable $e) {
-            $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
-            throw new InvalidApiKeyException($e->getMessage(), $errorCode);
-        }
+        return $this->textCompletion($this->textGeneratorConfig);
     }
 
     public function translateTo(string $language): string
     {
-        $this->textCompletionAttributes['prompt'] = 'translate this'.". $this->prompt . ".'to'.$language;
+        $this->textGeneratorConfig['prompt'] = 'translate this'.". $this->prompt . ".'to'.$language;
 
-        if ($this->textCompletionAttributes['stream']) {
-            return $this->streamedCompletion($this->textCompletionAttributes);
+        if ($this->textGeneratorConfig['stream']) {
+            return $this->streamedCompletion($this->textGeneratorConfig);
         }
 
-        try {
-            return trim($this->client->completions()->create($this->textCompletionAttributes)->choices[0]->text);
-        } catch (Throwable $e) {
-            $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
-            throw new InvalidApiKeyException($e->getMessage(), $errorCode);
-        }
+        return $this->textCompletion($this->textGeneratorConfig);
     }
 
-    public function andRespond(): array
+    private function textCompletion(array $attributes): string
     {
-        $this->chatCompletionAttributes['messages'] = $this->messages();
-
-        if ($this->chatCompletionAttributes['stream']) {
-            return $this->streamedChat($this->chatCompletionAttributes);
-        }
-
         try {
-            $response = $this->client->chat()->create($this->chatCompletionAttributes)->choices[0]->message->toArray();
-            self::cacheChatConversation($response);
-
-            return $response;
+            return trim($this->client->completions()->create($attributes)->choices[0]->text);
         } catch (Throwable $e) {
             $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
             throw new InvalidApiKeyException($e->getMessage(), $errorCode);
@@ -105,6 +76,25 @@ class AiAssistant
             }
 
             return '';
+        } catch (Throwable $e) {
+            $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
+            throw new InvalidApiKeyException($e->getMessage(), $errorCode);
+        }
+    }
+
+    public function andRespond(): array
+    {
+        $this->chatTextGenerator['messages'] = $this->messages();
+
+        if ($this->chatTextGenerator['stream']) {
+            return $this->streamedChat($this->chatTextGenerator);
+        }
+
+        try {
+            $response = $this->client->chat()->create($this->chatTextGenerator)->choices[0]->message->toArray();
+            self::cacheChatConversation($response);
+
+            return $response;
         } catch (Throwable $e) {
             $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
             throw new InvalidApiKeyException($e->getMessage(), $errorCode);
@@ -170,5 +160,26 @@ class AiAssistant
     protected static function cacheChatConversation(array $conversation): void
     {
         Cache::put('userMessage', $conversation, 120);
+    }
+
+    public function spellingAndGrammarCorrection(): string
+    {
+        $this->editTextGenerator['input'] = $this->prompt;
+        $this->editTextGenerator['instruction'] = 'Fix the spelling and grammar errors in the following text.';
+
+        return $this->textEdit($this->editTextGenerator);
+    }
+
+    public function improveWriting(): string
+    {
+        $this->editTextGenerator['input'] = $this->prompt;
+        $this->editTextGenerator['instruction'] = 'Edit the following text to make it more readable.';
+
+        return $this->textEdit($this->editTextGenerator);
+    }
+
+    public function textEdit(array $attributes): string
+    {
+        return trim($this->client->edits()->create($attributes)->choices[0]->text);
     }
 }
