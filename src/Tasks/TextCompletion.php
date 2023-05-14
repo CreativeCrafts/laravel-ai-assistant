@@ -18,10 +18,6 @@ final class TextCompletion implements TextCompletionContract
         $this->client = AppConfig::openAiClient();
     }
 
-    /**
-     * @param array $payload
-     * @return string
-     */
     public function __invoke(array $payload): string
     {
         if ($payload['stream']) {
@@ -31,10 +27,6 @@ final class TextCompletion implements TextCompletionContract
         return $this->textCompletion($payload);
     }
 
-    /**
-     * @param array $payload
-     * @return string
-     */
     public function textCompletion(array $payload): string
     {
         try {
@@ -45,10 +37,6 @@ final class TextCompletion implements TextCompletionContract
         }
     }
 
-    /**
-     * @param array $payload
-     * @return string
-     */
     public function streamedCompletion(array $payload): string
     {
         try {
