@@ -77,6 +77,34 @@ return [
      */
     'stop' => null,
     
+    /**
+     * The suffix that comes after a completion of inserted text. it is a string (optional)
+     */
+    'suffix' => null,
+    
+    /**
+     * Number between -2.0 and 2.0.
+     * Positive values penalize new tokens based on whether they appear in the text so far,
+     * increasing the model's likelihood to talk about new topics.
+     */
+    'presence_penalty' => 0,
+    
+    /**
+     * Number between -2.0 and 2.0.
+     * Positive values penalize new tokens based on their existing frequency in the text so far,
+     * decreasing the model's likelihood to repeat the same line verbatim.
+     */
+    'frequency_penalty' => 0,
+    
+    /**
+     * Generates best_of completions server-side and returns the "best" (the one with the highest log probability per token). Results cannot be streamed.
+     * When used with n, best_of controls the number of candidate completions and n specifies how many to return.
+     * best_of must be greater than n.
+     * Note: Because this parameter generates many completions, it can quickly consume your token quota.
+     * Use carefully and ensure that you have reasonable settings for max_tokens and stop.
+     */
+    'best_of' => 1,
+    
     /** This is the chatgpt model to use when using the chat completion */
     'chat_model' => 'gpt-3.5-turbo',
     
@@ -85,6 +113,11 @@ return [
     
     /** The role of the author of this message. it could be user or whatever you choose. */
     'user_role' => 'user',
+    
+    /**
+     * ID of the model to use. You can use the text-davinci-edit-001 or code-davinci-edit-001 model with this endpoint.
+     */
+    'edit_model' => 'text-davinci-edit-001',
 ];
 ```
 
@@ -129,6 +162,20 @@ AI is also being used to improve our lives in more subtle ways. For example, AI 
 AI is an exciting and rapidly evolving field of technology that is changing the way we interact with the world around us. As AI continues to develop, it will open up new possibilities for how we live our lives and interact with each other.
 """
 
+// Spell check and grammar correction
+use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
+
+$text = 'Artificial Intellagence (AI) is a rapidly growng field of technlogy that is revolutinizing the way we interact with the world arund us.';
+$correctedText = AiAssistant::acceptPrompt($text)->spellingAndGrammarCorrection();
+
+// response
+"Artificial Intelligence (AI) is a rapidly growing field of technology that is revolutionizing the way we interact with the world around us."
+
+// You can also improving the readability of your text by calling this method
+use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
+
+$text = 'Artificial Intelligence (AI) is a rapidly growing field of technology that is revolutionizing the way we interact with the world around us.';
+$improvedText = AiAssistant::acceptPrompt($text)->improveWriting();
 ```
 
 ## Testing

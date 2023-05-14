@@ -18,6 +18,10 @@ final class TextEditCompletion implements TextEditCompletionContract
         $this->client = AppConfig::openAiClient();
     }
 
+    /**
+     * @param array $payload
+     * @return string
+     */
     public function __invoke(array $payload): string
     {
         try {
