@@ -92,14 +92,13 @@ return [
 
 ```php
 //translate text to a specific language
-use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
+use CreativeCrafts\LaravelAiAssistant\AiAssistant;use CreativeCrafts\LaravelAiAssistant\AiAssistant;
 $translatedText = AiAssistant::acceptPrompt()->translateTo('How are you?')->toLanguageName('swedish');
 
 //response will be a string
 //Hur mår du?
 
 // Chat with the AI
-use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
 $chat = AiAssistant::acceptPrompt('Who is Jane Austen?')->andRespond();
 
 //response will be an array. The role is based on your configuration

@@ -64,7 +64,6 @@ final class AppConfig
     {
         return [
             'model' => config('ai-assistant.edit_model'),
-            'max_tokens' => config('ai-assistant.max_tokens'),
             'temperature' => config('ai-assistant.temperature'),
             'top_p' => config('ai-assistant.top_p'),
         ];
