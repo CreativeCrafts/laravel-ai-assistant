@@ -18,3 +18,7 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 
 - Added text edit functionlity. This will allow the user to do spell check, grammar check, and other text editing features.
 - clean up code
+
+## 0.0.4 - 2023-05-15
+
+- Updated dependencies
