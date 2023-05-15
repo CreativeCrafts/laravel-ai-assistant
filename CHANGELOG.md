@@ -2,13 +2,18 @@
 
 All notable changes to `laravel-ai-assistant` will be documented in this file.
 
+## 0.0.5 - 2023-05-15
+
+- updated dependencies
+
 ## 0.0.1 - 2023-05-11
 
 - initial release
 - features implemented are:
-  - Translation
-  - Brainstorming ideas
-  - Chat
+- - Translation
+- - Brainstorming ideas
+- - Chat
+- 
 
 ## 0.0.2 - 2023-05-11
 
