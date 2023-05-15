@@ -31,6 +31,7 @@
         "mockery/mockery": "^1.5",
         "nunomaduro/collision": "^7.9",
         "nunomaduro/larastan": "^2.6",
+        "nunomaduro/mock-final-classes": "^1.2",
         "orchestra/testbench": "^8.5.2",
         "pestphp/pest": "^2.5.3",
         "pestphp/pest-plugin-arch": "^2.1.2",
