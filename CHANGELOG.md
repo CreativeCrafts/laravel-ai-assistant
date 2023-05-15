@@ -27,3 +27,11 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 ## 0.0.4 - 2023-05-15
 
 - Updated dependencies
+
+## 0.0.5 - 2023-05-15
+
+- Updated more dependencies
+
+## 0.0.6 - 2023-05-15
+
+- Added Mock test for translation and draft method
