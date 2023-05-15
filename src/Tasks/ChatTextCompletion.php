@@ -51,6 +51,7 @@ final class ChatTextCompletion implements ChatTextCompletionContract
             $streamResponses = $this->client->chat()->createStreamed($payload);
 
             foreach ($streamResponses as $response) {
+                /** @var Response $response */
                 if (isset($response->choices[0])) {
                     return $response->choices[0]->toArray();
                 }

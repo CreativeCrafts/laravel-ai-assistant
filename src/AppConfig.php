@@ -8,12 +8,11 @@ use OpenAI\Client;
 
 final class AppConfig
 {
-    /**
-     * @return Client
-     */
     public static function openAiClient(): Client
     {
+        /** @var string $apiKey */
         $apiKey = config('ai-assistant.api_key');
+        /** @var string $organisation */
         $organisation = config('ai-assistant.organization');
 
         if (
@@ -30,9 +29,6 @@ final class AppConfig
         return OpenAI::client($apiKey, $organisation);
     }
 
-    /**
-     * @return array
-     */
     public static function textGeneratorConfig(): array
     {
         return [
@@ -51,9 +47,6 @@ final class AppConfig
         ];
     }
 
-    /**
-     * @return array
-     */
     public static function chatTextGeneratorConfig(): array
     {
         return [
@@ -69,9 +62,6 @@ final class AppConfig
         ];
     }
 
-    /**
-     * @return array
-     */
     public static function editTextGeneratorConfig(): array
     {
         return [
