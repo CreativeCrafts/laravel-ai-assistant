@@ -25,8 +25,3 @@ AI is also being used to improve our lives in more subtle ways.';
 
     self::assertEquals($response, $mock->draft());
 })->group('draft');
-
-it('can call the transcribe function', function () {
-    $mock = AiAssistant::acceptPrompt('audio.jpg')->transcribeTo('en');
-    dd($mock);
-})->group('transcribe');
