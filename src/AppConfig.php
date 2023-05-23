@@ -70,4 +70,13 @@ final class AppConfig
             'top_p' => config('ai-assistant.top_p'),
         ];
     }
+
+    public static function audioToTextGeneratorConfig(): array
+    {
+        return [
+            'model' => config('ai-assistant.audio_model'),
+            'temperature' => config('ai-assistant.temperature'),
+            'response_format' => config('ai-assistant.response_format'),
+        ];
+    }
 }

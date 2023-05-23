@@ -5,7 +5,8 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 
-This package will provide a simple way to access and interact with Openai end point. it provides features such as translation, summarization, question answering, text generation, chat and more.
+This package will provide a simple way to access and interact with Openai end point. it provides features such as translation, summarization, question answering, text generation, chat, transcribing and translating audio file to text and more.
+The package abstract the complexity of the Openai API and provides a simple interface to interact with it.
 
 ## Installation
 
@@ -118,6 +119,16 @@ return [
      * ID of the model to use. You can use the text-davinci-edit-001 or code-davinci-edit-001 model with this endpoint.
      */
     'edit_model' => 'text-davinci-edit-001',
+    
+    /**
+     * ID of the model to use. Only whisper-1 is currently available.
+     */
+    'audio_model' => 'whisper-1',
+
+    /**
+     * The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
+     */
+    'response_format' => 'verbose_json'
 ];
 ```
 
@@ -176,6 +187,30 @@ use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
 
 $text = 'Artificial Intelligence (AI) is a rapidly growing field of technology that is revolutionizing the way we interact with the world around us.';
 $improvedText = AiAssistant::acceptPrompt($text)->improveWriting();
+
+// Transcribe an audio file to text
+use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
+
+// The audio file to transcribe, must be in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm.
+$audioFilePath = 'path/to/audio/file.mp3';
+$optionalText = 'An optional text to guide the model's style or continue a previous audio segment. The prompt should match the audio language.
+
+// The language of the input audio. Supplying the input language in ISO-639-1 format will improve accuracy and latency.
+$language = 'en';
+
+$transcription = AiAssistant::acceptPrompt($audioFilePath)->transcribe($language, $optionalText);
+
+// The response will be a text format of the audio file
+
+// Translate an audio file to english text
+use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
+
+// The audio file to transcribe, must be in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm.
+$audioFilePath = 'path/to/audio/german.mp3';
+
+$translatedText = AiAssistant::acceptPrompt($audioFilePath)->translateAudioTo();
+
+// The response will be a text format of the audio file in english
 ```
 
 ## Testing

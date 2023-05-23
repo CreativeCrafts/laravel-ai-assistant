@@ -99,4 +99,14 @@ return [
      * ID of the model to use. You can use the text-davinci-edit-001 or code-davinci-edit-001 model with this endpoint.
      */
     'edit_model' => 'text-davinci-edit-001',
+
+    /**
+     * ID of the model to use. Only whisper-1 is currently available.
+     */
+    'audio_model' => 'whisper-1',
+
+    /**
+     * The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
+     */
+    'response_format' => 'verbose_json',
 ];

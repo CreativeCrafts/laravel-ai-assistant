@@ -34,4 +34,8 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 
 ## 0.0.6 - 2023-05-15
 
-- Added Mock test for translation and draft method
+- Added Mock test for translation and draft methods
+
+## 0.0.7 - 2023-05-23
+
+- Added method to transcribe and translate audio files
