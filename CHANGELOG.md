@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-ai-assistant` will be documented in this file.
 
+## 0.1.8 - 2023-05-24
+
+updated dependent composer packages
+
 ## 0.0.5 - 2023-05-15
 
 - updated dependencies
@@ -11,8 +15,11 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 - initial release
 - features implemented are:
 - - Translation
+- 
 - - Brainstorming ideas
+- 
 - - Chat
+- 
 - 
 
 ## 0.0.2 - 2023-05-11
