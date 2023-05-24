@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-ai-assistant` will be documented in this file.
 
+## 0.1.9 - 2023-05-24
+
+updated composer packages
+
 ## 0.1.8 - 2023-05-24
 
 updated dependent composer packages
@@ -16,9 +20,12 @@ updated dependent composer packages
 - features implemented are:
 - - Translation
 - 
+- 
 - - Brainstorming ideas
 - 
+- 
 - - Chat
+- 
 - 
 - 
 
