@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-ai-assistant` will be documented in this file.
 
+## 1.0.0 - 2023-05-24
+
+updated openai composer package
+
 ## 0.1.9 - 2023-05-24
 
 updated composer packages
@@ -21,10 +25,13 @@ updated dependent composer packages
 - - Translation
 - 
 - 
+- 
 - - Brainstorming ideas
 - 
 - 
+- 
 - - Chat
+- 
 - 
 - 
 - 
