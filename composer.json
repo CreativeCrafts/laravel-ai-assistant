@@ -21,8 +21,7 @@
         "php": "^8.1",
         "guzzlehttp/guzzle": "^7.7",
         "illuminate/contracts": "^10.12",
-        "openai-php/client": "^0.4",
-        "psr/http-client": "^1.0.2",
+        "openai-php/client": "^0.4.2",
         "spatie/laravel-package-tools": "^1.15",
         "symfony/http-client": "^6.2.10"
     },
