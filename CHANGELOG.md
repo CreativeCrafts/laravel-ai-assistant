@@ -23,18 +23,9 @@ updated dependent composer packages
 - initial release
 - features implemented are:
 - - Translation
-- 
-- 
-- 
 - - Brainstorming ideas
-- 
-- 
-- 
 - - Chat
-- 
-- 
-- 
-- 
+-
 
 ## 0.0.2 - 2023-05-11
 
@@ -60,3 +51,7 @@ updated dependent composer packages
 ## 0.0.7 - 2023-05-23
 
 - Added method to transcribe and translate audio files
+
+## 0.0.8 - 2023-09-01
+
+- Added a feature that allow function call in chat

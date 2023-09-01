@@ -52,6 +52,7 @@ class AiAssistant implements AiAssistantContract
     public function andRespond(): array
     {
         $this->chatTextGeneratorConfig['messages'] = ChatTextCompletion::messages($this->prompt);
+        $this->chatTextGeneratorConfig['functions'] = ChatTextCompletion::customFunction();
 
         return (new ChatTextCompletion())($this->chatTextGeneratorConfig);
     }
