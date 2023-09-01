@@ -2,6 +2,10 @@
 
 All notable changes to `laravel-ai-assistant` will be documented in this file.
 
+## 1.1.0 - 2023-09-01
+
+- Added a feature that allow function call in chat
+
 ## 1.0.0 - 2023-05-24
 
 updated openai composer package
@@ -52,6 +56,3 @@ updated dependent composer packages
 
 - Added method to transcribe and translate audio files
 
-## 0.0.8 - 2023-09-01
-
-- Added a feature that allow function call in chat
