@@ -3,6 +3,7 @@
 namespace CreativeCrafts\LaravelAiAssistant;
 
 use CreativeCrafts\LaravelAiAssistant\Contract\AiAssistantContract;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CustomFunctionData;
 use CreativeCrafts\LaravelAiAssistant\Tasks\AudioResource;
 use CreativeCrafts\LaravelAiAssistant\Tasks\ChatTextCompletion;
 use CreativeCrafts\LaravelAiAssistant\Tasks\TextCompletion;
@@ -21,9 +22,9 @@ class AiAssistant implements AiAssistantContract
 
     protected array $audioToTextGeneratorConfig = [];
 
-    public function __construct(protected string $prompt)
+    public function __construct(protected string $prompt, ?Client $client = null)
     {
-        $this->client = AppConfig::openAiClient();
+        $this->client = $client ?? AppConfig::openAiClient();
         $this->textGeneratorConfig = AppConfig::textGeneratorConfig();
         $this->chatTextGeneratorConfig = AppConfig::chatTextGeneratorConfig();
         $this->editTextGeneratorConfig = AppConfig::editTextGeneratorConfig();
@@ -52,7 +53,14 @@ class AiAssistant implements AiAssistantContract
     public function andRespond(): array
     {
         $this->chatTextGeneratorConfig['messages'] = ChatTextCompletion::messages($this->prompt);
-        $this->chatTextGeneratorConfig['functions'] = ChatTextCompletion::customFunction();
+
+        return (new ChatTextCompletion())($this->chatTextGeneratorConfig);
+    }
+
+    public function withCustomFunction(CustomFunctionData $customFunctionData): array
+    {
+        $this->chatTextGeneratorConfig['messages'] = ChatTextCompletion::messages($this->prompt);
+        $this->chatTextGeneratorConfig['functions'] = $customFunctionData->toArray();
 
         return (new ChatTextCompletion())($this->chatTextGeneratorConfig);
     }

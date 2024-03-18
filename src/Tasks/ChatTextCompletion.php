@@ -14,9 +14,9 @@ final class ChatTextCompletion implements ChatTextCompletionContract
 {
     protected Client $client;
 
-    public function __construct()
+    public function __construct(?Client $client = null)
     {
-        $this->client = AppConfig::openAiClient();
+        $this->client = $client ?? AppConfig::openAiClient();
     }
 
     public function __invoke(array $payload): array
@@ -105,30 +105,5 @@ final class ChatTextCompletion implements ChatTextCompletionContract
     public static function cacheChatConversation(array $conversation): void
     {
         Cache::put('userMessage', $conversation, 120);
-    }
-
-    public static function customFunction(): array
-    {
-        return [
-            [
-                'name' => 'get_current_weather',
-                'description' => 'Get the current weather in a given location',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'location' => [
-                            'type' => 'string',
-                            'description' => 'The city and state, e.g. San Francisco, CA',
-                        ],
-                        'unit' => [
-                            'type' => 'string',
-                            'enum' => ['celsius', 'fahrenheit'],
-                        ],
-                    ],
-                    'required' => ['location'],
-                ],
-            ],
-        ];
-
     }
 }

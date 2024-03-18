@@ -13,9 +13,9 @@ final class TextEditCompletion implements TextEditCompletionContract
 {
     protected Client $client;
 
-    public function __construct()
+    public function __construct(?Client $client = null)
     {
-        $this->client = AppConfig::openAiClient();
+        $this->client = $client ?? AppConfig::openAiClient();
     }
 
     public function __invoke(array $payload): string
