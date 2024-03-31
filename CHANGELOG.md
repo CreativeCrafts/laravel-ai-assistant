@@ -56,7 +56,7 @@ updated dependent composer packages
 
 - Added method to transcribe and translate audio files
 
-## 1.0.0 - 2024-03-18
+## 1.2.0 - 2024-03-18
 
 - Added support for Laravel 11
 - Removed support for php8.1
