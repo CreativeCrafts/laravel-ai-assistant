@@ -14,7 +14,7 @@ The package abstract the complexity of the Openai API and provides a simple inte
 You can install the package via composer:
 
 ```bash
-composer require alvinCoded/laravel-ai-assistant
+composer require creativecrafts/laravel-ai-assistant
 ```
 
 You can publish the config file with:
