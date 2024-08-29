@@ -21,7 +21,25 @@ final class TextEditCompletion implements TextEditCompletionContract
     public function __invoke(array $payload): string
     {
         try {
-            return trim($this->client->edits()->create($payload)->choices[0]->text);
+            $model = config('ai-assistant.chat_model');
+            
+            // If the model is GPT-4 compatible, use the chat completion endpoint
+            if (str_starts_with($model, 'gpt-4') || $model === 'gpt-3.5-turbo') {
+                $messages = [
+                    ['role' => config('ai-assistant.ai_role', 'assistant'), 'content' => 'You are a helpful assistant that improves text.'],
+                    ['role' => config('ai-assistant.user_role', 'user'), 'content' => "Please improve the following text: {$payload['input']}"],
+                ];
+
+                $response = $this->client->chat()->create([
+                    'model' => $model,
+                    'messages' => $messages,
+                ]);
+
+                return trim($response->choices[0]->message->content);
+            } else {
+                // Fall back to the original edit completion for other models
+                return trim($this->client->edits()->create($payload)->choices[0]->text);
+            }
         } catch (Throwable $e) {
             $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
             throw new InvalidApiKeyException($e->getMessage(), $errorCode);
