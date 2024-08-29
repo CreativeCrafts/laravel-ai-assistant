@@ -9,7 +9,7 @@
         "chatgpt",
         "ai assistant"
     ],
-    "homepage": "https://github.com/creativecrafts/laravel-ai-assistant",
+    "homepage": "https://github.com/AlvinCoded/laravel-ai-assistant",
     "license": "MIT",
     "authors": [
         {
@@ -41,13 +41,13 @@
     },
     "autoload": {
         "psr-4": {
-            "CreativeCrafts\\LaravelAiAssistant\\": "src/",
-            "CreativeCrafts\\LaravelAiAssistant\\Database\\Factories\\": "database/factories/"
+            "AlvinCoded\\LaravelAiAssistant\\": "src/",
+            "AlvinCoded\\LaravelAiAssistant\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "CreativeCrafts\\LaravelAiAssistant\\Tests\\": "tests/"
+            "AlvinCoded\\LaravelAiAssistant\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -68,13 +68,13 @@
     "extra": {
         "laravel": {
             "providers": [
-                "CreativeCrafts\\LaravelAiAssistant\\LaravelAiAssistantServiceProvider"
+                "AlvinCoded\\LaravelAiAssistant\\LaravelAiAssistantServiceProvider"
             ],
             "aliases": {
-                "LaravelAiAssistant": "CreativeCrafts\\LaravelAiAssistant\\Facades\\LaravelAiAssistant"
+                "LaravelAiAssistant": "AlvinCoded\\LaravelAiAssistant\\Facades\\LaravelAiAssistant"
             }
         }
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "dev-main",
     "prefer-stable": true
 }
