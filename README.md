@@ -235,6 +235,10 @@ The `TextEditCompletion` class has been modified to use the chat completion endp
 
 The `ai-assistant.php` configuration file now includes a new `chat_model` option.
 
+### Cmpatibility
+
+This fork is compatible with OpenAI API as of August 2024. It uses the gpt-3.5-turbo model by default, but you can specify gpt-4 or other available models in your configuration if you have access to them.
+
 ## Add to .env
 
 ```bash
