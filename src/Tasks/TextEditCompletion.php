@@ -27,7 +27,7 @@ final class TextEditCompletion implements TextEditCompletionContract
             if (str_starts_with($model, 'gpt-4') || $model === 'gpt-3.5-turbo') {
                 $messages = [
                     ['role' => config('ai-assistant.ai_role', 'assistant'), 'content' => 'You are a helpful assistant that improves text.'],
-                    ['role' => config('ai-assistant.user_role', 'user'), 'content' => "Please improve the following text: {$payload['input']}"],
+                    ['role' => config('ai-assistant.user_role', 'user'), 'content' => $payload['instruction'] . "\n\nText to edit: " . $payload['input']],
                 ];
 
                 $response = $this->client->chat()->create([
