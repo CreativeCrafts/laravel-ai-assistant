@@ -1,5 +1,5 @@
 {
-    "name": "creativecrafts/laravel-ai-assistant",
+    "name": "AlvinCoded/laravel-ai-assistant",
     "description": "A handy package to access and interact with OpenAi endpoint",
     "keywords": [
         "creativeCrafts",
@@ -75,6 +75,6 @@
             }
         }
     },
-    "minimum-stability": "dev-main",
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
