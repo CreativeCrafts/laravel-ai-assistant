@@ -1,6 +1,6 @@
 {
-    "name": "alvincoded/laravel-ai-assistant",
-    "description": "A handy package to access and interact with OpenAI endpoint forked from CreativeCrafts",
+    "name": "creativecrafts/laravel-ai-assistant",
+    "description": "A handy package to access and interact with OpenAi endpoint",
     "keywords": [
         "creativeCrafts",
         "laravel",
@@ -9,7 +9,7 @@
         "chatgpt",
         "ai assistant"
     ],
-    "homepage": "https://github.com/AlvinCoded/laravel-ai-assistant",
+    "homepage": "https://github.com/creativecrafts/laravel-ai-assistant",
     "license": "MIT",
     "authors": [
         {
@@ -41,13 +41,13 @@
     },
     "autoload": {
         "psr-4": {
-            "AlvinCoded\\LaravelAiAssistant\\": "src/",
-            "AlvinCoded\\LaravelAiAssistant\\Database\\Factories\\": "database/factories/"
+            "CreativeCrafts\\LaravelAiAssistant\\": "src/",
+            "CreativeCrafts\\LaravelAiAssistant\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AlvinCoded\\LaravelAiAssistant\\Tests\\": "tests/"
+            "CreativeCrafts\\LaravelAiAssistant\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -68,10 +68,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "AlvinCoded\\LaravelAiAssistant\\LaravelAiAssistantServiceProvider"
+                "CreativeCrafts\\LaravelAiAssistant\\LaravelAiAssistantServiceProvider"
             ],
             "aliases": {
-                "LaravelAiAssistant": "AlvinCoded\\LaravelAiAssistant\\Facades\\LaravelAiAssistant"
+                "LaravelAiAssistant": "CreativeCrafts\\LaravelAiAssistant\\Facades\\LaravelAiAssistant"
             }
         }
     },
