@@ -1,6 +1,6 @@
 {
-    "name": "creativecrafts/laravel-ai-assistant",
-    "description": "A handy package to access and interact with OpenAi endpoint",
+    "name": "alvincoded/laravel-ai-assistant",
+    "description": "A handy package to access and interact with OpenAI endpoint forked from CreativeCrafts",
     "keywords": [
         "creativeCrafts",
         "laravel",
