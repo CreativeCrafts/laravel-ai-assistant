@@ -6,7 +6,7 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 
 This package will provide a simple way to access and interact with Openai end point. it provides features such as translation, summarization, question answering, text generation, chat, transcribing and translating audio file to text and more.
-The package abstract the complexity of the Openai API and provides a simple interface to interact with it. <br><br> <i>This is my modified version to get rid of depreciation errors such as the deprecation of older models in the Completions API</i>
+The package abstract the complexity of the Openai API and provides a simple interface to interact with it. 
 
 
 ## Installation
@@ -218,6 +218,23 @@ $translatedText = AiAssistant::acceptPrompt($audioFilePath)->translateAudioTo();
 
 // The response will be a text format of the audio file in english
 ```
+## Important Update
+
+This fork includes critical updates to address compatibility issues with the latest OpenAI API changes. The main modifications are:
+
+1. Replaced the deprecated `/v1/edits` endpoint with the chat completion endpoint in the `TextEditCompletion` class.
+2. Updated the configuration to use the chat model for text editing tasks.
+
+### Changes in Detail
+
+#### TextEditCompletion.php
+
+The `TextEditCompletion` class has been modified to use the chat completion endpoint instead of the deprecated edits endpoint. This change ensures compatibility with the current OpenAI API.
+
+#### Configuration
+
+The `ai-assistant.php` configuration file now includes a new `chat_model` option.
+
 ## Add to .env
 
 ```bash
