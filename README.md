@@ -6,14 +6,15 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 
 This package will provide a simple way to access and interact with Openai end point. it provides features such as translation, summarization, question answering, text generation, chat, transcribing and translating audio file to text and more.
-The package abstract the complexity of the Openai API and provides a simple interface to interact with it.
+The package abstract the complexity of the Openai API and provides a simple interface to interact with it. <br><br> <i>This is my modified version to get rid of depreciation errors such as the deprecation of older models in the Completions API</i>
+
 
 ## Installation
 
 You can install the package via composer:
 
 ```bash
-composer require creativecrafts/laravel-ai-assistant
+composer require AlvinCoded/laravel-ai-assistant
 ```
 
 You can publish the config file with:
@@ -32,8 +33,8 @@ return [
     | used to authenticate with the OpenAI API - you can find your API key
     | and organization on your OpenAI dashboard, at https://openai.com.
      */
-    'api_key' => env('OPENAI_API_KEY'),
-    'organization' => env('OPENAI_ORGANIZATION'),
+    'api_key' => env('OPENAI_API_KEY', null),
+    'organization' => env('OPENAI_ORGANIZATION', null),
 
     /** ID of the model to use. you can find a list of models at https://platform.openai.com/docs/models */
     'model' => 'text-davinci-003',
@@ -107,7 +108,7 @@ return [
     'best_of' => 1,
     
     /** This is the chatgpt model to use when using the chat completion */
-    'chat_model' => 'gpt-3.5-turbo',
+    'chat_model' => 'gpt-4o-mini',
     
     /** The role of the ai process this message. it could be system, assistant or whatever you choose. */
     'ai_role' => 'assistant',
@@ -116,9 +117,9 @@ return [
     'user_role' => 'user',
     
     /**
-     * ID of the model to use. You can use the text-davinci-edit-001 or code-davinci-edit-001 model with this endpoint.
+     * ID of the model to use. You can use the text-davinci-edit-001 or code-davinci-edit-001 model with this endpoint. (deprecated)
      */
-    'edit_model' => 'text-davinci-edit-001',
+    'edit_model' => 'gpt-4o-mini',
     
     /**
      * ID of the model to use. Only whisper-1 is currently available.
