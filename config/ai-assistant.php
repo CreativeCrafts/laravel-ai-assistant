@@ -7,11 +7,11 @@ return [
     | used to authenticate with the OpenAI API - you can find your API key
     | and organization on your OpenAI dashboard, at https://openai.com.
      */
-    'api_key' => 'YOUR_OPENAI_API_KEY',
-    'organization' => 'YOUR_OPENAI_ORGANIZATION',
+    'api_key' => env('OPENAI_API_KEY', null),
+    'organization' => env('OPENAI_ORGANIZATION', null),
 
     /** ID of the model to use. you can find a list of models at https://platform.openai.com/docs/models */
-    'model' => 'text-davinci-003',
+    'model' => env('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo'),
 
     /**
      * What sampling temperature to use, between 0 and 2.
@@ -87,7 +87,7 @@ return [
     'best_of' => 1,
 
     /** This is the chatgpt model to use when using the chat completion */
-    'chat_model' => 'gpt-3.5-turbo',
+    'chat_model' => env('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo'),
 
     /** The role of the ai process this message. it could be system, assistant or whatever you choose. */
     'ai_role' => 'assistant',
@@ -96,9 +96,9 @@ return [
     'user_role' => 'user',
 
     /**
-     * ID of the model to use. You can use the text-davinci-edit-001 or code-davinci-edit-001 model with this endpoint.
+     * ID of the model to use. You can use the gpt-4o or gpt-3.5-turbo model with this endpoint.
      */
-    'edit_model' => 'text-davinci-edit-001',
+    'edit_model' => 'gpt-4o',
 
     /**
      * ID of the model to use. Only whisper-1 is currently available.
