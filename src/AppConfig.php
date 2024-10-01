@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CreativeCrafts\LaravelAiAssistant;
 
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
@@ -8,7 +10,7 @@ use OpenAI\Client;
 
 final class AppConfig
 {
-    public static function openAiClient(): Client
+    public static function openAiClient(Client $client = null): Client
     {
         /** @var string $apiKey */
         $apiKey = config('ai-assistant.api_key');
@@ -26,7 +28,7 @@ final class AppConfig
             throw new InvalidApiKeyException();
         }
 
-        return OpenAI::client($apiKey, $organisation);
+        return $client instanceof Client ? $client : OpenAI::client($apiKey, $organisation);
     }
 
     public static function textGeneratorConfig(): array

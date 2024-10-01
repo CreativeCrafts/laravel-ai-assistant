@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CreativeCrafts\LaravelAiAssistant\Tasks;
 
 use CreativeCrafts\LaravelAiAssistant\AppConfig;
@@ -30,38 +32,6 @@ final class ChatTextCompletion implements ChatTextCompletionContract
         self::cacheChatConversation($response);
 
         return $response;
-    }
-
-    public function chatTextCompletion(array $payload): array
-    {
-        try {
-            $response = $this->client->chat()->create($payload)->choices[0]->message->toArray();
-            self::cacheChatConversation($response);
-
-            return $response;
-        } catch (Throwable $e) {
-            $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
-            throw new InvalidApiKeyException($e->getMessage(), $errorCode);
-        }
-    }
-
-    public function streamedChat(array $payload): array
-    {
-        try {
-            $streamResponses = $this->client->chat()->createStreamed($payload);
-
-            foreach ($streamResponses as $response) {
-                /** @var Response $response */
-                if (isset($response->choices[0])) {
-                    return $response->choices[0]->toArray();
-                }
-            }
-
-            return [];
-        } catch (Throwable $e) {
-            $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
-            throw new InvalidApiKeyException($e->getMessage(), $errorCode);
-        }
     }
 
     public static function messages(string $prompt): array
@@ -105,5 +75,37 @@ final class ChatTextCompletion implements ChatTextCompletionContract
     public static function cacheChatConversation(array $conversation): void
     {
         Cache::put('userMessage', $conversation, 120);
+    }
+
+    public function chatTextCompletion(array $payload): array
+    {
+        try {
+            $response = $this->client->chat()->create($payload)->choices[0]->message->toArray();
+            self::cacheChatConversation($response);
+
+            return $response;
+        } catch (Throwable $e) {
+            $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
+            throw new InvalidApiKeyException($e->getMessage(), $errorCode);
+        }
+    }
+
+    public function streamedChat(array $payload): array
+    {
+        try {
+            $streamResponses = $this->client->chat()->createStreamed($payload);
+
+            foreach ($streamResponses as $response) {
+                /** @var Response $response */
+                if (isset($response->choices[0])) {
+                    return $response->choices[0]->toArray();
+                }
+            }
+
+            return [];
+        } catch (Throwable $e) {
+            $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
+            throw new InvalidApiKeyException($e->getMessage(), $errorCode);
+        }
     }
 }

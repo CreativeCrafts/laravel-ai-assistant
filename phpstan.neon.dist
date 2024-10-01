@@ -6,8 +6,13 @@ parameters:
     paths:
         - src
         - config
+
+    ignoreErrors:
+        - identifier: missingType.iterableValue
+
     tmpDir: build/phpstan
-    checkOctaneCompatibility: true
+    noModelMake: false
+    noUnnecessaryCollectionCall: false
     checkModelProperties: true
-    checkMissingIterableValueType: false
+    inferPrivatePropertyTypeFromConstructor: true
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CreativeCrafts\LaravelAiAssistant;
 
 use CreativeCrafts\LaravelAiAssistant\Contract\AiAssistantContract;
@@ -22,8 +24,10 @@ class AiAssistant implements AiAssistantContract
 
     protected array $audioToTextGeneratorConfig = [];
 
-    public function __construct(protected string $prompt, ?Client $client = null)
-    {
+    public function __construct(
+        protected string $prompt,
+        ?Client $client = null
+    ) {
         $this->client = $client ?? AppConfig::openAiClient();
         $this->textGeneratorConfig = AppConfig::textGeneratorConfig();
         $this->chatTextGeneratorConfig = AppConfig::chatTextGeneratorConfig();
@@ -45,7 +49,7 @@ class AiAssistant implements AiAssistantContract
 
     public function translateTo(string $language): string
     {
-        $this->textGeneratorConfig['prompt'] = 'translate this'.". $this->prompt . ".'to'.$language;
+        $this->textGeneratorConfig['prompt'] = 'translate this' . ". $this->prompt . " . 'to' . $language;
 
         return (new TextCompletion())($this->textGeneratorConfig);
     }

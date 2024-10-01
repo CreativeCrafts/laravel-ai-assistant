@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CreativeCrafts\LaravelAiAssistant\Tasks;
 
 use CreativeCrafts\LaravelAiAssistant\AppConfig;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CreativeCrafts\LaravelAiAssistant\DataTransferObjects;
 
 use CreativeCrafts\LaravelAiAssistant\Contract\CustomFunctionDataContract;
