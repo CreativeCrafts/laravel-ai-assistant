@@ -2,30 +2,23 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Assistant;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\AssistantMessageData;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\NewAssistantResponse;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\CreateNewAssistantException;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
-use Illuminate\Support\Facades\Config;
-use OpenAI\Client;
+use CreativeCrafts\LaravelAiAssistant\Tasks\AssistantResource;
 use OpenAI\Responses\Assistants\AssistantResponse;
 
 covers(Assistant::class);
 
-it('throws InvalidApiKeyException if the API key or organization is invalid', function () {
-    Config::set('ai-assistant.api_key', '');
-    Config::set('ai-assistant.organization', '');
-    AppConfig::openAiClient();
-})->throws(InvalidApiKeyException::class, 'Invalid OpenAI API key or organization.');
+beforeEach(function () {
+    $this->clientMock = Mockery::mock(AssistantResource::class);
+    $this->assistant = Assistant::new()->client($this->clientMock);
+});
 
-it('returns a mocked OpenAI client when the configuration is valid', function () {
-    Config::set('ai-assistant.api_key', 'valid-api-key');
-    Config::set('ai-assistant.organization', 'valid-organization');
-    $mockedClient = Mockery::mock(Client::class);
-    $client = AppConfig::openAiClient($mockedClient);
-
-    expect($client)->toBe($mockedClient);
+it('can create a new assistant instance', function () {
+    $assistant = Assistant::new();
+    expect($assistant)->toBeInstanceOf(Assistant::class);
 });
 
 it('can instantiate a new Assistant', function () {
@@ -146,48 +139,161 @@ it('can include a function call tool', function () {
     ]);
 });
 
-it('creates a new assistant successfully', function () {
-    // Mock the OpenAI AssistantResponse object
-    $mockedResponse = Mockery::mock(AssistantResponse::class);
-    $mockedResponse->shouldReceive('id')->andReturn('1234');
-    $mockedResponse->shouldReceive('name')->andReturn('Test Assistant');
+it('can create assistant and return response', function () {
+    $assistantData = [
+        'model' => 'gpt-4o',
+        'name' => '',
+        'description' => '',
+        'instructions' => '',
+        'tools' => [],
+        'temperature' => 0.5,
+        'tool_resources' => null,
+    ];
 
-    // Mock the OpenAI client
-    $mockedClient = Mockery::mock(Client::class);
-    $mockedClient->shouldReceive('assistants->create')
-        ->once()
-        ->andReturn($mockedResponse);
+    $responseMock = mock(AssistantResponse::class);
+    $this->clientMock->shouldReceive('createAssistant')->with($assistantData)->andReturn($responseMock);
 
-    // Set up the Assistant class with mocked client and parameters
-    $assistant = Assistant::new()
-        ->client($mockedClient)
-        ->setModelName('gpt-4o')
-        ->setAssistantName('Test Assistant')
-        ->setAssistantDescription('Test description')
-        ->setInstructions('Test instructions')
-        ->adjustTemperature(0.7)
-        ->includeCodeInterpreterTool(['file1', 'file2']);
+    $newAssistantResponse = $this->assistant->create();
 
-    // Call the create method and get the NewAssistantResponse object
-    $response = $assistant->create();
-
-    // Verify the NewAssistantResponse object
-    expect($response)->toBeInstanceOf(NewAssistantResponse::class);
+    expect($newAssistantResponse)->toBeInstanceOf(NewAssistantResponse::class);
 });
 
-it('throws an exception when creating an assistant fails', function () {
-    // Mock the OpenAI client to throw an exception
-    $mockedClient = Mockery::mock(Client::class);
-    $mockedClient->shouldReceive('assistants->create')
-        ->once()
-        ->andThrow(new Exception('API error', 500));
+it('throws exception when creating assistant fails', function () {
+    $this->clientMock->shouldReceive('createAssistant')->andThrow(new CreateNewAssistantException('Unable to create new assistant.'));
 
-    // Prepare the assistant instance
-    $assistant = Assistant::new()->client($mockedClient);
+    $this->assistant->create();
+})->throws(CreateNewAssistantException::class);
 
-    // Expect the custom exception to be thrown
-    $this->expectException(CreateNewAssistantException::class);
+it('can retrieve assistant by id', function () {
+    $assistantId = 'test-assistant-id';
+    $responseMock = mock(AssistantResponse::class);
 
-    // Call the create method
-    $assistant->create();
+    $this->clientMock->shouldReceive('getAssistantViaId')->with($assistantId)->andReturn($responseMock);
+
+    $assistant = $this->assistant->assignAssistant($assistantId);
+
+    expect($assistant)->toBeInstanceOf(Assistant::class);
+
+    $reflection = new ReflectionClass($assistant);
+    $property = $reflection->getProperty('assistant');
+    $property->setAccessible(true);
+    expect($property->getValue($assistant))->toBe($responseMock);
+});
+
+it('can create task thread', function () {
+    $threadData = ['param1' => 'value1'];
+    $threadResponseMock = Mockery::mock(OpenAI\Responses\Threads\ThreadResponse::class);
+
+    $reflectionClass = new ReflectionClass($threadResponseMock);
+    $idProperty = $reflectionClass->getProperty('id');
+    $idProperty->setAccessible(true);
+    $idProperty->setValue($threadResponseMock, 'test-thread-id');
+
+    $this->clientMock->shouldReceive('createThread')->with($threadData)->andReturn($threadResponseMock);
+    $this->assistant->createTaskThread($threadData);
+
+    $reflection = new ReflectionClass($this->assistant);
+    $property = $reflection->getProperty('threadId');
+    $property->setAccessible(true);
+
+    expect($property->getValue($this->assistant))->toBe('test-thread-id');
+});
+
+it('can ask a question and send message', function () {
+    $message = 'What is the weather today?';
+    $threadData = ['param1' => 'value1'];
+    $threadResponseMock = mock(OpenAI\Responses\Threads\ThreadResponse::class);
+    $threadMessageResponseMock = Mockery::mock(OpenAI\Responses\Threads\Messages\ThreadMessageResponse::class);
+
+    $reflectionClass = new ReflectionClass($threadResponseMock);
+    $idProperty = $reflectionClass->getProperty('id');
+    $idProperty->setAccessible(true);
+    $idProperty->setValue($threadResponseMock, 'test-thread-id');
+
+    $this->clientMock->shouldReceive('createThread')->with($threadData)->andReturn($threadResponseMock);
+    $this->assistant->createTaskThread($threadData);
+
+    $this->clientMock->shouldReceive('writeMessage')
+        ->with('test-thread-id', \Mockery::on(static function ($messageDataArray) use ($message) {
+            return $messageDataArray['content'] === $message;
+        }))
+        ->andReturn($threadMessageResponseMock);
+
+    $this->assistant->askQuestion($message);
+
+    $reflection = new ReflectionClass($this->assistant);
+    $property = $reflection->getProperty('assistantMessageData');
+    $property->setAccessible(true);
+
+    expect($property->getValue($this->assistant))->toBeInstanceOf(AssistantMessageData::class);
+});
+
+it('can process a message thread', function () {
+    $message = 'What is the weather today?';
+    $threadData = ['param1' => 'value1'];
+    $threadResponseMock = mock(OpenAI\Responses\Threads\ThreadResponse::class);
+    $threadMessageResponseMock = Mockery::mock(OpenAI\Responses\Threads\Messages\ThreadMessageResponse::class);
+
+    $reflectionClass = new ReflectionClass($threadResponseMock);
+    $idProperty = $reflectionClass->getProperty('id');
+    $idProperty->setAccessible(true);
+    $idProperty->setValue($threadResponseMock, 'test-thread-id');
+
+    $this->clientMock->shouldReceive('createThread')->with($threadData)->andReturn($threadResponseMock);
+    $this->assistant->createTaskThread($threadData);
+
+     $this->clientMock->shouldReceive('writeMessage')
+        ->with('test-thread-id', \Mockery::on(static function ($messageDataArray) use ($message) {
+            return $messageDataArray['content'] === $message;
+        }))
+        ->andReturn($threadMessageResponseMock);
+
+     $this->clientMock->shouldReceive('runMessageThread')
+        ->with('test-thread-id', \Mockery::on(static function ($messageDataArray) use ($message) {
+            return $messageDataArray['content'] === $message;
+        }))
+        ->andReturnTrue();
+
+    $this->assistant->askQuestion($message);
+
+    $reflection = new ReflectionClass($this->assistant);
+    $property = $reflection->getProperty('assistantMessageData');
+    $property->setAccessible(true);
+
+    $this->assistant->process();
+    $this->clientMock->shouldHaveReceived('runMessageThread')
+        ->with('test-thread-id', \Mockery::on(static function ($messageDataArray) use ($message) {
+            return $messageDataArray['content'] === $message;
+        }))
+        ->once();
+
+    $updatedMessageData = $property->getValue($this->assistant);
+
+    $reflection = new ReflectionClass($updatedMessageData);
+    $property = $reflection->getProperty('message');
+    $property->setAccessible(true);
+    expect($property->getValue($updatedMessageData))->toBe($message);
+});
+
+it('can return response from message thread', function () {
+    $messageResponse = 'The weather today is sunny';
+    $threadData = ['param1' => 'value1'];
+    $threadResponseMock = mock(OpenAI\Responses\Threads\ThreadResponse::class);
+
+    $reflectionClass = new ReflectionClass($threadResponseMock);
+    $idProperty = $reflectionClass->getProperty('id');
+    $idProperty->setAccessible(true);
+    $idProperty->setValue($threadResponseMock, 'test-thread-id');
+
+    $this->clientMock->shouldReceive('createThread')->with($threadData)->andReturn($threadResponseMock);
+
+    $this->assistant->createTaskThread($threadData);
+
+    $this->clientMock->shouldReceive('listMessages')
+        ->with('test-thread-id')
+        ->andReturn($messageResponse);
+
+    $response = $this->assistant->response();
+
+    expect($response)->toBe($messageResponse);
 });

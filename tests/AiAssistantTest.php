@@ -3,11 +3,25 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+use CreativeCrafts\LaravelAiAssistant\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
+use Illuminate\Support\Facades\Config;
+use OpenAI\Client;
 
-it('throws InvalidApiKeyException when an invalid open ai key or organisation is provided', function () {
-    $blogIdea = AiAssistant::acceptPrompt('How to make money online?')->draft();
+it('throws InvalidApiKeyException if the API key or organization is invalid', function () {
+    Config::set('ai-assistant.api_key', '');
+    Config::set('ai-assistant.organization', '');
+    AppConfig::openAiClient();
 })->throws(InvalidApiKeyException::class, 'Invalid OpenAI API key or organization.');
+
+it('returns a mocked OpenAI client when the configuration is valid', function () {
+    Config::set('ai-assistant.api_key', 'valid-api-key');
+    Config::set('ai-assistant.organization', 'valid-organization');
+    $mockedClient = Mockery::mock(Client::class);
+    $client = AppConfig::openAiClient($mockedClient);
+
+    expect($client)->toBe($mockedClient);
+});
 
 it('can translate english text to different language such as swedish', function () {
     $mock = $this->createMock(AiAssistant::class);
