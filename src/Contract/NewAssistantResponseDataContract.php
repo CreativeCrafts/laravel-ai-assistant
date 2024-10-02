@@ -6,7 +6,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Contract;
 
 use OpenAI\Responses\Assistants\AssistantResponse;
 
-interface NewAssistantResponseContract
+interface NewAssistantResponseDataContract
 {
     public function __construct(
         AssistantResponse $assistantResponse

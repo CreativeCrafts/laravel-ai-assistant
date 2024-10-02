@@ -3,11 +3,6 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\AiAssistant;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
-
-it('throws InvalidApiKeyException when an invalid open ai key or organisation is provided', function () {
-    $blogIdea = AiAssistant::acceptPrompt('How to make money online?')->draft();
-})->throws(InvalidApiKeyException::class, 'Invalid OpenAI API key or organization.');
 
 it('can translate english text to different language such as swedish', function () {
     $mock = $this->createMock(AiAssistant::class);

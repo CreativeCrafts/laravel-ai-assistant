@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\DataTransferObjects;
 
-use CreativeCrafts\LaravelAiAssistant\Contract\NewAssistantResponseContract;
+use CreativeCrafts\LaravelAiAssistant\Contract\NewAssistantResponseDataContract;
 use OpenAI\Responses\Assistants\AssistantResponse;
 
-final readonly class NewAssistantResponse implements NewAssistantResponseContract
+final readonly class NewAssistantResponseData implements NewAssistantResponseDataContract
 {
     public function __construct(
         protected AssistantResponse $assistantResponse

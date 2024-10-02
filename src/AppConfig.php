@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant;
 
+use CreativeCrafts\LaravelAiAssistant\Contract\AppConfigContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use OpenAI;
 use OpenAI\Client;
 
-final class AppConfig
+final class AppConfig implements AppConfigContract
 {
     public static function openAiClient(Client $client = null): Client
     {
