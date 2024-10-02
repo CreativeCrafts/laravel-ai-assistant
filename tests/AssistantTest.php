@@ -214,7 +214,7 @@ it('can ask a question and send message', function () {
     $this->assistant->createTaskThread($threadData);
 
     $this->clientMock->shouldReceive('writeMessage')
-        ->with('test-thread-id', \Mockery::on(static function ($messageDataArray) use ($message) {
+        ->with('test-thread-id', Mockery::on(static function ($messageDataArray) use ($message) {
             return $messageDataArray['content'] === $message;
         }))
         ->andReturn($threadMessageResponseMock);
@@ -243,13 +243,13 @@ it('can process a message thread', function () {
     $this->assistant->createTaskThread($threadData);
 
      $this->clientMock->shouldReceive('writeMessage')
-        ->with('test-thread-id', \Mockery::on(static function ($messageDataArray) use ($message) {
+        ->with('test-thread-id', Mockery::on(static function ($messageDataArray) use ($message) {
             return $messageDataArray['content'] === $message;
         }))
         ->andReturn($threadMessageResponseMock);
 
      $this->clientMock->shouldReceive('runMessageThread')
-        ->with('test-thread-id', \Mockery::on(static function ($messageDataArray) use ($message) {
+        ->with('test-thread-id', Mockery::on(static function ($messageDataArray) use ($message) {
             return $messageDataArray['content'] === $message;
         }))
         ->andReturnTrue();
@@ -262,7 +262,7 @@ it('can process a message thread', function () {
 
     $this->assistant->process();
     $this->clientMock->shouldHaveReceived('runMessageThread')
-        ->with('test-thread-id', \Mockery::on(static function ($messageDataArray) use ($message) {
+        ->with('test-thread-id', Mockery::on(static function ($messageDataArray) use ($message) {
             return $messageDataArray['content'] === $message;
         }))
         ->once();
