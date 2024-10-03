@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant;
 
-use CreativeCrafts\LaravelAiAssistant\Contract\AssistantContract;
-use CreativeCrafts\LaravelAiAssistant\Contract\FunctionCallParameterContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\FunctionCallParameterContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\AssistantMessageData;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\FunctionCallData;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\NewAssistantResponseData;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\CreateNewAssistantException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MissingRequiredParameterException;
-use CreativeCrafts\LaravelAiAssistant\Tasks\AssistantResource;
+use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use OpenAI\Responses\Assistants\AssistantResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -22,7 +22,7 @@ use Throwable;
  */
 final class Assistant implements AssistantContract
 {
-    protected AssistantResource $client;
+    protected AssistantService $client;
 
     protected string $modelName = 'gpt-4o';
 
@@ -57,9 +57,9 @@ final class Assistant implements AssistantContract
     }
 
     /**
-     * Sets the AssistantResource client for making API requests.
+     * Sets the AssistantService client for making API requests.
      */
-    public function client(AssistantResource $client): Assistant
+    public function client(AssistantService $client): Assistant
     {
         $this->client = $client;
         return $this;
@@ -127,6 +127,12 @@ final class Assistant implements AssistantContract
         return $this;
     }
 
+    /**
+     * Includes the code interpreter tool in the AI assistant's toolset.
+     *
+     * This method adds the 'code_interpreter' tool to the assistant's toolset.
+     * If file IDs are provided, they will be associated with the code interpreter tool.
+     */
     public function includeCodeInterpreterTool(array $fileIds = []): Assistant
     {
         $this->tools[] = [
@@ -144,6 +150,12 @@ final class Assistant implements AssistantContract
         return $this;
     }
 
+    /**
+     * Includes the file search tool in the AI assistant's toolset.
+     *
+     * This method adds the 'file_search' tool to the assistant's toolset.
+     * If vector store IDs are provided, they will be associated with the file search tool.
+     */
     public function includeFileSearchTool(array $vectorStoreIds = []): Assistant
     {
         $this->tools[] = [
@@ -161,6 +173,11 @@ final class Assistant implements AssistantContract
         return $this;
     }
 
+    /**
+     * Includes the function call tool in the AI assistant's toolset.
+     *
+     * This method adds a 'function' tool to the assistant's toolset, allowing it to execute custom functions.
+     */
     public function includeFunctionCallTool(
         string $functionName,
         string $functionDescription = '',
@@ -185,6 +202,12 @@ final class Assistant implements AssistantContract
         return $this;
     }
 
+    /**
+     * Creates a new AI assistant using the provided configuration.
+     *
+     * This method sends a request to the OpenAI API to create a new AI assistant with the specified configuration.
+     * The assistant's model, name, description, instructions, tools, temperature, and tool resources are set using the provided parameters.
+     */
     public function create(): NewAssistantResponseData
     {
         try {
@@ -206,18 +229,37 @@ final class Assistant implements AssistantContract
         }
     }
 
+    /**
+     * Assigns an existing AI assistant to the current instance.
+     *
+     * This method retrieves an existing AI assistant from the OpenAI API using the provided assistant ID.
+     * The retrieved assistant is then assigned to the current instance for further interactions.
+     */
     public function assignAssistant(string $assistantId): Assistant
     {
         $this->assistant = $this->client->getAssistantViaId($assistantId);
         return $this;
     }
 
+    /**
+     * Creates a new task thread for the AI assistant.
+     *
+     * This method sends a request to the OpenAI API to create a new task thread for the AI assistant.
+     * The thread can be used to interact with the assistant in a conversation-like manner.
+     */
     public function createTaskThread(array $parameters = []): Assistant
     {
         $this->threadId = $this->client->createThread($parameters)->id;
         return $this;
     }
 
+    /**
+     * Asks a question to the AI assistant and prepares the assistant to respond.
+     *
+     * This method creates a new AssistantMessageData object with the provided message,
+     * validates the message data to ensure it contains both 'content' and 'role' fields,
+     * and writes the message to the AI assistant's task thread.
+     */
     public function askQuestion(string $message): Assistant
     {
         $this->assistantMessageData = new AssistantMessageData(
@@ -235,6 +277,12 @@ final class Assistant implements AssistantContract
         return $this;
     }
 
+    /**
+     * Processes the current task thread by running the AI assistant's message thread.
+     *
+     * This method sends a request to the OpenAI API to run the message thread associated with the current assistant and thread ID.
+     * The method does not return any specific data, but it updates the AI assistant's internal state based on the provided message thread.
+     */
     public function process(): Assistant
     {
         $this->client->runMessageThread(
@@ -244,6 +292,13 @@ final class Assistant implements AssistantContract
         return $this;
     }
 
+    /**
+     * Retrieves the list of messages from the current task thread.
+     *
+     * This method sends a request to the OpenAI API to retrieve the list of messages
+     * associated with the current assistant and thread ID. The retrieved messages are
+     * returned as a JSON string.
+     */
     public function get(): string
     {
         return $this->client->listMessages($this->threadId);

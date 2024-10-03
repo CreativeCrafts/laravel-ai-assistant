@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace CreativeCrafts\LaravelAiAssistant\Contract;
+namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
 interface FunctionCallParameterContract
 {

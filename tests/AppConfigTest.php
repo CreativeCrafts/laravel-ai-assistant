@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
+use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use Illuminate\Support\Facades\Config;
 use Mockery\MockInterface;
 use OpenAI\Client;

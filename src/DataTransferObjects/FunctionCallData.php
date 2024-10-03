@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\DataTransferObjects;
 
-use CreativeCrafts\LaravelAiAssistant\Contract\FunctionCallDataContract;
-use CreativeCrafts\LaravelAiAssistant\Contract\FunctionCallParameterContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\FunctionCallDataContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\FunctionCallParameterContract;
 
 final readonly class FunctionCallData implements FunctionCallDataContract
 {

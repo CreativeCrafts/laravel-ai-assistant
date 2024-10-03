@@ -6,13 +6,13 @@ use CreativeCrafts\LaravelAiAssistant\Assistant;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\AssistantMessageData;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\NewAssistantResponseData;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\CreateNewAssistantException;
-use CreativeCrafts\LaravelAiAssistant\Tasks\AssistantResource;
+use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use OpenAI\Responses\Assistants\AssistantResponse;
 
 covers(Assistant::class);
 
 beforeEach(function () {
-    $this->clientMock = Mockery::mock(AssistantResource::class);
+    $this->clientMock = Mockery::mock(AssistantService::class);
     $this->assistant = Assistant::new()->client($this->clientMock);
 });
 

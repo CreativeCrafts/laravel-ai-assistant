@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\DataTransferObjects;
 
-use CreativeCrafts\LaravelAiAssistant\Contract\AssistantMessageDataContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantMessageDataContract;
 
 final readonly class AssistantMessageData implements AssistantMessageDataContract
 {

@@ -3,22 +3,267 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CustomFunctionData;
+use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
+use org\bovigo\vfs\vfsStream;
 
-it('can translate english text to different language such as swedish', function () {
-    $mock = $this->createMock(AiAssistant::class);
-    $mock->method('translateTo')->willReturn('Hur mår du?');
+covers(AiAssistant::class);
 
-    self::assertEquals('Hur mår du?', $mock->translateTo('swedish'));
-})->group('translation');
+beforeEach(function () {
+    $this->clientMock = Mockery::mock(AssistantService::class);
+    $this->prompt = 'Test prompt';
+    $this->aiAssistant = new AiAssistant($this->prompt);
+});
 
-it('can draft a blog', function () {
-    $response = 'Artificial Intelligence (AI) is a rapidly growing field of technology that is revolutionizing the way we interact with the world around us. From self-driving cars to voice-activated home assistants, AI is making our lives easier and more efficient. But what exactly is AI, and how is it changing our lives?
-AI is a branch of computer science that focuses on creating intelligent machines that can think and act like humans. AI systems are designed to learn from their environment and make decisions based on what they learn. This means that AI can be used to automate tasks, such as recognizing faces or driving cars, and can even be used to create new products and services.
-AI is already being used in a variety of industries, from healthcare to finance. In healthcare, AI is being used to diagnose diseases and provide personalized treatments. In finance, AI is being used to detect fraud and improve customer service. AI is also being used in retail to create personalized shopping experiences and in manufacturing to automate tasks and increase efficiency.
-AI is also being used to improve our lives in more subtle ways.';
+it('can accept a prompt', function () {
+    $aiAssistant = AiAssistant::acceptPrompt('New prompt');
 
-    $mock = $this->createMock(AiAssistant::class);
-    $mock->method('draft')->willReturn($response);
+    $reflection = new ReflectionClass($aiAssistant);
+    $property = $reflection->getProperty('prompt');
+    $property->setAccessible(true);
 
-    self::assertEquals($response, $mock->draft());
-})->group('draft');
+    expect($aiAssistant)->toBeInstanceOf(AiAssistant::class)
+        ->and($property->getValue($aiAssistant))->toBe('New prompt');
+});
+
+it('can set client service', function () {
+    $this->aiAssistant->client($this->clientMock);
+
+    $reflection = new ReflectionClass($this->aiAssistant);
+    $property = $reflection->getProperty('client');
+    $property->setAccessible(true);
+
+    expect($property->getValue($this->aiAssistant))->toBe($this->clientMock);
+});
+
+it('can generate a draft', function () {
+    $this->aiAssistant->client($this->clientMock);
+    $this->clientMock->shouldReceive('textCompletion')
+        ->once()
+        ->andReturn('Generated draft');
+
+    $draft = $this->aiAssistant->draft();
+
+    expect($draft)->toBe('Generated draft');
+});
+
+it('can translate the prompt to a specific language', function () {
+    $this->aiAssistant->client($this->clientMock);
+    $this->clientMock->shouldReceive('textCompletion')
+        ->once()
+        ->andReturn('Translated text');
+
+    $translatedText = $this->aiAssistant->translateTo('Spanish');
+    expect($translatedText)->toBe('Translated text');
+});
+
+it('can respond to chat prompts', function () {
+    $this->aiAssistant->client($this->clientMock);
+    $this->clientMock->shouldReceive('chatTextCompletion')
+        ->once()
+        ->andReturn([
+        'choices' => [
+            ['message' => ['content' => 'Chat response']],
+        ],
+    ]);
+
+    $response = $this->aiAssistant->andRespond();
+    expect($response['choices'][0]['message']['content'])->toBe('Chat response');
+});
+
+it('can process chat with custom function', function () {
+    $this->aiAssistant->client($this->clientMock);
+
+    $customFunctionData = mock(CustomFunctionData::class);
+    $customFunctionData->shouldReceive('toArray')
+        ->once()
+        ->andReturn(['function' => 'data']);
+
+    $this->clientMock->shouldReceive('chatTextCompletion')
+        ->once()
+        ->andReturn([
+        'choices' => [
+            ['message' => ['content' => 'Chat response with function']],
+        ],
+    ]);
+
+    $response = $this->aiAssistant->withCustomFunction($customFunctionData);
+    expect($response['choices'][0]['message']['content'])->toBe('Chat response with function');
+});
+
+it('can correct spelling and grammar', function () {
+    $this->aiAssistant->client($this->clientMock);
+
+    $this->clientMock->shouldReceive('chatTextCompletion')
+        ->once()
+        ->andReturn([
+            'choices' => [
+                ['message' => ['content' => 'Corrected text']]
+            ]
+        ]);
+
+    $correctedText = $this->aiAssistant->spellingAndGrammarCorrection();
+
+    expect($correctedText)->toBe('Corrected text');
+});
+
+it('can improve writing', function () {
+    $this->aiAssistant->client($this->clientMock);
+    $this->clientMock->shouldReceive('chatTextCompletion')
+        ->once()
+        ->andReturn([
+            'choices' => [
+                ['message' => ['content' => 'Improved text']]
+            ]
+        ]);
+
+    $improvedText = $this->aiAssistant->improveWriting();
+
+    expect($improvedText)->toBe('Improved text');
+});
+
+it('can transcribe audio to text with vfsStream', function () {
+    // Set up virtual file system
+    vfsStream::setup('root', null, ['testfile.mp3' => 'audio data']);
+    $filePath = vfsStream::url('root/testfile.mp3');
+
+    $this->aiAssistant = AiAssistant::acceptPrompt($filePath);
+    $this->aiAssistant->client($this->clientMock);
+
+    $this->clientMock->shouldReceive('transcribeTo')
+        ->once()
+        ->andReturn('Transcribed text');
+
+    $transcription = $this->aiAssistant->transcribeTo('en', 'Optional prompt');
+
+    expect($transcription)->toBe('Transcribed text');
+});
+
+it('can transcribe audio to text', function () {
+    // Set up virtual file system
+    vfsStream::setup('root', null, ['testfile.mp3' => 'audio data']);
+    $filePath = vfsStream::url('root/testfile.mp3');
+
+    $this->aiAssistant = AiAssistant::acceptPrompt($filePath);
+    $this->aiAssistant->client($this->clientMock);
+
+     $this->clientMock->shouldReceive('translateTo')
+        ->once()
+        ->andReturn('Transcribe audio text');
+
+    $translatedAudio = $this->aiAssistant->translateAudioTo();
+    expect($translatedAudio)->toBe('Transcribe audio text');
+});
+
+it('can process text completion', function () {
+    $this->aiAssistant->client($this->clientMock);
+
+    $this->clientMock->shouldReceive('textCompletion')
+        ->once()
+        ->andReturn('Completed text');
+
+    $completedText = $this->aiAssistant->draft();
+    expect($completedText)->toBe('Completed text');
+});
+
+it('can process chat text completion', function () {
+    $this->aiAssistant->client($this->clientMock);
+
+    $this->clientMock->shouldReceive('chatTextCompletion')
+        ->once()
+        ->andReturn([
+        'choices' => [
+            ['message' => ['content' => 'Completed chat']],
+        ],
+    ]);
+
+    $response = $this->aiAssistant->andRespond();
+    expect($response['choices'][0]['message']['content'])->toBe('Completed chat');
+});
+
+it('can instantiate AiAssistant with a prompt', function () {
+    $prompt = 'Sample prompt';
+    $client = mock(AssistantService::class)
+        ->shouldReceive('textCompletion')
+        ->andReturn('Generated Draft')
+        ->getMock();
+
+    $aiAssistant = new AiAssistant($prompt);
+    $aiAssistant->client($client);
+
+    expect($aiAssistant)
+        ->toBeInstanceOf(AiAssistant::class)
+        ->and($aiAssistant->draft())->toBeString();
+});
+
+it('calls streamedCompletion when stream is enabled', function () {
+    $prompt = 'Streamed prompt';
+
+    $client = mock(AssistantService::class)
+        ->shouldReceive('streamedCompletion')
+        ->once()
+        ->andReturn('Streamed Draft')
+        ->getMock();
+
+    $aiAssistant = new AiAssistant($prompt);
+    $aiAssistant->client($client);
+
+    $reflection = new ReflectionClass($aiAssistant);
+    $textGeneratorConfigProperty = $reflection->getProperty('textGeneratorConfig');
+    $textGeneratorConfigProperty->setAccessible(true);
+    $textGeneratorConfigProperty->setValue($aiAssistant, ['stream' => true]);
+
+    expect($aiAssistant->draft())->toBe('Streamed Draft');
+});
+
+it('calls textCompletion when stream is disabled', function () {
+    $prompt = 'Regular prompt';
+
+    $client = mock(AssistantService::class)
+        ->shouldReceive('textCompletion')
+        ->once()
+        ->andReturn('Regular Draft')
+        ->getMock();
+
+    $aiAssistant = new AiAssistant($prompt);
+    $aiAssistant->client($client);
+
+    $reflection = new ReflectionClass($aiAssistant);
+    $textGeneratorConfigProperty = $reflection->getProperty('textGeneratorConfig');
+    $textGeneratorConfigProperty->setAccessible(true);
+
+    $config = $textGeneratorConfigProperty->getValue($aiAssistant);
+    unset($config['stream']);
+    $textGeneratorConfigProperty->setValue($aiAssistant, $config);
+
+    expect($aiAssistant->draft())->toBe('Regular Draft');
+});
+
+it('returns text from the first choice when draft is called', function () {
+    $client = mock(AssistantService::class)
+        ->shouldReceive('textCompletion')
+        ->once()
+        ->andReturn('Hello, world!')
+        ->getMock();
+
+    $aiAssistant = new AiAssistant('prompt');
+    $aiAssistant->client($client);
+    $result = $aiAssistant->draft();
+
+    expect($result)->toBe('Hello, world!');
+});
+
+it('handles empty choices gracefully when draft is called', function () {
+    $client = mock(AssistantService::class)
+        ->shouldReceive('textCompletion')
+        ->once()
+        ->andReturn('')
+        ->getMock();
+
+    $aiAssistant = new AiAssistant('prompt');
+    $aiAssistant->client($client);
+
+    $result = $aiAssistant->draft();
+
+    expect($result)->toBe('');
+});

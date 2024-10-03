@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\Contract\FunctionCallParameterContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\FunctionCallParameterContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\FunctionCallData;
 
 covers(FunctionCallData::class);

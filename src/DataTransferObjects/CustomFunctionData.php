@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\DataTransferObjects;
 
-use CreativeCrafts\LaravelAiAssistant\Contract\CustomFunctionDataContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\CustomFunctionDataContract;
 
 final class CustomFunctionData implements CustomFunctionDataContract
 {

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace CreativeCrafts\LaravelAiAssistant\Contract;
+namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
 use CreativeCrafts\LaravelAiAssistant\Assistant;
-use CreativeCrafts\LaravelAiAssistant\Tasks\AssistantResource;
+use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 
 interface AssistantContract
 {
     public static function new(): Assistant;
 
-    public function client(AssistantResource $client): Assistant;
+    public function client(AssistantService $client): Assistant;
 
     public function setModelName(string $modelName): Assistant;
 

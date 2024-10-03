@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace CreativeCrafts\LaravelAiAssistant\Tasks;
+namespace CreativeCrafts\LaravelAiAssistant\Services;
 
-use CreativeCrafts\LaravelAiAssistant\AppConfig;
-use CreativeCrafts\LaravelAiAssistant\Contract\AssistantResourceContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantResourceContract;
 use OpenAI\Client;
 use OpenAI\Responses\Assistants\AssistantResponse;
 use OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
 use OpenAI\Responses\Threads\ThreadResponse;
+use Symfony\Component\HttpFoundation\Response;
 
-class AssistantResource implements AssistantResourceContract
+class AssistantService implements AssistantResourceContract
 {
     protected Client $client;
 
@@ -67,5 +67,57 @@ class AssistantResource implements AssistantResourceContract
         $messages = $this->client->threads()->messages()->list($threadId)->toArray();
         // @pest-mutate-ignore
         return $messages['data'][0]['content'][0]['text']['value'] ?? '';
+    }
+
+    public function transcribeTo(array $payload): string
+    {
+        return $this->client->audio()->transcribe($payload)->text;
+    }
+
+    public function translateTo(array $payload): string
+    {
+        return $this->client->audio()->translate($payload)->text;
+    }
+
+    public function textCompletion(array $payload): string
+    {
+        $choices = $this->client->completions()->create($payload)->choices;
+
+        if ($choices === []) {
+            return '';
+        }
+
+        return trim($choices[count($choices) - 1]->text);
+    }
+
+    public function streamedCompletion(array $payload): string
+    {
+        $streamResponses = $this->client->completions()->createStreamed($payload);
+        foreach ($streamResponses as $response) {
+            /** @var Response $response */
+            if (isset($response->choices[0]->text)) {
+                return $response->choices[0]->text;
+            }
+        }
+
+        return '';
+    }
+
+    public function chatTextCompletion(array $payload): array
+    {
+        return $this->client->chat()->create($payload)->choices[0]->message->toArray();
+    }
+
+    public function streamedChat(array $payload): array
+    {
+        $streamResponses = $this->client->chat()->createStreamed($payload);
+        foreach ($streamResponses as $response) {
+            /** @var Response $response */
+            if (isset($response->choices[0])) {
+                return $response->choices[0]->toArray();
+            }
+        }
+
+        return [];
     }
 }
