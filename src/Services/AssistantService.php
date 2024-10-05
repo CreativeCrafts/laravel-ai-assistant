@@ -105,7 +105,11 @@ class AssistantService implements AssistantResourceContract
 
     public function chatTextCompletion(array $payload): array
     {
-        return $this->client->chat()->create($payload)->choices[0]->message->toArray();
+        $choices = $this->client->chat()->create($payload)->choices;
+        if ($choices === []) {
+            return [];
+        }
+        return $choices[0]->message->toArray();
     }
 
     public function streamedChat(array $payload): array

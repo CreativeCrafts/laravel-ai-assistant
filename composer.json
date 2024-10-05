@@ -27,6 +27,7 @@
         "symfony/http-client": "^6.3|^7.0"
     },
     "require-dev": {
+        "fakerphp/faker": "^1.23",
         "larastan/larastan": "^2.9",
         "laravel/pint": "^1.14",
         "mikey179/vfsstream": "^1.6",

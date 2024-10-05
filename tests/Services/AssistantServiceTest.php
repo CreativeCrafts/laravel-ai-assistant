@@ -9,7 +9,10 @@ use OpenAI\Contracts\Resources\ThreadsRunsContract;
 use OpenAI\Responses\Assistants\AssistantResponse;
 use OpenAI\Responses\Audio\TranscriptionResponse;
 use OpenAI\Responses\Audio\TranslationResponse;
+use OpenAI\Responses\Chat\CreateResponse as ChatCreateResponse;
 use OpenAI\Responses\Completions\CreateResponse;
+use OpenAI\Responses\Completions\StreamedCompletionResponse;
+use OpenAI\Responses\StreamResponse;
 use OpenAI\Responses\Threads\Messages\ThreadMessageListResponse;
 use OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
 use OpenAI\Responses\Threads\Runs\ThreadRunResponse;
@@ -241,4 +244,180 @@ it('throws an error when translation fails', function () {
 
     expect(fn () => $this->assistantService->translateTo($payload))
         ->toThrow(Exception::class, 'Translation failed');
+});
+
+it('returns the first text from the streamed response when present', function () {
+    $clientMock = Mockery::mock(Client::class);
+    $completionResponseMock = Mockery::mock(StreamedCompletionResponse::class);
+
+    $completionResponseMock->choices = [(object) ['text' => 'test completion text']];
+
+    // Create a generator function to simulate streamed responses
+    $generator = function () use ($completionResponseMock) {
+        yield $completionResponseMock;
+    };
+
+    // Mock the StreamResponse to return the generator
+    $streamResponseMock = Mockery::mock(StreamResponse::class);
+    $streamResponseMock->shouldReceive('getIterator')
+        ->andReturn($generator());
+
+    $clientMock->shouldReceive('completions->createStreamed')
+        ->andReturn($streamResponseMock);
+
+    $assistantService = new AssistantService($clientMock);
+
+    $payload = ['prompt' => fake()->sentence];
+
+    $result = $assistantService->streamedCompletion($payload);
+
+    expect($result)->toBe('test completion text');
+});
+
+it('returns empty string when no text is present in the response', function () {
+    $clientMock = Mockery::mock(Client::class);
+    $completionResponseMock = Mockery::mock(StreamedCompletionResponse::class);
+
+    $completionResponseMock->choices = [(object) ['text' => null]];
+
+    $generator = function () use ($completionResponseMock) {
+        yield $completionResponseMock;
+    };
+
+    $streamResponseMock = Mockery::mock(StreamResponse::class);
+    $streamResponseMock->shouldReceive('getIterator')
+        ->andReturn($generator());
+
+    $clientMock->shouldReceive('completions->createStreamed')
+        ->andReturn($streamResponseMock);
+
+    $assistantService = new AssistantService($clientMock);
+    $payload = ['prompt' => fake()->sentence];
+
+    $result = $assistantService->streamedCompletion($payload);
+
+    expect($result)->toBe('');
+});
+
+it('returns empty string when no responses are received', function () {
+    $clientMock = Mockery::mock(Client::class);
+
+    // Create an empty generator function to simulate no responses
+    $emptyGenerator = function () {
+        if (false) yield; // This is an empty generator
+    };
+
+    $streamResponseMock = Mockery::mock(StreamResponse::class);
+    $streamResponseMock->shouldReceive('getIterator')
+        ->andReturn($emptyGenerator());
+
+    $clientMock->shouldReceive('completions->createStreamed')
+        ->andReturn($streamResponseMock);
+
+    $assistantService = new AssistantService($clientMock);
+    $payload = ['prompt' => fake()->sentence];
+    $result = $assistantService->streamedCompletion($payload);
+    expect($result)->toBe('');
+});
+
+it('handles unexpected payload structures gracefully when the text completion stream is called', function () {
+    $clientMock = Mockery::mock(Client::class);
+    $completionResponseMock = Mockery::mock(StreamedCompletionResponse::class);
+
+    $completionResponseMock->choices = [];
+
+
+    $generator = function () use ($completionResponseMock) {
+        yield $completionResponseMock;
+    };
+
+
+    $streamResponseMock = Mockery::mock(StreamResponse::class);
+    $streamResponseMock->shouldReceive('getIterator')
+        ->andReturn($generator());
+
+    $clientMock->shouldReceive('completions->createStreamed')
+        ->andReturn($streamResponseMock);
+
+    $assistantService = new AssistantService($clientMock);
+    $payload = ['prompt' => fake()->sentence];
+
+    $result = $assistantService->streamedCompletion($payload);
+
+    expect($result)->toBe('');
+});
+
+it('returns the message as array from the first choice when chat text completion is called', function () {
+    $clientMock = Mockery::mock(Client::class);
+
+    $messageMock = Mockery::mock();
+    $messageMock->shouldReceive('toArray')->andReturn(['content' => 'test message']);
+
+    $createResponseMock = Mockery::mock(ChatCreateResponse::class)->makePartial();
+
+    $reflection = new ReflectionClass($createResponseMock);
+    $property = $reflection->getProperty('choices');
+    $property->setAccessible(true);
+    $property->setValue($createResponseMock, [(object) ['message' => $messageMock]]);
+
+    $clientMock->shouldReceive('chat->create')
+        ->andReturn($createResponseMock);
+
+    $assistantService = new AssistantService($clientMock);
+
+    $payload = ['prompt' => fake()->sentence];
+    $result = $assistantService->chatTextCompletion($payload);
+    expect($result)->toBe(['content' => 'test message']);
+});
+
+it('returns an empty array when choices are missing', function () {
+    $clientMock = Mockery::mock(Client::class);
+    $createResponseMock = Mockery::mock(ChatCreateResponse::class)->makePartial();
+
+    $reflection = new ReflectionClass($createResponseMock);
+    $property = $reflection->getProperty('choices');
+    $property->setAccessible(true);
+    $property->setValue($createResponseMock, []);
+
+    $clientMock->shouldReceive('chat->create')
+        ->andReturn($createResponseMock);
+
+    $assistantService = new AssistantService($clientMock);
+
+    $payload = ['prompt' => fake()->sentence];
+    $result = $assistantService->chatTextCompletion($payload);
+
+    expect($result)->toBe([]);
+});
+
+it('handles null message in the first choice', function () {
+    // Arrange
+    $clientMock = Mockery::mock(Client::class);
+    $createResponseMock = Mockery::mock(ChatCreateResponse::class)->makePartial();
+
+    $reflection = new ReflectionClass($createResponseMock);
+    $property = $reflection->getProperty('choices');
+    $property->setAccessible(true);
+    $property->setValue($createResponseMock, [(object) ['message' => null]]);
+
+    $clientMock->shouldReceive('chat->create')
+        ->andReturn($createResponseMock);
+
+    $assistantService = new AssistantService($clientMock);
+
+    $payload = ['prompt' => fake()->sentence];
+    $result = $assistantService->chatTextCompletion($payload);
+
+    expect($result)->toBe([]);
+})->throws(Error::class);
+
+it('throws an exception when the payload is invalid', function () {
+    $clientMock = Mockery::mock(Client::class);
+    $clientMock->shouldReceive('chat->create')
+        ->andThrow(new InvalidArgumentException('Invalid payload'));
+
+    $assistantService = new AssistantService($clientMock);
+
+    $payload = ['invalid' => 'data'];
+    expect(static fn() => $assistantService->chatTextCompletion($payload))->toThrow(InvalidArgumentException::class);
 });
