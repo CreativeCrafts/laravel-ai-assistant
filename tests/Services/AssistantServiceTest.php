@@ -304,7 +304,9 @@ it('returns empty string when no responses are received', function () {
 
     // Create an empty generator function to simulate no responses
     $emptyGenerator = function () {
-        if (false) yield; // This is an empty generator
+        if (false) {
+        yield;
+        } // This is an empty generator
     };
 
     $streamResponseMock = Mockery::mock(StreamResponse::class);
@@ -419,5 +421,5 @@ it('throws an exception when the payload is invalid', function () {
     $assistantService = new AssistantService($clientMock);
 
     $payload = ['invalid' => 'data'];
-    expect(static fn() => $assistantService->chatTextCompletion($payload))->toThrow(InvalidArgumentException::class);
+    expect(static fn () => $assistantService->chatTextCompletion($payload))->toThrow(InvalidArgumentException::class);
 });
