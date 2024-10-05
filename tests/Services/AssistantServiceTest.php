@@ -304,7 +304,9 @@ it('returns empty string when no responses are received', function () {
 
     // Create an empty generator function to simulate no responses
     $emptyGenerator = function () {
-        if (false) yield; // This is an empty generator
+        if (false) {
+        yield;
+        } // This is an empty generator
     };
 
     $streamResponseMock = Mockery::mock(StreamResponse::class);
@@ -391,7 +393,6 @@ it('returns an empty array when choices are missing', function () {
 });
 
 it('handles null message in the first choice', function () {
-    // Arrange
     $clientMock = Mockery::mock(Client::class);
     $createResponseMock = Mockery::mock(ChatCreateResponse::class)->makePartial();
 
@@ -419,5 +420,52 @@ it('throws an exception when the payload is invalid', function () {
     $assistantService = new AssistantService($clientMock);
 
     $payload = ['invalid' => 'data'];
-    expect(static fn() => $assistantService->chatTextCompletion($payload))->toThrow(InvalidArgumentException::class);
+    expect(static fn () => $assistantService->chatTextCompletion($payload))->toThrow(InvalidArgumentException::class);
+});
+
+it('returns an empty array if createStreamed returns an empty response', function () {
+    $generator = function() {
+        if (false) {
+            yield;
+        }
+    };
+    $streamResponseMock = Mockery::mock(OpenAI\Responses\StreamResponse::class);
+    $streamResponseMock->shouldReceive('getIterator')->andReturn($generator());
+
+    $clientMock = Mockery::mock(Client::class);
+    $clientMock->shouldReceive('chat->createStreamed')
+        ->andReturn($streamResponseMock);
+
+    $assistantService = new AssistantService($clientMock);
+
+    $payload = ['prompt' => fake()->sentence];
+    $result = $assistantService->streamedChat($payload);
+
+    expect($result)->toBe([]);
+});
+
+it('returns the correct choices array when a valid response is present', function () {
+    $mockChat = Mockery::mock(OpenAI\Resources\Chat::class);
+    $mockStreamResponse = Mockery::mock(OpenAI\Responses\StreamResponse::class);
+
+    $clientMock = Mockery::mock(Client::class);
+    $clientMock->shouldReceive('chat')->andReturn($mockChat);
+
+    $mockChat->shouldReceive('createStreamed')->andReturn($mockStreamResponse);
+
+    $mockChoice = Mockery::mock();
+    $mockChoice->shouldReceive('toArray')->andReturn(['response' => 'test response']);
+
+
+    $mockStreamResponse->shouldReceive('getIterator')->andReturn((function() use ($mockChoice) {
+        yield (object)[
+            'choices' => [$mockChoice]
+        ];
+    })());
+
+    $assistantService = new AssistantService($clientMock);
+
+    $result = $assistantService->streamedChat(['prompt' => 'test']);
+
+    expect($result)->toBe(['response' => 'test response']);
 });

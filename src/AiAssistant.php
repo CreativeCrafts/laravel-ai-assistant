@@ -21,12 +21,11 @@ class AiAssistant implements AiAssistantContract
     protected array $editTextGeneratorConfig = [];
 
     protected array $audioToTextGeneratorConfig = [];
-
     /**
      * Constructs a new AiAssistant instance.
      */
     public function __construct(
-        protected string $prompt
+        protected string $prompt = ''
     ) {
         $this->textGeneratorConfig = AppConfig::textGeneratorConfig();
         $this->chatTextGeneratorConfig = AppConfig::chatTextGeneratorConfig();
@@ -43,6 +42,12 @@ class AiAssistant implements AiAssistantContract
     public static function acceptPrompt(string $prompt): self
     {
         return new self($prompt);
+    }
+
+    public static function init(?AssistantService $client = null): Assistant
+    {
+        $client = $client ?? new AssistantService();
+        return Assistant::new()->client($client);
     }
 
     /**

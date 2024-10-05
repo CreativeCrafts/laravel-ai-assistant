@@ -16,11 +16,6 @@ beforeEach(function () {
     $this->assistant = Assistant::new()->client($this->clientMock);
 });
 
-it('can create a new assistant instance', function () {
-    $assistant = Assistant::new();
-    expect($assistant)->toBeInstanceOf(Assistant::class);
-});
-
 it('can instantiate a new Assistant', function () {
     $assistant = Assistant::new();
     expect($assistant)->toBeInstanceOf(Assistant::class);
@@ -190,7 +185,7 @@ it('can create task thread', function () {
     $idProperty->setValue($threadResponseMock, 'test-thread-id');
 
     $this->clientMock->shouldReceive('createThread')->with($threadData)->andReturn($threadResponseMock);
-    $this->assistant->createTaskThread($threadData);
+    $this->assistant->createTask($threadData);
 
     $reflection = new ReflectionClass($this->assistant);
     $property = $reflection->getProperty('threadId');
@@ -211,7 +206,7 @@ it('can ask a question and send message', function () {
     $idProperty->setValue($threadResponseMock, 'test-thread-id');
 
     $this->clientMock->shouldReceive('createThread')->with($threadData)->andReturn($threadResponseMock);
-    $this->assistant->createTaskThread($threadData);
+    $this->assistant->createTask($threadData);
 
     $this->clientMock->shouldReceive('writeMessage')
         ->with('test-thread-id', Mockery::on(static function ($messageDataArray) use ($message) {
@@ -240,7 +235,7 @@ it('can process a message thread', function () {
     $idProperty->setValue($threadResponseMock, 'test-thread-id');
 
     $this->clientMock->shouldReceive('createThread')->with($threadData)->andReturn($threadResponseMock);
-    $this->assistant->createTaskThread($threadData);
+    $this->assistant->createTask($threadData);
 
      $this->clientMock->shouldReceive('writeMessage')
         ->with('test-thread-id', Mockery::on(static function ($messageDataArray) use ($message) {
@@ -287,13 +282,13 @@ it('can return response from message thread', function () {
 
     $this->clientMock->shouldReceive('createThread')->with($threadData)->andReturn($threadResponseMock);
 
-    $this->assistant->createTaskThread($threadData);
+    $this->assistant->createTask($threadData);
 
     $this->clientMock->shouldReceive('listMessages')
         ->with('test-thread-id')
         ->andReturn($messageResponse);
 
-    $response = $this->assistant->get();
+    $response = $this->assistant->response();
 
     expect($response)->toBe($messageResponse);
 });

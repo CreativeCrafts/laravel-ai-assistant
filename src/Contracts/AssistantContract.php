@@ -40,11 +40,11 @@ interface AssistantContract
 
     public function assignAssistant(string $assistantId): Assistant;
 
-    public function createTaskThread(array $parameters = []): Assistant;
+    public function createTask(array $parameters = []): Assistant;
 
     public function askQuestion(string $message): Assistant;
 
     public function process(): Assistant;
 
-    public function get(): string;
+    public function response(): string;
 }

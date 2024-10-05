@@ -247,7 +247,7 @@ final class Assistant implements AssistantContract
      * This method sends a request to the OpenAI API to create a new task thread for the AI assistant.
      * The thread can be used to interact with the assistant in a conversation-like manner.
      */
-    public function createTaskThread(array $parameters = []): Assistant
+    public function createTask(array $parameters = []): Assistant
     {
         $this->threadId = $this->client->createThread($parameters)->id;
         return $this;
@@ -299,7 +299,7 @@ final class Assistant implements AssistantContract
      * associated with the current assistant and thread ID. The retrieved messages are
      * returned as a JSON string.
      */
-    public function get(): string
+    public function response(): string
     {
         return $this->client->listMessages($this->threadId);
     }
