@@ -61,3 +61,8 @@ updated dependent composer packages
 - Added support for Laravel 11
 - Removed support for php8.1
 
+## 1.3.0 - 2024-10-05
+ - Replaced the deprecated /v1/edits endpoint with the chat completion endpoint in the TextEditCompletion class.
+ - Updated the configuration to use the chat model for text editing tasks. 
+   - both first time contributions by @AlvinCoded
+
