@@ -424,12 +424,12 @@ it('throws an exception when the payload is invalid', function () {
 });
 
 it('returns an empty array if createStreamed returns an empty response', function () {
-    $generator = function() {
+    $generator = function () {
         if (false) {
             yield;
         }
     };
-    $streamResponseMock = Mockery::mock(OpenAI\Responses\StreamResponse::class);
+    $streamResponseMock = Mockery::mock(StreamResponse::class);
     $streamResponseMock->shouldReceive('getIterator')->andReturn($generator());
 
     $clientMock = Mockery::mock(Client::class);
@@ -446,7 +446,7 @@ it('returns an empty array if createStreamed returns an empty response', functio
 
 it('returns the correct choices array when a valid response is present', function () {
     $mockChat = Mockery::mock(OpenAI\Resources\Chat::class);
-    $mockStreamResponse = Mockery::mock(OpenAI\Responses\StreamResponse::class);
+    $mockStreamResponse = Mockery::mock(StreamResponse::class);
 
     $clientMock = Mockery::mock(Client::class);
     $clientMock->shouldReceive('chat')->andReturn($mockChat);
@@ -457,7 +457,7 @@ it('returns the correct choices array when a valid response is present', functio
     $mockChoice->shouldReceive('toArray')->andReturn(['response' => 'test response']);
 
 
-    $mockStreamResponse->shouldReceive('getIterator')->andReturn((function() use ($mockChoice) {
+    $mockStreamResponse->shouldReceive('getIterator')->andReturn((function () use ($mockChoice) {
         yield (object)[
             'choices' => [$mockChoice]
         ];
