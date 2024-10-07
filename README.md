@@ -5,8 +5,7 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 
-This package will provide a simple way to access and interact with Openai end point. it provides features such as translation, summarization, question answering, text generation, chat, transcribing and translating audio file to text and more.
-The package abstract the complexity of the Openai API and provides a simple interface to interact with it. 
+The Laravel AI Assistant package provides an easy-to-use interface for interacting with OpenAI’s API using Laravel. This package allows developers to create, manage, and interact with AI assistants, including handling tasks like text completions, code interpretation, function calling, and more. It abstracts the complexity of interacting directly with OpenAI’s API by providing structured methods for configuring and using AI assistants in your Laravel applications.
 
 
 ## Installation
@@ -218,24 +217,110 @@ $translatedText = AiAssistant::acceptPrompt($audioFilePath)->translateAudioTo();
 
 // The response will be a text format of the audio file in english
 ```
-## Important Update
-
-This fork includes critical updates to address compatibility issues with the latest OpenAI API changes. The main modifications are:
-
-1. Replaced the deprecated `/v1/edits` endpoint with the chat completion endpoint in the `TextEditCompletion` class.
-2. Updated the configuration to use the chat model for text editing tasks.
-
-### Changes in Detail
-
-#### TextEditCompletion.php
-
-The `TextEditCompletion` class has been modified to use the chat completion endpoint instead of the deprecated edits endpoint. This change ensures compatibility with the current OpenAI API.
-
 #### Configuration
 
 The `ai-assistant.php` configuration file now includes a new `chat_model` option.
 
-### Cmpatibility
+## Newly Added Features
+
+	•	Create and manage AI assistants.
+	•	Set models, temperature, and custom instructions for the assistant.
+	•	Utilize tools like code interpretation, file search, and custom function calls.
+	•	Interact with assistants via threads for tasks like message completion, chat, and task processing.
+	•	Supports both synchronous and streamed completions.
+	•	Handle audio transcription and translation with OpenAI models.
+
+## Usage
+
+1. Creating and Configuring an AI Assistant
+```php
+use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+
+$assistant = AiAssistant::init()
+    ->setModelName('gpt-4') // Optional, defaults to config default model
+    ->adjustTemperature(0.5) // Optional defaults to 0.7
+    ->setAssistantName('My Assistant') // Optional, defaults to '' and Open Ai will assign random name
+    ->setAssistantDescription('An assistant for handling tasks') // Optional, defaults to ''
+    ->setInstructions('Be as helpful as possible.') // Optional, defaults to ''
+    ->create();
+```
+2. Including Tools
+
+You can include various tools to enhance the functionality of the assistant. For example, if you want the assistant to use the code interpreter, you can include it like this:
+```php
+    use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+    
+    $assistant = AiAssistant::init()
+       ....
+        ->includeCodeInterpreter() // Can optionally pass file IDs as array
+        ->create();
+
+    $assistant = AiAssistant::init()
+       ....
+        ->includeFileSearchTool($vectorStoreIds) // Can optionally pass vector store IDs as array
+        ->create();
+
+    $assistant = AiAssistant::init()
+       ....
+        ->includeFunctionCallTool(
+            $functionName, // Required
+            $functionDescription, // Optional, defaults to ''
+            $parameters // Function parameters, Optional, defaults to []
+            $isStrict // is strict enable structure outputs when set to true. see https://platform.openai.com/docs/guides/structured-outputs   
+            $requiredParameters // Optional, defaults to []
+            $hasAdditionalParameters // Optional, defaults to false
+        )
+        ->create();
+```
+3. Interacting with the Assistant
+```php
+    use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+    
+    $response = \CreativeCrafts\LaravelAiAssistant\AiAssistant::init()
+        ->assignAssistant($assistantId)
+        ->createTask() // Can optionally pass a list of tasks as an array, defaults to []
+        ->askQuestion('Translate this text to French: "Hello, how are you?"')
+        ->process()
+        ->response(); // returns the response from the assistant as a string
+```
+
+## Available Methods
+      init(): Assistant: Initializes the AI assistant.
+    • setModelName(string $modelName): Assistant: Sets the model name for the AI assistant.
+	• adjustTemperature(int|float $temperature): Assistant: Adjusts the assistant’s response temperature.
+	• setAssistantName(string $assistantName): Assistant: Sets the name for the assistant.
+	• setAssistantDescription(string $assistantDescription): Assistant: Sets the assistant’s description.
+	• setInstructions(string $instructions): Assistant: Sets instructions for the assistant.
+	• includeCodeInterpreterTool(array $fileIds = []): Assistant: Adds the code interpreter tool to the assistant.
+	• includeFileSearchTool(array $vectorStoreIds = []): Assistant: Adds the file search tool to the assistant.
+	• includeFunctionCallTool(...): Assistant: Adds a function call tool to the assistant.
+	• create(): NewAssistantResponseData: Creates the assistant using the specified configurations.
+	• assignAssistant(string $assistantId): Assistant: Assigns an existing assistant by ID.
+	• createTask(array $parameters = []): Assistant: Creates a new task thread for interactions.
+	• askQuestion(string $message): Assistant: Asks a question in the task thread.
+	• process(): Assistant: Processes the task thread.
+	• response(): string: Retrieves the assistant’s response.
+
+## Exception Handling
+
+The package includes several custom exceptions to handle errors gracefully:
+
+	• CreateNewAssistantException: Thrown when the creation of a new assistant fails.
+	• MissingRequiredParameterException: Thrown when a required parameter is missing in a message or task.
+
+## Upcoming features
+
+    • Create and upload files for code interpretation, then assign it to a specific assistant.
+    • Create and upload vector store, then attach the vector store ids to an assistant.
+    • Get a list of all created assistant.
+    • Get a list of all created files.
+    • Get a list of all created vector stores.
+    • Update assistant.
+    • Delete assistant.
+
+If you have any feature requests or suggestions, please feel free to open an issue or submit a pull request.
+
+### Compatibility
 
 This fork is compatible with OpenAI API as of August 2024. It uses the gpt-3.5-turbo model by default, but you can specify gpt-4 or other available models in your configuration if you have access to them.
 
@@ -248,6 +333,7 @@ OPENAI_CHAT_MODEL=
 ```
 
 ## Testing
+The package now has 100% code and mutation test coverage. You can run the tests using the following command:
 
 ```bash
 composer test

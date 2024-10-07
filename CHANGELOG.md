@@ -66,3 +66,41 @@ updated dependent composer packages
  - Updated the configuration to use the chat model for text editing tasks. 
    - both first time contributions by @AlvinCoded
 
+## 2.0.0 - 2024-10-07
+   - Refactored the code base to use the new Assistant service class
+     - Added AssistantService Methods
+      •	createAssistant(array $parameters): AssistantResponse: Creates a new assistant with the given parameters.
+      •	getAssistantViaId(string $assistantId): AssistantResponse: Retrieves an assistant by ID.
+      •	createThread(array $parameters): ThreadResponse: Creates a new thread for interactions.
+      •	writeMessage(string $threadId, array $messageData): ThreadMessageResponse: Sends a message to the assistant.
+      •	runMessageThread(string $threadId, array $messageData): bool: Runs a message thread for processing.
+      •	listMessages(string $threadId): string: Retrieves a list of messages from the thread.
+      •	textCompletion(array $payload): string: Gets a text completion response.
+      •	streamedCompletion(array $payload): string: Gets a streamed completion response.
+      •	chatTextCompletion(array $payload): array: Handles chat-based text completion.
+      •	streamedChat(array $payload): array: Handles streamed chat responses.
+      •	transcribeTo(array $payload): string: Transcribes audio to text.
+      •	translateTo(array $payload): string: Translates audio to a specific language.
+
+   - Added Assistant methods
+	•	new(): Assistant: Returns a new instance of the Assistant class.
+	•	client(AssistantService $client): Assistant: Sets the AssistantService client for API requests.
+	•	setModelName(string $modelName): Assistant: Sets the model name for the AI assistant.
+	•	adjustTemperature(int|float $temperature): Assistant: Adjusts the assistant’s response temperature.
+	•	setAssistantName(string $assistantName): Assistant: Sets the name for the assistant.
+	•	setAssistantDescription(string $assistantDescription): Assistant: Sets the assistant’s description.
+	•	setInstructions(string $instructions): Assistant: Sets instructions for the assistant.
+	•	includeCodeInterpreterTool(array $fileIds = []): Assistant: Adds the code interpreter tool to the assistant.
+	•	includeFileSearchTool(array $vectorStoreIds = []): Assistant: Adds the file search tool to the assistant.
+	•	includeFunctionCallTool(...): Assistant: Adds a function call tool to the assistant.
+	•	create(): NewAssistantResponseData: Creates the assistant using the specified configurations.
+	•	assignAssistant(string $assistantId): Assistant: Assigns an existing assistant by ID.
+	•	createTask(array $parameters = []): Assistant: Creates a new task thread for interactions.
+	•	askQuestion(string $message): Assistant: Asks a question in the task thread.
+	•	process(): Assistant: Processes the task thread.
+	•	response(): string: Retrieves the assistant’s response.
+   - Added AssistantMessageData DTO
+   - Added NewAssistantResponseData DTO
+   - Added FunctionCalData DTO
+   - Updated all tests to reflect the new changes
+   - Update all test coverage and mutation to 100%
