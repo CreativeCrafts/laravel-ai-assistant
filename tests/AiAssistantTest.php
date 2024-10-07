@@ -324,17 +324,17 @@ it('can use an assistant to complete a task', function () {
         ->andReturn($assistantMock);
 
     $assistantMock->shouldReceive('assignAssistant')
-        ->andReturn($assistantMock);
+        ->andReturn($assistantMock)->getMock();
 
     $assistantMock->shouldReceive('createTask')
-        ->andReturn($assistantMock);
+        ->andReturn($assistantMock)->getMock();
 
     $assistantMock->shouldReceive('askQuestion')
         ->with('Is the world round?')
-        ->andReturn($assistantMock);
+        ->andReturn($assistantMock)->getMock();
 
     $assistantMock->shouldReceive('process')
-        ->andReturn($assistantMock);
+        ->andReturn($assistantMock)->getMock();
 
     $assistantMock->shouldReceive('response')
         ->andReturn('Yes, the world is round');

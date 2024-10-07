@@ -51,9 +51,6 @@ jobs:
       - name: List Installed Dependencies
         run: composer show -D
 
-      - name: Disable OPcache
-        run: echo "opcache.enable=0" >> ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/travis.ini
-
       - name: Debug PHP Environment
         run: |
           php -i
