@@ -270,7 +270,7 @@ it('handles empty choices gracefully when draft is called', function () {
 });
 
 it('can create a new assistant', function () {
-    $assistantMock = Mockery::mock('overload:CreativeCrafts\LaravelAiAssistant\Assistant');
+    $assistantMock = Mockery::mock('alias:CreativeCrafts\LaravelAiAssistant\Assistant');
     $newAssistantResponseMock = Mockery::mock(NewAssistantResponseData::class);
 
     $assistantMock->shouldReceive('init')
@@ -312,7 +312,7 @@ it('can create a new assistant', function () {
 });
 
 it('can use an assistant to complete a task', function () {
-    $assistantMock = Mockery::mock('overload:CreativeCrafts\LaravelAiAssistant\Assistant');
+    $assistantMock = Mockery::mock('alias:CreativeCrafts\LaravelAiAssistant\Assistant');
 
     $assistantMock->shouldReceive('init')
         ->andReturn($assistantMock);
