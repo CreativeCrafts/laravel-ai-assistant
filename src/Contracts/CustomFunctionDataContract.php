@@ -1,6 +1,8 @@
 <?php
 
-namespace CreativeCrafts\LaravelAiAssistant\Contract;
+declare(strict_types=1);
+
+namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
 interface CustomFunctionDataContract
 {
