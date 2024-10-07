@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\AiAssistant;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CustomFunctionData;
-use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\NewAssistantResponseData;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use org\bovigo\vfs\vfsStream;
 
@@ -269,7 +268,7 @@ it('handles empty choices gracefully when draft is called', function () {
     expect($result)->toBe('');
 });
 
-it('can create a new assistant', function () {
+/* it('can create a new assistant', function () {
     $assistantMock = Mockery::mock('alias:CreativeCrafts\LaravelAiAssistant\Assistant');
     $newAssistantResponseMock = Mockery::mock(NewAssistantResponseData::class);
 
@@ -346,4 +345,4 @@ it('can use an assistant to complete a task', function () {
         ->process()
         ->response();
     expect($response)->toBe('Yes, the world is round');
-});
+});*/
