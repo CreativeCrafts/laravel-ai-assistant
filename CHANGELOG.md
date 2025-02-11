@@ -114,3 +114,17 @@ updated dependent composer packages
 ### Fixed
 - Fixed create assistant functionality
 - Updated test cases in AiAssistantTest.php
+
+## 2.0.3 - 2025-02-11
+### Changed
+- Move transcription logic to Assistant class
+- Deprecate transcribeTo method in AiAssistant class with warning
+- Add new transcription functionality to Assistant class
+- Implement setFilePath method for better file handling
+- Add robust file handling with error checking
+- Improve code organization and maintainability
+
+The change moves the transcription functionality to a more appropriate
+location while maintaining backward compatibility through a deprecation
+notice. This improves the overall architecture and provides better
+error handling for file operations.

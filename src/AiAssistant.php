@@ -141,6 +141,8 @@ class AiAssistant implements AiAssistantContract
      */
     public function transcribeTo(string $language, ?string $optionalText = ''): string
     {
+        trigger_error('The transcribeTo method is deprecated. Use the transcribeTo method of the AssistantService client instead.', E_USER_DEPRECATED);
+
         $this->audioToTextGeneratorConfig['file'] = fopen($this->prompt, 'rb');
         if ($optionalText !== '') {
             $this->audioToTextGeneratorConfig['prompt'] = $optionalText;

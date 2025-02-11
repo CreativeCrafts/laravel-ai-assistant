@@ -203,7 +203,10 @@ $optionalText = 'An optional text to guide the model's style or continue a previ
 // The language of the input audio. Supplying the input language in ISO-639-1 format will improve accuracy and latency.
 $language = 'en';
 
-$transcription = AiAssistant::acceptPrompt($audioFilePath)->transcribe($language, $optionalText);
+$transcription = AiAssistant::init()
+                ->setFilePath($audioFilePath)
+                ->transcribeTo($language, $optionalText);
+
 
 // The response will be a text format of the audio file
 
