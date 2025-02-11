@@ -38,16 +38,16 @@ class AssistantService implements AssistantResourceContract
     public function writeMessage(string $threadId, array $messageData): ThreadMessageResponse
     {
         return $this->client->threads()->messages()->create(
-            $threadId,
-            $messageData
+            threadId: $threadId,
+            parameters: $messageData
         );
     }
 
-    public function runMessageThread(string $threadId, array $messageData): bool
+    public function runMessageThread(string $threadId, array $runThreadParameter): bool
     {
         $run = $this->client->threads()->runs()->create(
-            $threadId,
-            $messageData
+            threadId: $threadId,
+            parameters: $runThreadParameter
         );
 
         do {

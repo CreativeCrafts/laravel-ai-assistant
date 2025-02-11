@@ -106,4 +106,11 @@ updated dependent composer packages
    - Update all test coverage and mutation to 100%
 
 ## 2.0.1 - 2025-02-11
-- Updated composer dependencies
+### Changed
+- Updated composer dependencies with package version adjustments
+- Minor documentation updates in changelog
+
+## 2.0.2 - 2025-02-11
+### Fixed
+- Fixed create assistant functionality
+- Updated test cases in AiAssistantTest.php

@@ -277,7 +277,7 @@ You can include various tools to enhance the functionality of the assistant. For
     use CreativeCrafts\LaravelAiAssistant\AiAssistant;
     
     $response = \CreativeCrafts\LaravelAiAssistant\AiAssistant::init()
-        ->assignAssistant($assistantId)
+        ->setAssistantId($assistantId) // Required
         ->createTask() // Can optionally pass a list of tasks as an array, defaults to []
         ->askQuestion('Translate this text to French: "Hello, how are you?"')
         ->process()
@@ -300,6 +300,7 @@ You can include various tools to enhance the functionality of the assistant. For
 	• askQuestion(string $message): Assistant: Asks a question in the task thread.
 	• process(): Assistant: Processes the task thread.
 	• response(): string: Retrieves the assistant’s response.
+    . setAssistantId(string $assistantId): Assistant: Sets the assistant ID for the current interaction.
 
 ## Exception Handling
 

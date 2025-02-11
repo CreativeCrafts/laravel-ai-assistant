@@ -40,6 +40,8 @@ interface AssistantContract
 
     public function assignAssistant(string $assistantId): Assistant;
 
+    public function setAssistantId(string $assistantId): Assistant;
+
     public function createTask(array $parameters = []): Assistant;
 
     public function askQuestion(string $message): Assistant;

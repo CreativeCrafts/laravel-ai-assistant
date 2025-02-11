@@ -21,6 +21,7 @@ class AiAssistant implements AiAssistantContract
     protected array $editTextGeneratorConfig = [];
 
     protected array $audioToTextGeneratorConfig = [];
+
     /**
      * Constructs a new AiAssistant instance.
      */
