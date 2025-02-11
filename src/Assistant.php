@@ -46,6 +46,8 @@ final class Assistant implements AssistantContract
 
     protected string $threadId;
 
+    protected string $assistantId;
+
     protected AssistantMessageData $assistantMessageData;
 
     /**
@@ -235,9 +237,28 @@ final class Assistant implements AssistantContract
      * This method retrieves an existing AI assistant from the OpenAI API using the provided assistant ID.
      * The retrieved assistant is then assigned to the current instance for further interactions.
      */
-    public function assignAssistant(string $assistantId): Assistant
+    public function assignAssistant(?string $assistantId = null): Assistant
     {
+        if ($assistantId === null) {
+            $assistantId = $this->assistantId;
+        }
         $this->assistant = $this->client->getAssistantViaId($assistantId);
+        return $this;
+    }
+
+    /**
+     * Sets the ID of the AI assistant.
+     *
+     * This method allows you to set or update the assistant ID for the current instance.
+     * It's useful when you want to work with a specific, existing assistant.
+     *
+     * @param string $assistantId The unique identifier of the AI assistant.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     */
+    public function setAssistantId(string $assistantId): Assistant
+    {
+        $this->assistantId = $assistantId;
         return $this;
     }
 
@@ -285,9 +306,12 @@ final class Assistant implements AssistantContract
      */
     public function process(): Assistant
     {
+        $runThreadParameter = [
+            'assistant_id' => $this->assistantId,
+        ];
         $this->client->runMessageThread(
-            $this->threadId,
-            $this->assistantMessageData->toArray()
+            threadId: $this->threadId,
+            runThreadParameter: $runThreadParameter
         );
         return $this;
     }

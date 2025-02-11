@@ -21,5 +21,5 @@ interface AssistantResourceContract
 
     public function writeMessage(string $threadId, array $messageData): ThreadMessageResponse;
 
-    public function runMessageThread(string $threadId, array $messageData): bool;
+    public function runMessageThread(string $threadId, array $runThreadParameter): bool;
 }
