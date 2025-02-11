@@ -11,8 +11,10 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\FunctionCallData;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\NewAssistantResponseData;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\CreateNewAssistantException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MissingRequiredParameterException;
+use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use OpenAI\Responses\Assistants\AssistantResponse;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -49,6 +51,10 @@ final class Assistant implements AssistantContract
     protected string $assistantId;
 
     protected AssistantMessageData $assistantMessageData;
+
+    protected string $filePath = '';
+
+    protected array $transcribeAudioConfig = [];
 
     /**
      * Returns a new instance of the Assistant class.
@@ -326,5 +332,63 @@ final class Assistant implements AssistantContract
     public function response(): string
     {
         return $this->client->listMessages($this->threadId);
+    }
+
+    /**
+     * Sets the file path for audio transcription.
+     *
+     * This method sets the file path of the audio file that will be used for transcription.
+     * It's typically used before calling the transcribeTo method.
+     *
+     * @param string $filePath The full path to the audio file to be transcribed.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     */
+    public function setFilePath(string $filePath): Assistant
+    {
+        $this->filePath = $filePath;
+        return $this;
+    }
+
+    /**
+     * Transcribes an audio file to text in the specified language.
+     *
+     * This method configures and executes the audio transcription process using the
+     * file path set by setFilePath(). It allows for an optional prompt text to guide
+     * the transcription.
+     *
+     * @param string $language The target language for the transcription.
+     * @param string|null $optionalText Optional text to guide the transcription process.
+     *                                  If provided, it will be used as a prompt.
+     *
+     * @return string The transcribed text from the audio file.
+     */
+    public function transcribeTo(string $language, ?string $optionalText = ''): string
+    {
+        $this->transcribeAudioConfig = AppConfig::audioToTextGeneratorConfig();
+        $this->transcribeAudioConfig['file'] = $this->openFile($this->filePath);
+
+        $this->transcribeAudioConfig['language'] = $language;
+        if ($optionalText !== '') {
+            $this->transcribeAudioConfig['prompt'] = $optionalText;
+        }
+
+        return $this->client->transcribeTo($this->transcribeAudioConfig);
+    }
+
+    /**
+     * Opens a file and returns the file handle.
+     *
+     * @param string $filePath The path to the file.
+     * @return resource The opened file handle.
+     * @throws RuntimeException If the file cannot be opened.
+     */
+    private function openFile(string $filePath)
+    {
+        $file = fopen($filePath, 'rb');
+        if ($file === false) {
+            throw new RuntimeException("Unable to open file: $filePath");
+        }
+        return $file;
     }
 }
