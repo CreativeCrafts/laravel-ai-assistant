@@ -104,3 +104,6 @@ updated dependent composer packages
    - Added FunctionCalData DTO
    - Updated all tests to reflect the new changes
    - Update all test coverage and mutation to 100%
+
+## 2.0.1 - 2025-02-11
+- Updated composer dependencies
