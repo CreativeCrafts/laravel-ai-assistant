@@ -35,7 +35,7 @@ return [
      * The token count of your prompt plus max_tokens cannot exceed the model's context length.
      * Most models have a context length of 2048 tokens (except for the newest models, which support 4096).
      */
-    'max_tokens' => 400,
+    'max_completion_tokens' => 400,
 
     /** If set, tokens will be sent as data-only server-sent events as they become available,
      *  with the stream terminated by a data: [DONE] message.
@@ -104,9 +104,4 @@ return [
      * ID of the model to use. Only whisper-1 is currently available.
      */
     'audio_model' => 'whisper-1',
-
-    /**
-     * The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
-     */
-    'response_format' => 'verbose_json',
 ];

@@ -29,7 +29,6 @@ updated dependent composer packages
 - - Translation
 - - Brainstorming ideas
 - - Chat
--
 
 ## 0.0.2 - 2023-05-11
 
@@ -128,3 +127,28 @@ The change moves the transcription functionality to a more appropriate
 location while maintaining backward compatibility through a deprecation
 notice. This improves the overall architecture and provides better
 error handling for file operations.
+
+## 2.1.0 - 2025-02-17
+
+### Added
+- Moved transcription logic to Assistant class for better organization and maintainability
+
+### Fixed
+- Fixed create assistant functionality issues
+- Updated composer dependencies
+
+### Documentation
+- Updated changelog documentation
+
+The most significant changes in this release include a refactoring of the transcription functionality and fixes to the assistant creation process. The transcription logic has been moved to the Assistant class, which should improve code organization and maintainability. 
+Additionally, several bug fixes have been implemented for the create assistant functionality, and the project dependencies have been updated to ensure compatibility and security.
+
+refactor(chat): restructure chat completion implementation
+
+- Add new contracts for chat completion and assistant message handling
+- Introduce dedicated data factories for message and model configuration
+- Reorganize data transfer objects for better separation of concerns
+- Implement new tests for data factories and DTOs
+- Update existing services and core classes to support new structure
+
+This change improves the architecture around chat completion handling, making it more maintainable and easier to extend in the future.

@@ -3,16 +3,16 @@
 declare(strict_types=1);
 
 
-use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\AssistantMessageData;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\MessageData;
 
-covers(AssistantMessageData::class);
+covers(MessageData::class);
 
 it('can be instantiated with a message and default role', function () {
     $message = 'Hello, world!';
-    $data = new AssistantMessageData($message);
+    $data = new MessageData($message);
 
     expect($data)
-        ->toBeInstanceOf(AssistantMessageData::class)
+        ->toBeInstanceOf(MessageData::class)
         ->and($data->toArray())
         ->toMatchArray([
             'role' => 'user',
@@ -23,10 +23,10 @@ it('can be instantiated with a message and default role', function () {
 it('can be instantiated with a message and custom role', function () {
     $message = 'Hello, world!';
     $role = 'assistant';
-    $data = new AssistantMessageData($message, $role);
+    $data = new MessageData($message, $role);
 
     expect($data)
-        ->toBeInstanceOf(AssistantMessageData::class)
+        ->toBeInstanceOf(MessageData::class)
         ->and($data->toArray())
         ->toMatchArray([
             'role' => 'assistant',
@@ -36,7 +36,7 @@ it('can be instantiated with a message and custom role', function () {
 
 it('returns an array with role and content', function () {
     $message = 'Testing message';
-    $data = new AssistantMessageData($message);
+    $data = new MessageData($message);
 
     $array = $data->toArray();
 

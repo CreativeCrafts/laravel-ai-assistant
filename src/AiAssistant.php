@@ -188,6 +188,7 @@ class AiAssistant implements AiAssistantContract
      */
     protected function processChatTextCompletion(): array
     {
+        trigger_error('The processChatTextCompletion method is deprecated. Use the processChatTextCompletion method of the AssistantService client instead.', E_USER_DEPRECATED);
         if (isset($this->chatTextGeneratorConfig['stream']) && $this->chatTextGeneratorConfig['stream']) {
             $response = $this->client->streamedChat($this->chatTextGeneratorConfig);
         } else {
