@@ -1,12 +1,58 @@
-# A handy package to access and interact with Openai end point
+# Laravel AI Assistant
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 
-The Laravel AI Assistant package provides an easy-to-use interface for interacting with OpenAI’s API using Laravel. This package allows developers to create, manage, and interact with AI assistants, including handling tasks like text completions, code interpretation, function calling, and more. It abstracts the complexity of interacting directly with OpenAI’s API by providing structured methods for configuring and using AI assistants in your Laravel applications.
+Laravel AI Assistant is a comprehensive package designed to seamlessly integrate OpenAI’s powerful language models into your Laravel applications. It provides an easy-to-use, fluent API to configure, manage, and interact with AI-driven chatbots, audio transcription services, custom function calls, and additional advanced tools.
 
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+  - [Initializing the Assistant](#initializing-the-assistant)
+  - [Configuring Chat and Task Settings](#configuring-chat-and-task-settings)
+  - [Audio Transcription](#audio-transcription)
+  - [Tool Integrations](#tool-integrations)
+- [Data Transfer Objects (DTOs) and Factories](#data-transfer-objects-dtos-and-factories)
+- [Configuration File](#configuration-file)
+- [Error Handling](#error-handling)
+- [Examples](#examples)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Overview
+
+Laravel AI Assistant simplifies the integration of AI models into your Laravel application. Whether you’re building a conversational chatbot, automating content creation, or transcribing audio files, this package provides a clean, expressive API to handle complex tasks with minimal effort.
+
+It leverages OpenAI’s API to:
+- Generate chat completions
+- Process audio transcriptions using Whisper
+- Manage custom function calls for dynamic workflows
+- Support advanced configurations like streaming, caching, and tool integrations
+
+---
+
+## Features
+
+- **Fluent API:** Chain method calls for a clean and intuitive setup.
+- **Chat Messaging:** Easily manage user, developer, and tool messages.
+- **Audio Transcription:** Convert audio files to text with optional prompts.
+- **Tool Integration:** Extend functionality with file search, code interpreter, and custom function call tools.
+- **Custom Configuration:** Configure model parameters, temperature, top_p, and more.
+- **DTOs & Factories:** Use data transfer objects to structure and validate your data.
+- **Error Handling:** Robust exception handling for file operations and API interactions.
+- **Caching & Streaming:** Optimize chat workflows with caching and streaming options.
+
+---
 
 ## Installation
 
@@ -22,220 +68,175 @@ You can publish the config file with:
 php artisan vendor:publish --tag="ai-assistant-config"
 ```
 
-This is the contents of the published config file:
+## Configuration
+After publishing, you will find a configuration file at config/ai-assistant.php. This file includes settings for:
+
+### API Credentials
+Set your OpenAI API key and organization:
 
 ```php
-return [
-
-    /**
-     *Specify your OpenAI API Key and organization. This will be
-    | used to authenticate with the OpenAI API - you can find your API key
-    | and organization on your OpenAI dashboard, at https://openai.com.
-     */
     'api_key' => env('OPENAI_API_KEY', null),
     'organization' => env('OPENAI_ORGANIZATION', null),
-
-    /** ID of the model to use. you can find a list of models at https://platform.openai.com/docs/models */
-    'model' => env('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo'),
-
-    /**
-     * What sampling temperature to use, between 0 and 2.
-     * Higher values like 0.8 will make the output more random,
-     * while lower values like 0.2 will make it more focused and deterministic.
-     *
-     * it is generally recommended to alter this or top_p but not both.
-     */
-    'temperature' => 0.3,
-
-    /** An alternative to sampling with temperature, called nucleus sampling,
-     * where the model considers the results of the tokens with top_p probability mass.
-     * So 0.1 means only the tokens comprising the top 10% probability mass are considered.
-     *
-     * it is generally recommended to alter this or temperature but not both.
-     */
-    'top_p' => 1,
-
-    /**
-     *The maximum number of tokens to generate in the completion.
-     * The token count of your prompt plus max_tokens cannot exceed the model's context length.
-     * Most models have a context length of 2048 tokens (except for the newest models, which support 4096).
-     */
-    'max_tokens' => 400,
-
-    /** If set, tokens will be sent as data-only server-sent events as they become available,
-     *  with the stream terminated by a data: [DONE] message.
-     */
-    'stream' => false,
-
-    /** Echo back the prompt in addition to the completion */
-    'echo' => false,
-
-    /**
-     * How many completions to generate for each prompt. (optional)
-     * Note: Because this parameter generates many completions, it can quickly consume your token quota.
-     * Use carefully and ensure that you have reasonable settings for max_tokens and stop
-     */
-    'n' => 1,
-
-    /** Up to 4 sequences where the API will stop generating further tokens.
-     * The returned text will not contain the stop sequence. e.g. ["\n", "Human:", "AI:"]
-     * (optional)
-     */
-    'stop' => null,
-
-    /**
-     * The suffix that comes after a completion of inserted text. it is a string (optional)
-     */
-    'suffix' => null,
-
-    /**
-     * Number between -2.0 and 2.0.
-     * Positive values penalize new tokens based on whether they appear in the text so far,
-     * increasing the model's likelihood to talk about new topics.
-     */
-    'presence_penalty' => 0,
-
-    /**
-     * Number between -2.0 and 2.0.
-     * Positive values penalize new tokens based on their existing frequency in the text so far,
-     * decreasing the model's likelihood to repeat the same line verbatim.
-     */
-    'frequency_penalty' => 0,
-
-    /**
-     * Generates best_of completions server-side and returns the "best" (the one with the highest log probability per token). Results cannot be streamed.
-     * When used with n, best_of controls the number of candidate completions and n specifies how many to return.
-     * best_of must be greater than n.
-     * Note: Because this parameter generates many completions, it can quickly consume your token quota.
-     * Use carefully and ensure that you have reasonable settings for max_tokens and stop.
-     */
-    'best_of' => 1,
-
-    /** This is the chatgpt model to use when using the chat completion */
-    'chat_model' => env('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo'),
-
-    /** The role of the ai process this message. it could be system, assistant or whatever you choose. */
-    'ai_role' => 'assistant',
-
-    /** The role of the author of this message. it could be user or whatever you choose. */
-    'user_role' => 'user',
-
-    /**
-     * ID of the model to use. You can use the gpt-4o or gpt-3.5-turbo model with this endpoint.
-     */
-    'edit_model' => 'gpt-4o',
-
-    /**
-     * ID of the model to use. Only whisper-1 is currently available.
-     */
-    'audio_model' => 'whisper-1',
-
-    /**
-     * The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
-     */
-    'response_format' => 'verbose_json',
-];
 ```
 
-## Usage
+### Model Settings
+Choose your default models for chat, editing, and audio transcription:
 
 ```php
-//translate text to a specific language
-use CreativeCrafts\LaravelAiAssistant\AiAssistant;use CreativeCrafts\LaravelAiAssistant\AiAssistant;
-$translatedText = AiAssistant::acceptPrompt()->translateTo('How are you?')->toLanguageName('swedish');
-
-//response will be a string
-//Hur mår du?
-
-// Chat with the AI
-$chat = AiAssistant::acceptPrompt('Who is Jane Austen?')->andRespond();
-
-//response will be an array. The role is based on your configuration
-[
-  "role" => "assistant"
-  "content" => "Jane Austen was an English novelist known for her witty and insightful portrayals of English middle-class life in the late 18th and early 19th centuries."
-]
-
-// You can ask a follow up question
-$chat = AiAssistant::acceptPrompt('did she win any award for her work?')->andRespond();
-
-//response
-[
-  "role" => "assistant"
-  "content" => "No, Jane Austen did not win any awards during her lifetime as literary awards did not exist in the way they do today. However, her novels have received numerous accolades and critical acclaim since their publication, and she is widely regarded as one of the greatest writers in English literature.
-]
-
-//brainstorming: generate ideas for a blog post for example
-use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
-$ideas = AiAssistant::acceptPrompt('Write a blog about AI?')->draft();
-
-// response
-"""
-Artificial Intelligence (AI) is a rapidly growing field of technology that is revolutionizing the way we interact with the world around us. From self-driving cars to voice-activated home assistants, AI is making our lives easier and more efficient. But what exactly is AI, and how is it changing our lives?
-AI is a branch of computer science that focuses on creating intelligent machines that can think and act like humans. AI systems are designed to learn from their environment and make decisions based on what they learn. This means that AI can be used to automate tasks, such as recognizing faces or driving cars, and can even be used to create new products and services.
-AI is already being used in a variety of industries, from healthcare to finance. In healthcare, AI is being used to diagnose diseases and provide personalized treatments. In finance, AI is being used to detect fraud and improve customer service. AI is also being used in retail to create personalized shopping experiences and in manufacturing to automate tasks and increase efficiency.
-AI is also being used to improve our lives in more subtle ways. For example, AI can be used to create virtual assistants that can help us with everyday tasks, such as scheduling appointments or ordering groceries. AI can also be used to create more efficient search engines and to improve the accuracy of online translations.
-AI is an exciting and rapidly evolving field of technology that is changing the way we interact with the world around us. As AI continues to develop, it will open up new possibilities for how we live our lives and interact with each other.
-"""
-
-// Spell check and grammar correction
-use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
-
-$text = 'Artificial Intellagence (AI) is a rapidly growng field of technlogy that is revolutinizing the way we interact with the world arund us.';
-$correctedText = AiAssistant::acceptPrompt($text)->spellingAndGrammarCorrection();
-
-// response
-"Artificial Intelligence (AI) is a rapidly growing field of technology that is revolutionizing the way we interact with the world around us."
-
-// You can also improving the readability of your text by calling this method
-use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
-
-$text = 'Artificial Intelligence (AI) is a rapidly growing field of technology that is revolutionizing the way we interact with the world around us.';
-$improvedText = AiAssistant::acceptPrompt($text)->improveWriting();
-
-// Transcribe an audio file to text
-use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
-
-// The audio file to transcribe, must be in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm.
-$audioFilePath = 'path/to/audio/file.mp3';
-$optionalText = 'An optional text to guide the model's style or continue a previous audio segment. The prompt should match the audio language.
-
-// The language of the input audio. Supplying the input language in ISO-639-1 format will improve accuracy and latency.
-$language = 'en';
-
-$transcription = AiAssistant::init()
-                ->setFilePath($audioFilePath)
-                ->transcribeTo($language, $optionalText);
-
-
-// The response will be a text format of the audio file
-
-// Translate an audio file to english text
-use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
-
-// The audio file to transcribe, must be in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm.
-$audioFilePath = 'path/to/audio/german.mp3';
-
-$translatedText = AiAssistant::acceptPrompt($audioFilePath)->translateAudioTo();
-
-// The response will be a text format of the audio file in english
+    'model' => env('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo'),
+    'chat_model' => env('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo'),
+    'edit_model' => 'gpt-4o',
+    'audio_model' => 'whisper-1',
 ```
-#### Configuration
 
-The `ai-assistant.php` configuration file now includes a new `chat_model` option.
+### Response Settings
+Configure parameters such as temperature, top_p, max tokens, streaming options, stop sequences, etc.:
 
-## Newly Added Features
+```php
+    'temperature' => 0.3,
+    'top_p' => 1,
+    'max_completion_tokens' => 400,
+    'stream' => false,
+    'n' => 1,
+    'stop' => null,
+    'suffix' => null,
+    'presence_penalty' => 0,
+    'frequency_penalty' => 0,
+    'best_of' => 1,
+```
 
-	•	Create and manage AI assistants.
-	•	Set models, temperature, and custom instructions for the assistant.
-	•	Utilize tools like code interpretation, file search, and custom function calls.
-	•	Interact with assistants via threads for tasks like message completion, chat, and task processing.
-	•	Supports both synchronous and streamed completions.
-	•	Handle audio transcription and translation with OpenAI models.
+### Roles
+Define the roles for AI responses and user messages:
+
+```php
+    'ai_role' => 'assistant',
+    'user_role' => 'user',
+```
 
 ## Usage
 
-1. Creating and Configuring an AI Assistant
+### Initializing the Assistant
+Create a new assistant instance using the fluent API:
+```php
+    use CreativeCrafts\LaravelAiAssistant\Tasks\AiAssistant;
+    $assistant = AiAssistant::init();
+```
+
+### Configuring Chat and Task Settings
+Configure the model, temperature, and other parameters:
+```php
+    $assistant->setModelName('gpt-3.5-turbo')
+          ->adjustTemperature(0.7)
+          ->setDeveloperMessage('Please maintain a friendly tone.')
+          ->setUserMessage('What is the weather like today?');
+```
+Send your chat message and retrieve a response:
+```php
+    $response = $assistant->sendChatMessage();
+```
+You can also manage caching of chat messages, adjust the maximum number of tokens, or define stop sequences using dedicated methods.
+
+### Audio Transcription
+Transcribe audio files by setting the file path and specifying language and an optional prompt:
+```php
+    $assistant->setFilePath('/path/to/audio.mp3');
+    $transcription = $assistant->transcribeTo('en', 'Transcribe the following audio:');
+```
+
+### Tool Integrations
+Integrate additional tools like custom function calls, code interpreter, or file search:
+
+```php
+    // Adding a custom function tool
+    $assistant->includeFunctionCallTool(
+        'calculateSum',
+        'Calculates the sum of two numbers',
+        ['num1' => 'number', 'num2' => 'number'],
+        isStrict: true,
+        requiredParameters: ['num1', 'num2']
+    );
+```
+
+## Data Transfer Objects (DTOs) and Factories
+The package includes several DTOs and factory classes to structure data consistently:
+	•	CreateAssistantData: Used when creating a new assistant.
+	•	ChatCompletionData: Represents data for chat completions.
+	•	ChatAssistantMessageData: Structures assistant messages.
+	•	TranscribeToData: Structures data for audio transcription requests.
+	•	CustomFunctionData: Represents custom function tool data.
+
+Each DTO includes a toArray() method to facilitate easy conversion and integration with the API.
+
+This is the contents of the published config file:
+
+## Configuration File
+The config/ai-assistant.php file allows you to customize settings such as API credentials, model names, temperature, top_p, and more. Adjust these settings to fit your use case:
+```php
+    return [
+        'api_key' => env('OPENAI_API_KEY', null),
+        'organization' => env('OPENAI_ORGANIZATION', null),
+        'model' => env('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo'),
+        'temperature' => 0.3,
+        'top_p' => 1,
+        'max_completion_tokens' => 400,
+        'stream' => false,
+        'n' => 1,
+        'stop' => null,
+        'chat_model' => env('OPENAI_CHAT_MODEL', 'gpt-3.5-turbo'),
+        'ai_role' => 'assistant',
+        'user_role' => 'user',
+        'edit_model' => 'gpt-4o',
+        'audio_model' => 'whisper-1',
+    ];
+```
+## Error Handling
+The package provides robust error handling:
+	•	File Operations:
+Methods like openFile() throw a RuntimeException if the file cannot be opened.
+	•	API Interactions:
+The create() method catches exceptions from OpenAI and rethrows them as a CreateNewAssistantException with a descriptive message.
+	•	Validation:
+Methods that require specific parameters (e.g., audio voice and format for audio output) throw an InvalidArgumentException when expectations are not met.
+
+## Examples
+
+### Example: Simple Chat Interaction
+```php
+    use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+
+    $assistant = AiAssistant::init()
+        ->setModelName('gpt-3.5-turbo')
+        ->adjustTemperature(0.7)
+        ->setDeveloperMessage('Maintain a formal tone.')
+        ->setUserMessage('Tell me a joke.')
+        ->sendChatMessage();
+```
+
+### Example: Audio Transcription
+```php
+    use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+    
+    $transcription = AiAssistant::init()
+        ->setFilePath('/path/to/audio.mp3');
+        ->transcribeTo('en', 'Transcribe this audio:');
+```
+
+### Example: Custom Function Call
+```php
+    use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+    
+    $response = AiAssistant::init()
+        ->includeFunctionCallTool(
+            'calculateSum',
+            'Calculates the sum of two numbers',
+            ['num1' => 'number', 'num2' => 'number'],
+            isStrict: true,
+            requiredParameters: ['num1', 'num2']
+        )
+        ->create();
+```
+
+### Example: Creating and Configuring an AI Assistant
 ```php
 use CreativeCrafts\LaravelAiAssistant\AiAssistant;
 
@@ -247,35 +248,8 @@ $assistant = AiAssistant::init()
     ->setInstructions('Be as helpful as possible.') // Optional, defaults to ''
     ->create();
 ```
-2. Including Tools
 
-You can include various tools to enhance the functionality of the assistant. For example, if you want the assistant to use the code interpreter, you can include it like this:
-```php
-    use CreativeCrafts\LaravelAiAssistant\AiAssistant;
-    
-    $assistant = AiAssistant::init()
-       ....
-        ->includeCodeInterpreter() // Can optionally pass file IDs as array
-        ->create();
-
-    $assistant = AiAssistant::init()
-       ....
-        ->includeFileSearchTool($vectorStoreIds) // Can optionally pass vector store IDs as array
-        ->create();
-
-    $assistant = AiAssistant::init()
-       ....
-        ->includeFunctionCallTool(
-            $functionName, // Required
-            $functionDescription, // Optional, defaults to ''
-            $parameters // Function parameters, Optional, defaults to []
-            $isStrict // is strict enable structure outputs when set to true. see https://platform.openai.com/docs/guides/structured-outputs   
-            $requiredParameters // Optional, defaults to []
-            $hasAdditionalParameters // Optional, defaults to false
-        )
-        ->create();
-```
-3. Interacting with the Assistant
+### Example: Interacting with the Assistant
 ```php
     use CreativeCrafts\LaravelAiAssistant\AiAssistant;
     
@@ -286,6 +260,15 @@ You can include various tools to enhance the functionality of the assistant. For
         ->process()
         ->response(); // returns the response from the assistant as a string
 ```
+
+## Newly Added Features
+
+	•	Create and manage AI assistants.
+	•	Set models, temperature, and custom instructions for the assistant.
+	•	Utilize tools like code interpretation, file search, and custom function calls.
+	•	Interact with assistants via threads for tasks like message completion, chat, and task processing.
+	•	Supports both synchronous and streamed completions.
+	•	Handle audio transcription and translation with OpenAI models.
 
 ## Available Methods
       init(): Assistant: Initializes the AI assistant.
@@ -303,14 +286,7 @@ You can include various tools to enhance the functionality of the assistant. For
 	• askQuestion(string $message): Assistant: Asks a question in the task thread.
 	• process(): Assistant: Processes the task thread.
 	• response(): string: Retrieves the assistant’s response.
-    . setAssistantId(string $assistantId): Assistant: Sets the assistant ID for the current interaction.
-
-## Exception Handling
-
-The package includes several custom exceptions to handle errors gracefully:
-
-	• CreateNewAssistantException: Thrown when the creation of a new assistant fails.
-	• MissingRequiredParameterException: Thrown when a required parameter is missing in a message or task.
+    . setAssistantId(string $assistantId): Assistant: Sets the assistant ID for the current interaction.    
 
 ## Upcoming features
 

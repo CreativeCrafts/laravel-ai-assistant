@@ -19,6 +19,20 @@ final readonly class FunctionCallData implements FunctionCallDataContract
     ) {
     }
 
+    /**
+     * Convert the FunctionCallData object to an array representation.
+     *
+     * This method transforms the object's properties into an associative array,
+     * which can be used for serialization or data transfer purposes.
+     *
+     * @return array An associative array containing the following keys:
+     *               - 'name': The name of the function (string)
+     *               - 'description': The description of the function (string)
+     *               - 'parameters': The function parameters, either as an array or converted to array (array)
+     *               - 'strict': Whether the function call is strict or not (boolean)
+     *               - 'required': An array of required parameters (array)
+     *               - 'additionalProperties': Whether additional properties are allowed (boolean)
+     */
     public function toArray(): array
     {
         return [

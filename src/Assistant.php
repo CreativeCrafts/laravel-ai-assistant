@@ -6,13 +6,15 @@ namespace CreativeCrafts\LaravelAiAssistant;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FunctionCallParameterContract;
-use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\AssistantMessageData;
+use CreativeCrafts\LaravelAiAssistant\DataFactories\ChatAssistantMessageDataFactory;
+use CreativeCrafts\LaravelAiAssistant\DataFactories\ModelConfigDataFactory;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\FunctionCallData;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\MessageData;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\NewAssistantResponseData;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\CreateNewAssistantException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MissingRequiredParameterException;
-use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
+use InvalidArgumentException;
 use OpenAI\Responses\Assistants\AssistantResponse;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,35 +28,17 @@ final class Assistant implements AssistantContract
 {
     protected AssistantService $client;
 
-    protected string $modelName = 'gpt-4o';
-
-    // @pest-mutate-ignore
-    protected int|float $temperature = 0.5;
-
-    // @pest-mutate-ignore
-    protected string $assistantName = '';
-
-    // @pest-mutate-ignore
-    protected string $assistantDescription = '';
-
-    // @pest-mutate-ignore
-    protected string $instructions = '';
-
     protected array $tools = [];
-
-    protected array|null $toolResources = null;
 
     protected AssistantResponse $assistant;
 
     protected string $threadId;
 
-    protected string $assistantId;
+    protected MessageData $assistantMessageData;
 
-    protected AssistantMessageData $assistantMessageData;
+    protected array $modelConfig = [];
 
-    protected string $filePath = '';
-
-    protected array $transcribeAudioConfig = [];
+    protected bool $shouldCacheChatMessages = false;
 
     /**
      * Returns a new instance of the Assistant class.
@@ -78,7 +62,7 @@ final class Assistant implements AssistantContract
      */
     public function setModelName(string $modelName): Assistant
     {
-        $this->modelName = $modelName;
+        $this->modelConfig['model'] = $modelName;
         return $this;
     }
 
@@ -91,7 +75,7 @@ final class Assistant implements AssistantContract
      */
     public function adjustTemperature(int|float $temperature): Assistant
     {
-        $this->temperature = $temperature;
+        $this->modelConfig['temperature'] = $temperature;
         return $this;
     }
 
@@ -103,8 +87,7 @@ final class Assistant implements AssistantContract
      */
     public function setAssistantName(string $assistantName = ''): Assistant
     {
-        $this->assistantName = $assistantName;
-
+        $this->modelConfig['name'] = $assistantName;
         return $this;
     }
 
@@ -116,8 +99,7 @@ final class Assistant implements AssistantContract
      */
     public function setAssistantDescription(string $assistantDescription = ''): Assistant
     {
-        $this->assistantDescription = $assistantDescription;
-
+        $this->modelConfig['description'] = $assistantDescription;
         return $this;
     }
 
@@ -130,8 +112,7 @@ final class Assistant implements AssistantContract
      */
     public function setInstructions(string $instructions = ''): Assistant
     {
-        $this->instructions = $instructions;
-
+        $this->modelConfig['instructions'] = $instructions;
         return $this;
     }
 
@@ -143,12 +124,12 @@ final class Assistant implements AssistantContract
      */
     public function includeCodeInterpreterTool(array $fileIds = []): Assistant
     {
-        $this->tools[] = [
+        $this->modelConfig['tools'][] = [
             'type' => 'code_interpreter',
         ];
 
         if ($fileIds !== []) {
-            $this->toolResources = [
+            $this->modelConfig['tool_resources'] = [
                 'code_interpreter' => [
                     'file_ids' => $fileIds,
                 ],
@@ -166,12 +147,12 @@ final class Assistant implements AssistantContract
      */
     public function includeFileSearchTool(array $vectorStoreIds = []): Assistant
     {
-        $this->tools[] = [
+        $this->modelConfig['tools'][] = [
             'type' => 'file_search',
         ];
 
         if ($vectorStoreIds !== []) {
-            $this->toolResources = [
+            $this->modelConfig['tool_resources'] = [
                 'file_search' => [
                     'vector_store_ids' => $vectorStoreIds,
                 ],
@@ -202,11 +183,10 @@ final class Assistant implements AssistantContract
             requiredParameters: $requiredParameters,
             hasAdditionalProperties: $hasAdditionalProperties,
         );
-        $this->tools[] = [
+        $this->modelConfig['tools'][] = [
             'type' => 'function',
             'function' => $functionData->toArray(),
         ];
-
         return $this;
     }
 
@@ -219,17 +199,9 @@ final class Assistant implements AssistantContract
     public function create(): NewAssistantResponseData
     {
         try {
-            $assistantData = [
-                'model' => $this->modelName,
-                'name' => $this->assistantName,
-                'description' => $this->assistantDescription,
-                'instructions' => $this->instructions,
-                'tools' => $this->tools,
-                'temperature' => $this->temperature,
-                'tool_resources' => $this->toolResources,
-            ];
-
-            $assistantResponse = $this->client->createAssistant($assistantData);
+            $assistantResponse = $this->client->createAssistant(
+                ModelConfigDataFactory::buildCreateAssistantData($this->modelConfig)->toArray()
+            );
             return new NewAssistantResponseData($assistantResponse);
         } catch (Throwable $e) {
             $errorCode = is_int($e->getCode()) ? $e->getCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
@@ -246,7 +218,7 @@ final class Assistant implements AssistantContract
     public function assignAssistant(?string $assistantId = null): Assistant
     {
         if ($assistantId === null) {
-            $assistantId = $this->assistantId;
+            $assistantId = $this->modelConfig['assistant_id'];
         }
         $this->assistant = $this->client->getAssistantViaId($assistantId);
         return $this;
@@ -264,7 +236,7 @@ final class Assistant implements AssistantContract
      */
     public function setAssistantId(string $assistantId): Assistant
     {
-        $this->assistantId = $assistantId;
+        $this->modelConfig['assistant_id'] = $assistantId;
         return $this;
     }
 
@@ -283,13 +255,13 @@ final class Assistant implements AssistantContract
     /**
      * Asks a question to the AI assistant and prepares the assistant to respond.
      *
-     * This method creates a new AssistantMessageData object with the provided message,
+     * This method creates a new MessageData object with the provided message,
      * validates the message data to ensure it contains both 'content' and 'role' fields,
      * and writes the message to the AI assistant's task thread.
      */
     public function askQuestion(string $message): Assistant
     {
-        $this->assistantMessageData = new AssistantMessageData(
+        $this->assistantMessageData = new MessageData(
             message: $message,
         );
 
@@ -312,12 +284,9 @@ final class Assistant implements AssistantContract
      */
     public function process(): Assistant
     {
-        $runThreadParameter = [
-            'assistant_id' => $this->assistantId,
-        ];
         $this->client->runMessageThread(
             threadId: $this->threadId,
-            runThreadParameter: $runThreadParameter
+            runThreadParameter: $this->modelConfig
         );
         return $this;
     }
@@ -346,7 +315,56 @@ final class Assistant implements AssistantContract
      */
     public function setFilePath(string $filePath): Assistant
     {
-        $this->filePath = $filePath;
+        $this->modelConfig['file'] = $this->openFile($filePath);
+        return $this;
+    }
+
+    /**
+     * Sets the response format for the AI assistant.
+     * This method allows you to specify the desired format for the assistant's responses.
+     * The response format determines how the assistant's output will be structured.
+     *
+     * @param string|array $responseFormat The desired response format (e.g., auto, text, json_object, json_schema).
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     * @see https://platform.openai.com/docs/api-reference/assistants/createAssistant
+     */
+    public function setResponseFormat(string|array $responseFormat): Assistant
+    {
+        $this->modelConfig['response_format'] = $responseFormat;
+        return $this;
+    }
+
+    /**
+     * Sets metadata for the AI assistant.
+     *
+     * Set of 16 key-value pairs that can be attached to an object.
+     * This can be useful for storing additional information about the object in a structured format, and querying for objects via API or the dashboard.
+     * Keys are strings with a maximum length of 64 characters. Values are strings with a maximum length of 512 characters.
+     *
+     * @param array $metadata An associative array of metadata key-value pairs to be set for the assistant.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     */
+    public function setMetaData(array $metadata): Assistant
+    {
+        $this->modelConfig['metadata'] = $metadata;
+        return $this;
+    }
+
+    /**
+     * Sets the reasoning effort for the AI assistant.
+     *
+     * Constrains effort on reasoning for reasoning models. Currently supported values are low, medium, and high.
+     * Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response.
+     *
+     * @param string $reasoningEffort The level of reasoning effort to be applied.
+     *                                Possible values include 'low', 'medium', 'high',
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     */
+    public function setReasoningEffort(string $reasoningEffort): Assistant
+    {
+        $this->modelConfig['reasoning_effort'] = $reasoningEffort;
         return $this;
     }
 
@@ -365,15 +383,283 @@ final class Assistant implements AssistantContract
      */
     public function transcribeTo(string $language, ?string $optionalText = ''): string
     {
-        $this->transcribeAudioConfig = AppConfig::audioToTextGeneratorConfig();
-        $this->transcribeAudioConfig['file'] = $this->openFile($this->filePath);
-
-        $this->transcribeAudioConfig['language'] = $language;
+        $this->modelConfig['language'] = $language;
         if ($optionalText !== '') {
-            $this->transcribeAudioConfig['prompt'] = $optionalText;
+            $this->modelConfig['prompt'] = $optionalText;
         }
+        $transcribeData = ModelConfigDataFactory::buildTranscribeData($this->modelConfig);
+        return $this->client->transcribeTo(payload: $transcribeData->toArray());
+    }
 
-        return $this->client->transcribeTo($this->transcribeAudioConfig);
+    /**
+     * Developer-provided instructions that the model should follow.
+     *
+     * @param string $developerMessage The message content.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function setDeveloperMessage(string $developerMessage): self
+    {
+        return $this->addMessageData(
+            (new MessageData(
+                message: $developerMessage,
+                role: $this->modelConfig['model'] === 'gpt-3.5-turbo' ? 'system' : 'developer'
+            ))->toArray()
+        );
+    }
+
+    /**
+     * Adds a message sent by an end user.
+     *
+     * @param string $userMessage The user message content.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function setUserMessage(string $userMessage): self
+    {
+        return $this->addMessageData(
+            (new MessageData(
+                message: $userMessage,
+                role: 'user'
+            ))->toArray()
+        );
+    }
+
+    /**
+     * Adds an assistant message, which may include various optional parameters.
+     *
+     * @param string|array|null $content The content of the assistant's message.
+     * @param string|null $refusal Optional refusal message.
+     * @param string|null $name Optional name.
+     * @param array|null $audio Optional audio data.
+     * @param array|null $toolCalls Optional tool call data.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function setChatAssistantMessage(
+        string|array|null $content,
+        ?string $refusal,
+        ?string $name,
+        ?array $audio,
+        ?array $toolCalls
+    ): self {
+        return $this->addMessageData(
+            ChatAssistantMessageDataFactory::buildChatAssistantMessageData(
+                content: $content,
+                refusal: $refusal,
+                name: $name,
+                audio: $audio,
+                toolCalls: $toolCalls
+            )->toArray()
+        );
+    }
+
+    /**
+     * Adds a message from a tool, identified by its tool call ID.
+     *
+     * @param string $message The content of the tool's message.
+     * @param string $toolCallId The unique identifier for the tool call.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function setToolMessage(string $message, string $toolCallId): self
+    {
+        return $this->addMessageData(
+            (new MessageData(
+                message: $message,
+                role: 'tool',
+                toolCallId: $toolCallId
+            ))->toArray()
+        );
+    }
+
+    /**
+     * Whether to store the output of this chat completion request for use in OPENAI model distillation or evals products.
+     *
+     * @param bool $activateStore Whether to activate the store feature.
+     *                                 True to enable, false to disable
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function useOutputForDistillation(bool $activateStore): Assistant
+    {
+        $this->modelConfig['store'] = $activateStore;
+        return $this;
+    }
+
+    /**
+     * Sets the maximum number of tokens to generate in the completion.
+     *
+     * This method allows you to specify the maximum number of tokens that the AI model
+     * should generate in its response. This can be useful for controlling the length
+     * of the assistant's output.
+     *
+     * An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.
+     *
+     * @param int $maxCompletionTokens The maximum number of tokens to generate in the completion.
+     *                                 This value limits the length of the model's response.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function setMaxCompletionTokens(int $maxCompletionTokens): Assistant
+    {
+        $this->modelConfig['max_completion_tokens'] = $maxCompletionTokens;
+        return $this;
+    }
+
+    /**
+     * Sets the number of completion choices for the AI assistant.
+     *
+     * This method allows you to specify how many alternative completions the model
+     * should generate for a given input. This can be useful for obtaining multiple
+     * variations of responses.
+     *
+     * @param int $numberOfCompletionChoices The number of completion choices to generate.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function setNumberOfCompletionChoices(int $numberOfCompletionChoices): Assistant
+    {
+        $this->modelConfig['n'] = $numberOfCompletionChoices;
+        return $this;
+    }
+
+    /**
+     * Sets the output types (modalities) for the AI assistant.
+     *
+     * This method allows you to specify the types of output the AI assistant should generate.
+     * Most models are capable of generating text, which is the default: ['text'].
+     * The gpt-4o-audio-preview model can also be used to generate audio. To request that this model generate both text and audio responses, you can use: ['text', 'audio'].
+     *
+     * @param array $outputTypes An array of output types (modalities) to be set for the assistant.
+     * @param string|null $audioVoice The voice to use for audio output.
+     * @param string|null $audioFormat The format to use for audio output.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function setOutputTypes(array $outputTypes, ?string $audioVoice = null, ?string $audioFormat = null): Assistant
+    {
+        $this->modelConfig['modalities'] = $outputTypes;
+
+        if (in_array(needle: 'audio', haystack: $outputTypes, strict: true)) {
+            if ($audioVoice === null || $audioFormat === null) {
+                throw new InvalidArgumentException(
+                    message: 'To generate audio output, both audio voice and audio format must be provided.',
+                    code: Response::HTTP_BAD_REQUEST
+                );
+            }
+            $this->modelConfig['audio'] = [
+                'voice' => $audioVoice,
+                'format' => $audioFormat,
+            ];
+        }
+        return $this;
+    }
+
+    /**
+     * Configures the streaming option for the AI assistant's response.
+     *
+     * This method enables streaming of the AI's response and optionally sets streaming-specific options.
+     * When streaming is enabled, the response will be returned in chunks as it's being generated,
+     * rather than waiting for the entire response to be completed.
+     *
+     * @param bool $activateStream Whether to activate streaming. This parameter is currently not used
+     *                             in the function body, but is kept for potential future use or API consistency.
+     * @param array|null $streamOptions Optional array of streaming-specific options. If provided,
+     *                                  these options will be added to the model configuration.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function shouldStream(bool $activateStream, ?array $streamOptions = null): Assistant
+    {
+        $this->modelConfig['stream'] = $activateStream;
+        if ($streamOptions !== null) {
+            if (! isset($this->modelConfig['stream_options']['include_usage'])) {
+                throw new InvalidArgumentException(
+                    message: 'The include_usage option is required when setting stream options.',
+                    code: Response::HTTP_BAD_REQUEST
+                );
+            }
+            $this->modelConfig['stream_options'] = $streamOptions;
+        }
+        return $this;
+    }
+
+    /**
+     * Sets the top_p value for the AI assistant's response generation.
+     *
+     * An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass.
+     * So 0.1 means only the tokens comprising the top 10% probability mass are considered.
+     * it is recommended altering this or temperature but not both.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function setTopP(int $topP): Assistant
+    {
+        $this->modelConfig['top_p'] = $topP;
+        return $this;
+    }
+
+    /**
+     * Sets the stop sequence(s) for the AI assistant's response generation.
+     *
+     * This method allows you to specify one or more sequences where the AI should stop generating further tokens.
+     * The assistant will stop generating immediately before the first appearance of the specified sequence(s).
+     *
+     * @param string|array $stop A string or an array of strings that the model will stop at.
+     *                           Up to 4 sequences where the API will stop generating further tokens.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     * @see https://platform.openai.com/docs/api-reference/chat/create
+     */
+    public function addAStop(string|array $stop): Assistant
+    {
+        $this->modelConfig['stop'] = $stop;
+        return $this;
+    }
+
+    /**
+     * Sets the cache key and time-to-live (TTL) for caching chat messages.
+     *
+     * This method allows you to specify a cache key and time-to-live (TTL) value for caching chat messages.
+     * The assistant's responses will be cached using the provided cache key and TTL value.
+     *
+     * @param string $cacheKey The cache key to use for storing chat messages.
+     * @param int $ttl The time-to-live (TTL) value in seconds for the cached chat messages.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
+     */
+    public function shouldCacheChatMessages(string $cacheKey, int $ttl): Assistant
+    {
+        $this->modelConfig['cacheConfig'] = [
+            'cacheKey' => $cacheKey,
+            'ttl' => $ttl,
+        ];
+        return $this;
+    }
+
+    /**
+     * Sends a chat message to the AI chat completion assistant and retrieves the response.
+     *
+     * This method prepares the chat completion data, determines whether to use
+     * streaming or standard chat completion based on the configuration, and sends
+     * the request to the AI service.
+     *
+     * @return array The response from the AI assistant, which may include the
+     *               generated message, token usage information, and other metadata.
+     *               The exact structure of the array depends on the AI service's
+     *               response format and whether streaming was used.
+     */
+    public function sendChatMessage(): array
+    {
+        $chatCompletionData = ModelConfigDataFactory::buildChatCompletionData($this->modelConfig);
+
+        if ($chatCompletionData->shouldStream()) {
+            return $this->client->streamedChat($chatCompletionData->toArray());
+        }
+        return $this->client->chatTextCompletion($chatCompletionData->toArray());
     }
 
     /**
@@ -390,5 +676,14 @@ final class Assistant implements AssistantContract
             throw new RuntimeException("Unable to open file: $filePath");
         }
         return $file;
+    }
+
+    /**
+     * Appends a message data array to the model configuration.
+     */
+    private function addMessageData(array $messageData): self
+    {
+        $this->modelConfig['messages'][] = $messageData;
+        return $this;
     }
 }
