@@ -172,6 +172,7 @@ class AiAssistant implements AiAssistantContract
      */
     protected function processTextCompletion(): string
     {
+        trigger_error('The processTextCompletion method is deprecated. Use the processChatTextCompletion method of the AssistantService client instead.', E_USER_DEPRECATED);
         if (isset($this->textGeneratorConfig['stream']) && $this->textGeneratorConfig['stream']) {
             return $this->client->streamedCompletion($this->textGeneratorConfig);
         }

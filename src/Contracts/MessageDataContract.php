@@ -7,7 +7,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 interface MessageDataContract
 {
     public function __construct(
-        string $message,
+        string|array $message,
         string $role = 'user',
         string $toolCallId = '',
     );

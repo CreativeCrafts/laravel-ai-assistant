@@ -9,7 +9,7 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\MessageDataContract;
 final readonly class MessageData implements MessageDataContract
 {
     public function __construct(
-        protected string $message,
+        protected string|array $message,
         protected string $role = 'user',
         protected string $toolCallId = '',
     ) {

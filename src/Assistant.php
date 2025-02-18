@@ -41,7 +41,12 @@ final class Assistant implements AssistantContract
     protected bool $shouldCacheChatMessages = false;
 
     /**
-     * Returns a new instance of the Assistant class.
+     * Creates and returns a new instance of the Assistant class.
+     *
+     * This static factory method provides a convenient way to instantiate
+     * the Assistant class without directly using the 'new' keyword.
+     *
+     * @return Assistant A new instance of the Assistant class.
      */
     public static function new(): Assistant
     {
@@ -50,6 +55,13 @@ final class Assistant implements AssistantContract
 
     /**
      * Sets the AssistantService client for making API requests.
+     *
+     * This method assigns the provided AssistantService instance to the current Assistant object,
+     * allowing it to make API requests to the AI service.
+     *
+     * @param AssistantService $client The AssistantService instance to be used for API communication.
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
      */
     public function client(AssistantService $client): Assistant
     {
@@ -59,6 +71,13 @@ final class Assistant implements AssistantContract
 
     /**
      * Sets the model name for the AI assistant.
+     *
+     * This method allows you to specify which AI model should be used for the assistant.
+     * Different models have different capabilities and performance characteristics.
+     *
+     * @param string $modelName The name of the AI model to be used (e.g., 'gpt-3.5-turbo', 'gpt-4').
+     *
+     * @return Assistant Returns the current Assistant instance, allowing for method chaining.
      */
     public function setModelName(string $modelName): Assistant
     {
@@ -410,10 +429,10 @@ final class Assistant implements AssistantContract
     /**
      * Adds a message sent by an end user.
      *
-     * @param string $userMessage The user message content.
+     * @param string|array $userMessage The user message content.
      * @see https://platform.openai.com/docs/api-reference/chat/create
      */
-    public function setUserMessage(string $userMessage): self
+    public function setUserMessage(string|array $userMessage): self
     {
         return $this->addMessageData(
             (new MessageData(
