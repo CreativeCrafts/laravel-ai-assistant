@@ -13,13 +13,13 @@ describe('ChatCompletionData', function () {
             message: ['Hello', 'World'],
             temperature: 0.8,
             store: true,
-            reasoningEffort: 'high',
+            reasoningEffort: 'medium',
             metadata: ['key' => 'value'],
             maxCompletionTokens: 150,
             numberOfCompletionChoices: 2,
             outputTypes: ['text', 'audio'],
             audio: ['format' => 'mp3'],
-            responseFormat: 'json',
+            responseFormat: ['type' => 'json_object'],
             stopSequences: ['STOP'],
             stream: true,
             streamOptions: ['option' => 'value'],
@@ -29,23 +29,21 @@ describe('ChatCompletionData', function () {
         $expected = array_merge(
             [
                 'model' => 'gpt-3.5-turbo',
-                'message' => ['Hello', 'World'],
+                'messages' => ['Hello', 'World'],
                 'temperature' => 0.8,
                 'store' => true,
-                'reasoning_effort' => 'high',
                 'n' => 2,
-                'response_formats' => 'json',
-                'stop' => ['STOP'],
                 'stream' => true,
+                'metadata' => ['key' => 'value'],
+                'max_completion_tokens' => 150,
+                'modalities' => ['text', 'audio'],
+                'audio' => ['format' => 'mp3'],
+                'stop' => ['STOP'],
                 'stream_options' => ['option' => 'value'],
-                'top_p' => 0.9,
+                'reasoning_effort' => 'medium',
+                'response_format' => ['type' => 'json_object'],
             ],
-            ['metadata' => ['key' => 'value']],
-            ['max_completion_tokens' => 150],
-            ['modalities' => ['text', 'audio']],
-            ['audio' => ['format' => 'mp3']]
         );
-
         expect($chatData->toArray())->toEqual($expected);
     });
 
@@ -61,26 +59,21 @@ describe('ChatCompletionData', function () {
             numberOfCompletionChoices: null,
             outputTypes: null,
             audio: null,
-            responseFormat: 'auto',
             stopSequences: null,
             stream: false,
             streamOptions: null,
-            topP: null
+            topP: 1
         );
 
         $expected = array_merge(
             [
                 'model' => 'gpt-3.5-turbo',
-                'message' => ['Hi'],
+                'messages' => ['Hi'],
                 'temperature' => null,
                 'store' => null,
-                'reasoning_effort' => null,
                 'n' => null,
-                'response_formats' => 'auto',
-                'stop' => null,
                 'stream' => false,
-                'stream_options' => null,
-                'top_p' => null,
+                'top_p' => 1,
             ]
         );
 
@@ -99,7 +92,6 @@ describe('ChatCompletionData', function () {
             numberOfCompletionChoices: null,
             outputTypes: null,
             audio: null,
-            responseFormat: 'auto',
             stopSequences: null,
             stream: true,
             streamOptions: null,
@@ -117,11 +109,9 @@ describe('ChatCompletionData', function () {
             numberOfCompletionChoices: null,
             outputTypes: null,
             audio: null,
-            responseFormat: 'auto',
             stopSequences: null,
             stream: false,
             streamOptions: null,
-            topP: null
         );
 
         expect($chatDataStreaming->shouldStream())->toBeTrue()

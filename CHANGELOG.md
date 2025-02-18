@@ -152,3 +152,24 @@ refactor(chat): restructure chat completion implementation
 - Update existing services and core classes to support new structure
 
 This change improves the architecture around chat completion handling, making it more maintainable and easier to extend in the future.
+
+## 2.1.1 - 2025-02-18
+Feature: enhance Assistant API and add deprecation notice
+
+- Add deprecation notice for processTextCompletion method
+- Update method signatures to support array input for messages
+- Add comprehensive PHPDoc documentation for Assistant interface
+- Improve method parameter types and return type declarations
+- Add new methods for configuration and customization:
+  - setOutputTypes
+  - shouldStream
+  - setTopP
+  - addAStop
+  - shouldCacheChatMessages
+- Enhance existing methods with detailed documentation
+- Extend MessageData to support array input type
+
+This commit significantly improves the API documentation and type safety while maintaining backward compatibility through proper deprecation notices.
+
+## 2.1.2 - 2025-02-18
+Bug Fix: resolve issue with message data formatting

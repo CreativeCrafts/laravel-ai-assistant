@@ -324,20 +324,6 @@ describe('Assistant::setFilePath', function () {
 });
 
 describe('Assistant::setResponseFormat', function () {
-    it('sets the response format when given a string', function () {
-        $assistant = Assistant::new();
-        $result = $assistant->setResponseFormat('auto');
-        expect($result)->toBeInstanceOf(Assistant::class);
-
-        $reflection = new ReflectionClass($assistant);
-        $property = $reflection->getProperty('modelConfig');
-        $property->setAccessible(true);
-        $config = $property->getValue($assistant);
-
-        expect($config)->toHaveKey('response_format')
-            ->and($config['response_format'])->toBe('auto');
-    });
-
     it('sets the response format when given an array', function () {
         $assistant = Assistant::new();
         $formats = [

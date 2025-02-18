@@ -108,15 +108,16 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
             message: $chatMessages,
             temperature: fluent($config)->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
             store: fluent($config)->boolean(key: 'store'),
-            reasoningEffort: fluent($config)->string(key: 'reasoning_effort')->toString(),
+            reasoningEffort: fluent($config)->string(key: 'reasoning_effort', default: '')->toString(),
             metadata: fluent($config)->array(key: 'metadata'),
             maxCompletionTokens: fluent($config)->integer(key: 'max_completion_tokens'),
-            numberOfCompletionChoices: fluent($config)->integer(key: 'number_of_completion_choices'),
-            outputTypes: fluent($config)->array(key: 'output_types'),
+            numberOfCompletionChoices: fluent($config)->integer(key: 'n', default: 1),
+            outputTypes: fluent($config)->array(key: 'modalities'),
             audio: fluent($config)->array(key: 'audio'),
-            responseFormat: $config['response_format'] ?? 'auto',
-            stopSequences: fluent($config)->array(key: 'stop_sequences'),
+            responseFormat: fluent($config)->array(key: 'response_format'),
+            stopSequences: fluent($config)->array(key: 'stop'),
             stream: fluent($config)->boolean(key: 'stream'),
+            streamOptions: fluent($config)->array(key: 'stream_options'),
             topP: fluent($config)->float(key: 'top_p', default: Config::integer(key: 'ai-assistant.top_p'))
         );
     }

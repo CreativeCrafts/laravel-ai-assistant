@@ -19,7 +19,7 @@ final readonly class ChatCompletionData implements ChatCompletionDataContract
         protected ?int $numberOfCompletionChoices,
         protected ?array $outputTypes = null,
         protected ?array $audio = null,
-        protected array|string $responseFormat = 'auto',
+        protected array $responseFormat = [],
         protected array|string|null $stopSequences = null,
         protected bool $stream = false,
         protected ?array $streamOptions = null,
@@ -53,33 +53,54 @@ final readonly class ChatCompletionData implements ChatCompletionDataContract
      */
     public function toArray(): array
     {
-        return array_merge(
-            [
-                'model' => $this->model,
-                'message' => $this->message,
-                'temperature' => $this->temperature,
-                'store' => $this->store,
-                'reasoning_effort' => $this->reasoningEffort,
-                'n' => $this->numberOfCompletionChoices,
-                'response_formats' => $this->responseFormat,
-                'stop' => $this->stopSequences,
-                'stream' => $this->stream,
-                'stream_options' => $this->streamOptions,
-                'top_p' => $this->topP,
-            ],
-            $this->metadata !== null ? [
-                'metadata' => $this->metadata,
-            ] : [],
-            $this->maxCompletionTokens !== null ? [
-                'max_completion_tokens' => $this->maxCompletionTokens,
-            ] : [],
-            $this->outputTypes !== null ? [
-                'modalities' => $this->outputTypes,
-            ] : [],
-            $this->audio !== null ? [
-                'audio' => $this->audio,
-            ] : [],
-        );
+        $data = [
+            'model' => $this->model,
+            'messages' => $this->message,
+            'temperature' => $this->temperature,
+            'store' => $this->store,
+            'n' => $this->numberOfCompletionChoices,
+            'stream' => $this->stream,
+        ];
+
+        if ($this->metadata !== null && $this->metadata !== []) {
+            $data['metadata'] = $this->metadata;
+        }
+
+        if ($this->maxCompletionTokens !== null) {
+            $data['max_completion_tokens'] = $this->maxCompletionTokens;
+        }
+
+        if ($this->outputTypes !== null) {
+            $data['modalities'] = $this->outputTypes;
+        }
+
+        if ($this->audio !== null && $this->audio !== []) {
+            $data['audio'] = $this->audio;
+        }
+
+        if ((is_array($this->stopSequences) && $this->stopSequences !== [])
+            || (is_string($this->stopSequences) && $this->stopSequences !== '')
+        ) {
+            $data['stop'] = $this->stopSequences;
+        }
+
+        if ($this->streamOptions !== null && $this->streamOptions !== []) {
+            $data['stream_options'] = $this->streamOptions;
+        }
+
+        if ($this->reasoningEffort !== null && $this->reasoningEffort !== '') {
+            $data['reasoning_effort'] = $this->reasoningEffort;
+        }
+
+        if ($this->temperature === null) {
+            $data['top_p'] = $this->topP;
+        }
+
+        if ($this->responseFormat !== []) {
+            $data['response_format'] = $this->responseFormat;
+        }
+
+        return $data;
     }
 
     /**

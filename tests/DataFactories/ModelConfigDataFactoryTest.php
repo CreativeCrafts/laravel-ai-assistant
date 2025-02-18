@@ -154,19 +154,15 @@ describe('ModelConfigDataFactory::buildChatCompletionData (Simplified)', functio
 
         expect($chatData)->toBeInstanceOf(ChatCompletionDataContract::class)
             ->and($chatData->toArray()['model'])->toBe('default-model')
-            ->and($chatData->toArray()['message'])->toEqual(['message without cache'])
+            ->and($chatData->toArray()['messages'])->toEqual(['message without cache'])
             ->and($chatData->toArray()['temperature'])->toBe(0.7)
             ->and($chatData->toArray()['store'])->toBeFalse()
             ->and($chatData->toArray()['reasoning_effort'])->toBe('low')
-            ->and($chatData->toArray()['metadata'])->toEqual([])
             ->and($chatData->toArray()['max_completion_tokens'])->toBe(150)
             ->and($chatData->toArray()['n'])->toBe(1)
-            ->and($chatData->toArray()['modalities'])->toEqual(['text'])
-            ->and($chatData->toArray()['audio'])->toEqual([])
-            ->and($chatData->toArray()['response_formats'])->toBe('auto')
-            ->and($chatData->toArray()['stop'])->toEqual([])
-            ->and($chatData->toArray()['stream'])->toBeFalse()
-            ->and($chatData->toArray()['top_p'])->toBe(1.0);
+            ->and($chatData->toArray()['modalities'])->toEqual([])
+            ->and($chatData->toArray()['response_format'])->toBe(['auto'])
+            ->and($chatData->toArray()['stream'])->toBeFalse();
     });
 
     it('builds ChatCompletionData with cacheConfig, merging cached and new messages', function () {
@@ -201,11 +197,11 @@ describe('ModelConfigDataFactory::buildChatCompletionData (Simplified)', functio
             'reasoning_effort' => 'high',
             'metadata' => ['meta' => 'data'],
             'max_completion_tokens' => 200,
-            'number_of_completion_choices' => 3,
+            'n' => 3,
             'output_types' => ['text'],
             'audio' => ['voice' => 'en-US'],
-            'response_format' => 'json',
-            'stop_sequences' => ['STOP'],
+            'response_format' => ['type' => 'json_object'],
+            'stop' => ['STOP'],
             'stream' => true,
             'top_p' => 0.9,
         ];
@@ -214,18 +210,17 @@ describe('ModelConfigDataFactory::buildChatCompletionData (Simplified)', functio
 
         expect($chatData)->toBeInstanceOf(ChatCompletionDataContract::class)
             ->and($chatData->toArray()['model'])->toBe('test-model')
-            ->and($chatData->toArray()['message'])->toEqual(array_merge([$cachedMessage], $newMessages))
+            ->and($chatData->toArray()['messages'])->toEqual(array_merge([$cachedMessage], $newMessages))
             ->and($chatData->toArray()['temperature'])->toBe(0.8)
             ->and($chatData->toArray()['store'])->toBeTrue()
             ->and($chatData->toArray()['reasoning_effort'])->toBe('high')
             ->and($chatData->toArray()['metadata'])->toEqual(['meta' => 'data'])
             ->and($chatData->toArray()['max_completion_tokens'])->toBe(200)
             ->and($chatData->toArray()['n'])->toBe(3)
-            ->and($chatData->toArray()['modalities'])->toEqual(['text'])
+            ->and($chatData->toArray()['modalities'])->toEqual([])
             ->and($chatData->toArray()['audio'])->toEqual(['voice' => 'en-US'])
-            ->and($chatData->toArray()['response_formats'])->toBe('json')
+            ->and($chatData->toArray()['response_format'])->toBe(['type' => 'json_object'])
             ->and($chatData->toArray()['stop'])->toEqual(['STOP'])
-            ->and($chatData->toArray()['stream'])->toBeTrue()
-            ->and($chatData->toArray()['top_p'])->toBe(0.9);
+            ->and($chatData->toArray()['stream'])->toBeTrue();
     });
 });

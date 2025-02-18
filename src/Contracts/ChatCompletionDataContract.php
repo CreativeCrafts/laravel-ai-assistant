@@ -17,7 +17,7 @@ interface ChatCompletionDataContract
         ?int $numberOfCompletionChoices,
         ?array $outputTypes = null,
         ?array $audio = null,
-        array|string $responseFormat = 'auto',
+        array $responseFormat = [],
         string|array|null $stopSequences = null,
         bool $stream = false,
         ?array $streamOptions = null,
