@@ -173,3 +173,6 @@ This commit significantly improves the API documentation and type safety while m
 
 ## 2.1.2 - 2025-02-18
 Bug Fix: resolve issue with message data formatting
+
+## 2.1.3 - 2025-03-03
+Added Laravel 12 support
