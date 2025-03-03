@@ -14,15 +14,23 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         php: [8.2, 8.3]
-        laravel: [11.*]
+        laravel: [11.*, 12.*]
         stability: [prefer-stable]
         include:
+          - laravel: 12.*
+            testbench: 10.*
+            carbon: ^3.0
+            larastan: ^3.0
+            pest: ^3.7
+            rector: ^2.0
+            phpstan: ^2.0
           - laravel: 11.*
             testbench: 9.*
             carbon: ^3.0
-            pest: ^3.2
-            pest-plugin-arch: ^3.0
-            pest-plugin-laravel: ^3.0
+            larastan: ^3.0
+            pest: ^3.7
+            rector: ^2.0
+            phpstan: ^2.0
 
     name: P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.stability }} - ${{ matrix.os }}
 
@@ -45,16 +53,11 @@ jobs:
       - name: Install dependencies
         run: |
           composer require "laravel/framework:${{ matrix.laravel }}" --no-interaction --no-update
-          composer require "orchestra/testbench:${{ matrix.testbench }}" "nesbot/carbon:${{ matrix.carbon }}" "pestphp/pest:${{matrix.pest}}" "pestphp/pest-plugin-arch:${{matrix.pest-plugin-arch}}" "pestphp/pest-plugin-laravel:${{matrix.pest-plugin-laravel}}" --dev --no-interaction --no-update
+          composer require --dev "orchestra/testbench:${{ matrix.testbench }}" "nesbot/carbon:${{ matrix.carbon }}" "phpstan/phpstan-phpunit:${{ matrix.phpstan }}" "larastan/larastan:${{ matrix.larastan }}" "pestphp/pest:${{ matrix.pest }}" "rector/rector:${{ matrix.rector }}" --no-interaction --no-update
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction
 
       - name: List Installed Dependencies
         run: composer show -D
 
-      - name: Debug PHP Environment
-        run: |
-          php -i
-          php -m
-
       - name: Execute tests
-        run: vendor/bin/pest
+        run: vendor/bin/pest --ci

@@ -19,7 +19,7 @@
         }
     ],
     "require": {
-        "php": "^8.2",
+        "php": "^8.3|^8.2",
         "guzzlehttp/guzzle": "^7.9",
         "illuminate/contracts": "^12.0|^11.0|^10.0",
         "openai-php/client": "^0.7|^0.10",
@@ -34,7 +34,7 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6|^7.0",
         "nunomaduro/mock-final-classes": "^1.2",
-        "orchestra/testbench": "^9.11|^8.0",
+        "orchestra/testbench": "^10.0|^9.11|^8.0",
         "pestphp/pest": "^3.7",
         "pestphp/pest-plugin-arch": "^3.0",
         "pestphp/pest-plugin-laravel": "^3.1",

@@ -176,3 +176,7 @@ Bug Fix: resolve issue with message data formatting
 
 ## 2.1.3 - 2025-03-03
 Added Laravel 12 support
+
+## 2.1.4 - 2025-03-03
+
+- Updated dependencies
