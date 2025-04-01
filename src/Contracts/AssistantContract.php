@@ -186,11 +186,11 @@ interface AssistantContract
      * This method allows you to specify the desired format for the assistant's responses.
      * The response format determines how the assistant's output will be structured.
      *
-     * @param array $responseFormat The desired response format (e.g.text, json_object, json_schema).
      * @return Assistant Returns the current Assistant instance, allowing for method chaining.
      * @see https://platform.openai.com/docs/api-reference/assistants/createAssistant
+     * @see https://platform.openai.com/docs/api-reference/audio/createTranscription
      */
-    public function setResponseFormat(array $responseFormat): Assistant;
+    public function setResponseFormat(array|string $responseFormat): Assistant;
 
     /**
      * Sets metadata for the AI assistant.

@@ -13,6 +13,7 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CreateAssistantData;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\TranscribeToData;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use InvalidArgumentException;
 
 final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
 {
@@ -34,13 +35,25 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
      */
     public static function buildTranscribeData(array $config): TranscribeToDataContract
     {
+        $configData = fluent($config);
+
+        if (isset($config['response_format'])) {
+            $validResponseFormats = ['json', 'text', 'srt', 'vtt', 'verbose_json'];
+            if (is_array($config['response_format'])) {
+                throw new InvalidArgumentException(message: 'Response format must be a string');
+            }
+            if (! in_array($config['response_format'], $validResponseFormats, strict: true)) {
+                throw new InvalidArgumentException(message: 'Invalid response format');
+            }
+        }
+
         return new TranscribeToData(
-            model: fluent($config)->string(key: 'model', default: Config::string(key: 'ai-assistant.audio_model'))->toString(),
-            temperature: fluent($config)->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
-            responseFormat: $config['response_format'] ?? 'auto',
+            model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.audio_model'))->value(),
+            temperature: $configData->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
+            responseFormat: $configData->string(key: 'response_format', default: 'json')->value(),
             filePath: $config['file'],
-            language: fluent($config)->string(key: 'language', default: 'en')->toString(),
-            prompt: fluent($config)->string(key: 'prompt')->toString(),
+            language: $configData->string(key: 'language', default: 'en')->value(),
+            prompt: $configData->string(key: 'prompt')->value(),
         );
     }
 
@@ -67,24 +80,30 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
      */
     public static function buildCreateAssistantData(array $config): CreateAssistantDataContract
     {
+        $configData = fluent($config);
+        $responseFormat = (new self())->buildResponseFormat($config);
+        if ($responseFormat === []) {
+            $responseFormat = 'auto';
+        }
         return new CreateAssistantData(
-            model: fluent($config)->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->toString(),
-            topP: fluent($config)->float(key: 'top_p', default: Config::integer(key: 'ai-assistant.top_p')),
-            temperature: fluent($config)->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
-            assistantDescription: fluent($config)->string(key: 'description')->toString(),
-            assistantName: fluent($config)->string(key: 'name')->toString(),
-            instructions: fluent($config)->string(key: 'instructions')->toString(),
-            reasoningEffort: fluent($config)->string(key: 'reasoning_effort')->toString(),
-            tools: fluent($config)->array(key: 'tools'),
-            toolResources: fluent($config)->array(key: 'tool_resources'),
-            metadata: fluent($config)->array(key: 'metadata'),
-            responseFormat: $config['response_format'] ?? 'auto',
+            model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value(),
+            topP: $configData->float(key: 'top_p', default: Config::integer(key: 'ai-assistant.top_p')),
+            temperature: $configData->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
+            assistantDescription: $configData->string(key: 'description')->value(),
+            assistantName: $configData->string(key: 'name')->value(),
+            instructions: $configData->string(key: 'instructions')->value(),
+            reasoningEffort: $configData->string(key: 'reasoning_effort')->value(),
+            tools: $configData->array(key: 'tools'),
+            toolResources: $configData->array(key: 'tool_resources'),
+            metadata: $configData->array(key: 'metadata'),
+            responseFormat: $responseFormat,
         );
     }
 
     public static function buildChatCompletionData(array $config): ChatCompletionDataContract
     {
-        $cacheKey = fluent($config)->string(key: 'cacheConfig.key')->toString();
+        $configData = fluent($config);
+        $cacheKey = $configData->string(key: 'cacheConfig.key')->value();
 
         if (! isset($config['cacheConfig']) && Cache::has($cacheKey)) {
             Cache::forget($cacheKey);
@@ -99,26 +118,75 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
             Cache::put(
                 $cacheKey,
                 $chatMessages,
-                fluent($config)->integer(key: 'cacheConfig.ttl', default: 60)
+                $configData->integer(key: 'cacheConfig.ttl', default: 60)
             );
         }
 
         return new ChatCompletionData(
-            model: fluent($config)->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->toString(),
+            model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value(),
             message: $chatMessages,
-            temperature: fluent($config)->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
-            store: fluent($config)->boolean(key: 'store'),
-            reasoningEffort: fluent($config)->string(key: 'reasoning_effort', default: '')->toString(),
-            metadata: fluent($config)->array(key: 'metadata'),
-            maxCompletionTokens: fluent($config)->integer(key: 'max_completion_tokens'),
-            numberOfCompletionChoices: fluent($config)->integer(key: 'n', default: 1),
-            outputTypes: fluent($config)->array(key: 'modalities'),
-            audio: fluent($config)->array(key: 'audio'),
-            responseFormat: fluent($config)->array(key: 'response_format'),
-            stopSequences: fluent($config)->array(key: 'stop'),
-            stream: fluent($config)->boolean(key: 'stream'),
-            streamOptions: fluent($config)->array(key: 'stream_options'),
-            topP: fluent($config)->float(key: 'top_p', default: Config::integer(key: 'ai-assistant.top_p'))
+            temperature: $configData->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
+            store: $configData->boolean(key: 'store'),
+            reasoningEffort: $configData->string(key: 'reasoning_effort', default: '')->value(),
+            metadata: $configData->array(key: 'metadata'),
+            maxCompletionTokens: $configData->integer(key: 'max_completion_tokens'),
+            numberOfCompletionChoices: $configData->integer(key: 'n', default: 1),
+            outputTypes: $configData->array(key: 'modalities'),
+            audio: $configData->array(key: 'audio'),
+            responseFormat: (new self())->buildResponseFormat($config),
+            stopSequences: $configData->array(key: 'stop'),
+            stream: $configData->boolean(key: 'stream'),
+            streamOptions: $configData->array(key: 'stream_options'),
+            topP: $configData->float(key: 'top_p', default: Config::integer(key: 'ai-assistant.top_p'))
         );
+    }
+
+    /**
+     * Constructs the response format configuration array based on the provided configuration.
+     *
+     * This private method validates and builds the response format array using the given configuration options.
+     * It checks if the "response_format" key is set and is a string, then validates it against the allowed values:
+     * "json_schema", "text", "json_object", and "auto". If an invalid format is provided, the method throws an
+     * InvalidArgumentException.
+     *
+     * The method handles the response format as follows:
+     * - For "json_object" or "text": Returns an array with a single "type" key set to the value of "response_format".
+     * - For "json_schema": Expects an additional "json_schema" key in the configuration and returns an array with:
+     *     - "type" set to the value from the "json_schema" key.
+     *     - "json_schema" as an array containing a "name" key, also set to the value from the "json_schema" key.
+     * - For "auto" or if "response_format" is not provided as a valid string, an empty array is returned.
+     *
+     * @param array $config The configuration array which may contain:
+     *                      - "response_format" (string, optional): One of "json_schema", "text", "json_object", or "auto".
+     *                      - "json_schema" (string, required if "response_format" is "json_schema"): The schema name to use.
+     *
+     * @return array The constructed response format configuration array.
+     *
+     * @throws InvalidArgumentException If the provided "response_format" is not one of the allowed values.
+     */
+    private function buildResponseFormat(array $config): array
+    {
+        $responseFormat = [];
+        if (isset($config['response_format']) && is_string($config['response_format'])) {
+            $validResponseFormats = ['json_schema', 'text', 'json_object', 'auto'];
+            if (! in_array($config['response_format'], $validResponseFormats, strict: true)) {
+                throw new InvalidArgumentException(message: 'Invalid response format');
+            }
+            if ($config['response_format'] === 'json_object' || $config['response_format'] === 'text') {
+                $responseFormat = [
+                    'type' => fluent($config)->string(key: 'response_format')->value(),
+                ];
+            }
+
+            if ($config['response_format'] === 'json_schema') {
+                $responseFormat = [
+                    'type' => fluent($config)->string(key: 'json_schema')->value(),
+                    'json_schema' => [
+                        'name' => fluent($config)->string(key: 'json_schema')->value(),
+                    ],
+                ];
+            }
+        }
+        return $responseFormat;
     }
 }
