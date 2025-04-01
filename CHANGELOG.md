@@ -180,3 +180,9 @@ Added Laravel 12 support
 ## 2.1.4 - 2025-03-03
 
 - Updated dependencies
+
+## 2.1.5 - 2025-04-01
+Bug Fix: resolve issue with setResponseFormat method in Assistant class
+    - setResponseFormat method now correctly handles array and string input
+    - Improved error handling for unsupported formats
+    - update composer dependencies

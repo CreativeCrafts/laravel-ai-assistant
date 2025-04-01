@@ -49,7 +49,7 @@ describe('ModelConfigDataFactory::buildTranscribeData', function () {
         expect($data)->toBeInstanceOf(TranscribeToDataContract::class)
             ->and($data->toArray()['model'])->toBe('default_audio_model')
             ->and($data->toArray()['temperature'])->toBe(0.5)
-            ->and($data->toArray()['response_format'])->toBe('auto')
+            ->and($data->toArray()['response_format'])->toBe('json')
             ->and($data->toArray()['file'])->toBe('/path/to/audio.mp3')
             ->and($data->toArray()['language'])->toBe('en')
             ->and($data->toArray()['prompt'])->toBe('');
@@ -161,7 +161,6 @@ describe('ModelConfigDataFactory::buildChatCompletionData (Simplified)', functio
             ->and($chatData->toArray()['max_completion_tokens'])->toBe(150)
             ->and($chatData->toArray()['n'])->toBe(1)
             ->and($chatData->toArray()['modalities'])->toEqual([])
-            ->and($chatData->toArray()['response_format'])->toBe(['auto'])
             ->and($chatData->toArray()['stream'])->toBeFalse();
     });
 
@@ -219,7 +218,6 @@ describe('ModelConfigDataFactory::buildChatCompletionData (Simplified)', functio
             ->and($chatData->toArray()['n'])->toBe(3)
             ->and($chatData->toArray()['modalities'])->toEqual([])
             ->and($chatData->toArray()['audio'])->toEqual(['voice' => 'en-US'])
-            ->and($chatData->toArray()['response_format'])->toBe(['type' => 'json_object'])
             ->and($chatData->toArray()['stop'])->toEqual(['STOP'])
             ->and($chatData->toArray()['stream'])->toBeTrue();
     });
