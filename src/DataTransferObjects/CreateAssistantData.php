@@ -52,13 +52,15 @@ final readonly class CreateAssistantData implements CreateAssistantDataContract
                 'description' => $this->assistantDescription,
                 'name' => $this->assistantName,
                 'instructions' => $this->instructions,
-                'reasoning_effort' => $this->reasoningEffort,
                 'tools' => $this->tools,
                 'tool_resources' => $this->toolResources,
                 'response_format' => $this->responseFormat,
             ],
             $this->metadata !== null ? [
                 'metadata' => $this->metadata,
+            ] : [],
+            $this->reasoningEffort !== null && $this->reasoningEffort !== '' ? [
+                'reasoning_effort' => $this->reasoningEffort,
             ] : []
         );
     }

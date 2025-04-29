@@ -182,7 +182,13 @@ Added Laravel 12 support
 - Updated dependencies
 
 ## 2.1.5 - 2025-04-01
-Bug Fix: resolve issue with setResponseFormat method in Assistant class
+Bug Fix: resolve the issue with setResponseFormat method in Assistant class
     - setResponseFormat method now correctly handles array and string input
     - Improved error handling for unsupported formats
     - update composer dependencies
+
+## 2.1.6 - 2025-04-29
+Bug Fix: 
+    — Resolve issue when creating an assistant and attaching a search file without using a reasoning model throws invalid value exception
+    - Added validation to ensure that the reasoning model is used when attaching a search file and reasoning effort is not null
+    - Updated composer dependencies

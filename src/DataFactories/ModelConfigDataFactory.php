@@ -85,6 +85,7 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
         if ($responseFormat === []) {
             $responseFormat = 'auto';
         }
+
         return new CreateAssistantData(
             model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value(),
             topP: $configData->float(key: 'top_p', default: Config::integer(key: 'ai-assistant.top_p')),
