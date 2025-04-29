@@ -192,3 +192,10 @@ Bug Fix:
     — Resolve issue when creating an assistant and attaching a search file without using a reasoning model throws invalid value exception
     - Added validation to ensure that the reasoning model is used when attaching a search file and reasoning effort is not null
     - Updated composer dependencies
+
+## 2.1.7 - 2025-04-29
+Bug Fix: 
+    — Resolve issue when creating an assistant and attaching a search file without using a reasoning model throws invalid value exception
+    - Added validation to ensure that the reasoning model is used when attaching a search file and reasoning effort is not null
+    - Updated composer dependencies
+    - Added new test cases to ensure the correct behavior of the assistant creation process
