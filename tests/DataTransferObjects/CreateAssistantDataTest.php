@@ -61,7 +61,6 @@ describe('CreateAssistantData', function () {
             'description'       => null,
             'name'              => null,
             'instructions'      => null,
-            'reasoning_effort'  => null,
             'tools'             => null,
             'tool_resources'    => null,
             'response_format'   => 'auto',
