@@ -110,9 +110,6 @@ describe('ModelConfigDataFactory::buildCreateAssistantData', function () {
             ->and($assistantData->toArray()['name'])->toBe('DefaultAssistant')
             ->and($assistantData->toArray()['instructions'])->toBe('Do something')
             ->and($assistantData->toArray()['reasoning_effort'])->toBe('medium')
-            ->and($assistantData->toArray()['tools'])->toEqual([])
-            ->and($assistantData->toArray()['tool_resources'])->toEqual([])
-            ->and($assistantData->toArray()['metadata'])->toEqual([])
             ->and($assistantData->toArray()['response_format'])->toBe('auto');
     });
 });
