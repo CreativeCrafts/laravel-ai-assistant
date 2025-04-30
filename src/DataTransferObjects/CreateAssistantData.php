@@ -44,24 +44,32 @@ final readonly class CreateAssistantData implements CreateAssistantDataContract
      */
     public function toArray(): array
     {
-        return array_merge(
-            [
-                'model' => $this->model,
-                'top_p' => $this->topP,
-                'temperature' => $this->temperature,
-                'description' => $this->assistantDescription,
-                'name' => $this->assistantName,
-                'instructions' => $this->instructions,
-                'tools' => $this->tools,
-                'tool_resources' => $this->toolResources,
-                'response_format' => $this->responseFormat,
-            ],
-            $this->metadata !== null ? [
-                'metadata' => $this->metadata,
-            ] : [],
-            $this->reasoningEffort !== null && $this->reasoningEffort !== '' ? [
-                'reasoning_effort' => $this->reasoningEffort,
-            ] : []
-        );
+        $data = [
+            'model' => $this->model,
+            'top_p' => $this->topP,
+            'temperature' => $this->temperature,
+            'description' => $this->assistantDescription,
+            'name' => $this->assistantName,
+            'instructions' => $this->instructions,
+            'response_format' => $this->responseFormat,
+        ];
+
+        if ($this->reasoningEffort !== null && $this->reasoningEffort !== '') {
+            $data['reasoning_effort'] = $this->reasoningEffort;
+        }
+
+        if ($this->metadata !== null && $this->metadata !== []) {
+            $data['metadata'] = $this->metadata;
+        }
+
+        if ($this->tools !== null && $this->tools !== []) {
+            $data['tools'] = $this->tools;
+        }
+
+        if ($this->toolResources !== null && $this->toolResources !== []) {
+            $data['tool_resources'] = $this->toolResources;
+        }
+
+        return $data;
     }
 }
