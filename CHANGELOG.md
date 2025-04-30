@@ -199,3 +199,8 @@ Bug Fix:
     - Added validation to ensure that the reasoning model is used when attaching a search file and reasoning effort is not null
     - Updated composer dependencies
     - Added new test cases to ensure the correct behavior of the assistant creation process
+
+## 2.1.8 - 2025-04-30
+Bug Fix: 
+    — Issue with the Create Assistant DTO including items that are not provided in the constructor.
+    - Optionally include reasoning effort, metadata, tools, and tool resources in the Create Assistant DTO
