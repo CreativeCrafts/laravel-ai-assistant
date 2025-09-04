@@ -17,6 +17,6 @@ final class AiManager
     public function assistant(): Assistant
     {
         // Ensure Assistant is wired with the resolved AssistantService
-        return Assistant::new()->client(app(AssistantService::class));
+        return Assistant::new()->client(resolve(AssistantService::class));
     }
 }

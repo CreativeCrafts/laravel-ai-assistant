@@ -45,7 +45,7 @@ class TestConnectionCommand extends Command
 
         $this->timeout = (int) $this->option('timeout');
         $this->repository = app(OpenAiRepositoryContract::class);
-        $this->assistantService = app(AssistantService::class);
+        $this->assistantService = resolve(AssistantService::class);
 
         $this->runConnectionTests();
 
