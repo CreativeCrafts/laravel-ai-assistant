@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\DataTransferObjects;
 
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
 use CreativeCrafts\LaravelAiAssistant\Contracts\NewAssistantResponseDataContract;
-use OpenAI\Responses\Assistants\AssistantResponse;
 
 final readonly class NewAssistantResponseData implements NewAssistantResponseDataContract
 {

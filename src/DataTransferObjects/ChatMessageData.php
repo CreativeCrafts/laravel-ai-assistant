@@ -16,6 +16,15 @@ final class ChatMessageData implements ChatMessageDataContract
     ) {
     }
 
+    /**
+     * Retrieves or builds the conversation messages array for the AI assistant.
+     *
+     * If a cached conversation exists, it appends the current user prompt to the existing
+     * conversation. Otherwise, it initialises a new conversation with system instructions,
+     * example exchanges, and the current user prompt.
+     *
+     * @return array An array of conversation messages, where each message contains 'role' and 'content' keys
+     */
     public function messages(): array
     {
         if (Cache::has('userMessage')) {

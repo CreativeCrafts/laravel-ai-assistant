@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\NewAssistantResponseData;
-use OpenAI\Responses\Assistants\AssistantResponse;
 
 covers(NewAssistantResponseData::class);
 

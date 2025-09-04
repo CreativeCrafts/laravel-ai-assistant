@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant;
 
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FunctionCallParameterContract;
 use CreativeCrafts\LaravelAiAssistant\DataFactories\ChatAssistantMessageDataFactory;
@@ -15,7 +16,6 @@ use CreativeCrafts\LaravelAiAssistant\Exceptions\CreateNewAssistantException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MissingRequiredParameterException;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use InvalidArgumentException;
-use OpenAI\Responses\Assistants\AssistantResponse;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -23,6 +23,16 @@ use Throwable;
 /**
  * The Assistant class is responsible for managing and interacting with an AI assistant using the OpenAI API.
  * It provides methods for configuring the assistant, creating tasks, and retrieving responses.
+ *
+ * This class specifically handles OpenAI's Assistants API, which allows creating persistent AI assistants
+ * with their own configurations, tools, and capabilities. It uses the `modelConfig` array to store
+ * assistant-specific configuration parameters such as model selection, instructions, tools, and resources.
+ *
+ * Note: This is distinct from the AiAssistant class which handles chat completions and uses
+ * `chatTextGeneratorConfig` for session-based chat parameters. The different naming conventions
+ * are intentional to reflect their different purposes:
+ * - `modelConfig`: For persistent OpenAI Assistant creation and configuration
+ * - `chatTextGeneratorConfig`: For ephemeral chat completion sessions
  */
 final class Assistant implements AssistantContract
 {
@@ -36,6 +46,22 @@ final class Assistant implements AssistantContract
 
     protected MessageData $assistantMessageData;
 
+    /**
+     * Configuration array for OpenAI Assistant model parameters.
+     *
+     * This array stores configuration specific to the OpenAI Assistants API including:
+     * - model: The AI model to use (e.g., 'gpt-4', 'gpt-3.5-turbo')
+     * - name: Assistant name for identification
+     * - description: Assistant description
+     * - instructions: System instructions that define the assistant's behavior
+     * - tools: Array of tools the assistant can use (code_interpreter, file_search, function)
+     * - tool_resources: Resources associated with tools (file_ids, vector_store_ids)
+     * - temperature: Response creativity/randomness (0.0 to 1.0)
+     *
+     * This naming convention is intentionally different from AiAssistant's `chatTextGeneratorConfig`
+     * to reflect the semantic difference between persistent assistant configuration and
+     * ephemeral chat session parameters.
+     */
     protected array $modelConfig = [];
 
     protected bool $shouldCacheChatMessages = false;
@@ -94,7 +120,10 @@ final class Assistant implements AssistantContract
      */
     public function adjustTemperature(int|float $temperature): Assistant
     {
-        $this->modelConfig['temperature'] = $temperature;
+        if (!is_numeric($temperature) || $temperature < 0 || $temperature > 2) {
+            throw new InvalidArgumentException('Temperature must be a number between 0 and 2.');
+        }
+        $this->modelConfig['temperature'] = (float) $temperature;
         return $this;
     }
 
@@ -670,6 +699,8 @@ final class Assistant implements AssistantContract
      *               generated message, token usage information, and other metadata.
      *               The exact structure of the array depends on the AI service's
      *               response format and whether streaming was used.
+     *
+     * @deprecated since 2.0.0 Prefer Ai::chat()->send() for typed responses, or sendChatMessageDto() on Assistant for a typed DTO while preserving this flow.
      */
     public function sendChatMessage(): array
     {
@@ -682,6 +713,15 @@ final class Assistant implements AssistantContract
     }
 
     /**
+     * Sends a chat message and returns a typed DTO wrapper keeping raw array in ->toArray().
+     */
+    public function sendChatMessageDto(): DataTransferObjects\ChatResponseDto
+    {
+        $arr = $this->sendChatMessage();
+        return DataTransferObjects\ChatResponseDto::fromArray($arr);
+    }
+
+    /**
      * Opens a file and returns the file handle.
      *
      * @param string $filePath The path to the file.
@@ -690,9 +730,9 @@ final class Assistant implements AssistantContract
      */
     private function openFile(string $filePath)
     {
-        $file = fopen($filePath, 'rb');
+        $file = @fopen($filePath, 'rb');
         if ($file === false) {
-            throw new RuntimeException("Unable to open file: $filePath");
+            throw new RuntimeException("Unable to open file. Please check the file path and permissions.");
         }
         return $file;
     }

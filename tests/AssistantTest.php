@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Assistant;
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
 use CreativeCrafts\LaravelAiAssistant\DataFactories\ChatAssistantMessageDataFactory;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\MessageData;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\NewAssistantResponseData;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\CreateNewAssistantException;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
-use OpenAI\Responses\Assistants\AssistantResponse;
 use org\bovigo\vfs\vfsStream;
 
 covers(Assistant::class);
@@ -126,9 +126,15 @@ it('can include a function call tool', function () {
 });
 
 it('can create assistant and return response', function () {
+    // Configure the assistant with the expected parameters
+    $this->assistant
+        ->setModelName('gpt-3.5-turbo')
+        ->adjustTemperature(0.1)
+        ->setResponseFormat('auto');
+
     $expectedSubset = [
         'model'            => 'gpt-3.5-turbo',
-        'temperature'      => 0.3,
+        'temperature'      => 0.1,
         'response_format'  => 'auto',
     ];
 
@@ -173,7 +179,7 @@ it('can retrieve assistant by id', function () {
 
 it('can create task thread', function () {
     $threadData = ['param1' => 'value1'];
-    $threadResponseMock = Mockery::mock(OpenAI\Responses\Threads\ThreadResponse::class);
+    $threadResponseMock = Mockery::mock(CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse::class);
 
     $reflectionClass = new ReflectionClass($threadResponseMock);
     $idProperty = $reflectionClass->getProperty('id');
@@ -193,8 +199,8 @@ it('can create task thread', function () {
 it('can ask a question and send message', function () {
     $message = 'What is the weather today?';
     $threadData = ['param1' => 'value1'];
-    $threadResponseMock = mock(OpenAI\Responses\Threads\ThreadResponse::class);
-    $threadMessageResponseMock = Mockery::mock(OpenAI\Responses\Threads\Messages\ThreadMessageResponse::class);
+    $threadResponseMock = mock(CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse::class);
+    $threadMessageResponseMock = Mockery::mock(CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageResponse::class);
 
     $reflectionClass = new ReflectionClass($threadResponseMock);
     $idProperty = $reflectionClass->getProperty('id');
@@ -222,8 +228,8 @@ it('can ask a question and send message', function () {
 it('can process a message thread', function () {
     $message = 'What is the weather today?';
     $threadData = ['param1' => 'value1'];
-    $threadResponseMock = mock(OpenAI\Responses\Threads\ThreadResponse::class);
-    $threadMessageResponseMock = Mockery::mock(OpenAI\Responses\Threads\Messages\ThreadMessageResponse::class);
+    $threadResponseMock = mock(CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse::class);
+    $threadMessageResponseMock = Mockery::mock(CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageResponse::class);
 
     $reflectionClass = new ReflectionClass($threadResponseMock);
     $idProperty = $reflectionClass->getProperty('id');
@@ -272,7 +278,7 @@ it('can process a message thread', function () {
 it('can return response from message thread', function () {
     $messageResponse = 'The weather today is sunny';
     $threadData = ['param1' => 'value1'];
-    $threadResponseMock = mock(OpenAI\Responses\Threads\ThreadResponse::class);
+    $threadResponseMock = mock(CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse::class);
 
     $reflectionClass = new ReflectionClass($threadResponseMock);
     $idProperty = $reflectionClass->getProperty('id');
@@ -320,7 +326,7 @@ describe('Assistant::setFilePath', function () {
         $invalidFilePath = '/invalid/path/to/nonexistent/file.txt';
         $assistant = Assistant::new();
         $assistant->setFilePath($invalidFilePath);
-    })->throws(ErrorException::class, 'fopen(/invalid/path/to/nonexistent/file.txt): Failed to open stream: No such file or directory');
+    })->throws(RuntimeException::class, 'Unable to open file. Please check the file path and permissions.');
 });
 
 describe('Assistant::setResponseFormat', function () {
@@ -986,7 +992,7 @@ describe('Assistant::openFile', function () {
         unlink($tempFile);
     });
 
-    it('throws a ErrorException for an invalid file path', function () {
+    it('throws a RuntimeException for an invalid file path without exposing the path', function () {
         $assistant = Assistant::new();
 
         $reflection = new ReflectionClass($assistant);
@@ -995,6 +1001,6 @@ describe('Assistant::openFile', function () {
 
         $invalidFilePath = '/invalid/path/to/nonexistent/file.txt';
         expect(fn () => $method->invoke($assistant, $invalidFilePath))
-            ->toThrow(ErrorException::class, "fopen($invalidFilePath): Failed to open stream: No such file or directory");
+            ->toThrow(RuntimeException::class, "Unable to open file. Please check the file path and permissions.");
     });
 });

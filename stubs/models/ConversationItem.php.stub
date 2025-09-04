@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ConversationItem extends Model
+{
+    protected $table = 'ai_conversation_items';
+
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id', 'conversation_id', 'role', 'content', 'attachments'
+    ];
+
+    protected $casts = [
+        'content' => 'array',
+        'attachments' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /**
+     * Get the conversation that owns the conversation item.
+     */
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(Conversation::class, 'conversation_id', 'id');
+    }
+}

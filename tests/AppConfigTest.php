@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use Illuminate\Support\Facades\Config;
 use Mockery\MockInterface;
-use OpenAI\Client;
 
 beforeEach(function () {
     // Reset config to ensure clean state for each test
@@ -51,7 +51,7 @@ it('creates a new OpenAI client if no custom client is provided', function () {
 it('returns correct text generator config', function () {
     Config::set([
         'ai-assistant.model' => 'text-davinci-003',
-        'ai-assistant.max_tokens' => 100,
+        'ai-assistant.max_completion_tokens' => 100,
         'ai-assistant.temperature' => 0.7,
         'ai-assistant.stream' => true,
         'ai-assistant.echo' => false,
@@ -83,7 +83,7 @@ it('returns correct text generator config', function () {
 it('returns correct chat text generator config', function () {
     Config::set([
         'ai-assistant.chat_model' => 'gpt-3.5-turbo',
-        'ai-assistant.max_tokens' => 150,
+        'ai-assistant.max_completion_tokens' => 150,
         'ai-assistant.temperature' => 0.8,
         'ai-assistant.stream' => true,
         'ai-assistant.n' => 2,
