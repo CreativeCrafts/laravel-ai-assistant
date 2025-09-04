@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use Exception;
 use InvalidArgumentException;
 
 /**
  * Service for handling security-related operations.
- *
  * This service provides methods for API key validation, rate limiting,
  * request signing, and other security features.
  */
 class SecurityService
 {
-    private const OPENAI_API_KEY_PATTERN = '/^sk-[a-zA-Z0-9]{50}$/';
+    private const OPENAI_API_KEY_PATTERN = '/^sk-[A-Za-z0-9_-]{161}$/';
     private const OPENAI_ORG_PATTERN = '/^org-[a-zA-Z0-9]{24}$/';
     private const MAX_REQUEST_SIZE = 10 * 1024 * 1024; // 10MB
     /** @phpstan-ignore-next-line constant is intentionally unused; reserved for future feature flags */
@@ -32,104 +32,22 @@ class SecurityService
     }
 
     /**
-     * Validate OpenAI API key format and basic validity.
+     * Apply rate limiting to an operation.
      *
-     * @param string $apiKey The API key to validate
-     * @return bool True if the API key appears valid
-     * @throws \CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException When API key is invalid
+     * @param string $identifier Unique identifier for rate limiting
+     * @param callable $operation The operation to execute
+     * @param int $maxRequests Maximum requests allowed
+     * @param int $timeWindow Time window in seconds
+     * @return mixed The result of the operation
+     * @throws InvalidArgumentException When rate limit is exceeded
      */
-    public function validateApiKey(string $apiKey): bool
+    public function applyRateLimit(string $identifier, callable $operation, int $maxRequests = 100, int $timeWindow = 3600)
     {
-        if (trim($apiKey) === '') {
-            throw new \CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException('API key cannot be empty.');
+        if (!$this->checkRateLimit($identifier, $maxRequests, $timeWindow)) {
+            throw new Exception('Rate limit exceeded');
         }
 
-        // Check a basic format first (must start with sk-)
-        if (!str_starts_with($apiKey, 'sk-')) {
-            $this->loggingService->logSecurityEvent(
-                'invalid_api_key_format',
-                'API key does not match expected OpenAI format',
-                ['key_length' => strlen($apiKey), 'key_prefix' => substr($apiKey, 0, 3)]
-            );
-
-            throw new \CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException('Invalid API key format');
-        }
-
-        // Check for obvious test patterns first (before length validation)
-        $testPatterns = ['sk-test', 'sk-fake', 'sk-demo', 'sk-your-api-key-here'];
-        $keyLower = strtolower($apiKey);
-        foreach ($testPatterns as $pattern) {
-            if (str_starts_with($keyLower, strtolower($pattern))) {
-                $this->loggingService->logSecurityEvent(
-                    'suspicious_api_key',
-                    'API key appears to be invalid or test key',
-                    []
-                );
-                throw new \CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException('API key appears to be invalid or a test key.');
-            }
-        }
-
-        // Check length first - this catches boundary conditions like very long keys
-        if (strlen($apiKey) !== 53) { // sk- + 50 characters
-            $this->loggingService->logSecurityEvent(
-                'invalid_api_key_format',
-                'API key does not match expected OpenAI format',
-                ['key_length' => strlen($apiKey), 'key_prefix' => substr($apiKey, 0, 3)]
-            );
-            throw new \CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException('API key length is invalid.');
-        }
-
-        // Check if the API key matches the expected OpenAI format (only for proper length keys)
-        if (!preg_match(self::OPENAI_API_KEY_PATTERN, $apiKey)) {
-            $this->loggingService->logSecurityEvent(
-                'invalid_api_key_format',
-                'API key does not match expected OpenAI format',
-                ['key_length' => strlen($apiKey), 'key_prefix' => substr($apiKey, 0, 3)]
-            );
-
-            throw new \CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException('Invalid API key format');
-        }
-
-        // Check for other obvious invalid patterns (like repeated chars) - only for proper length keys
-        if ($this->isObviouslyInvalidApiKey($apiKey)) {
-            $this->loggingService->logSecurityEvent(
-                'suspicious_api_key',
-                'API key appears to be invalid or test key',
-                []
-            );
-
-            throw new \CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException('API key appears to be invalid or a test key.');
-        }
-
-        return true;
-    }
-
-    /**
-     * Validate OpenAI organization ID format.
-     *
-     * @param string $organizationId The organization ID to validate
-     * @return bool True if the organization ID appears valid
-     * @throws InvalidArgumentException When organization ID is invalid
-     */
-    public function validateOrganizationId(string $organizationId): bool
-    {
-        if (trim($organizationId) === '') {
-            return true; // Organization ID is optional
-        }
-
-        if (!preg_match(self::OPENAI_ORG_PATTERN, $organizationId)) {
-            $this->loggingService->logSecurityEvent(
-                'invalid_organization_id',
-                'Organization ID does not match expected format',
-                ['org_length' => strlen($organizationId)]
-            );
-
-            throw new InvalidArgumentException(
-                'Invalid organization ID format. Organization IDs should start with "org-" and contain 24 characters after the prefix.'
-            );
-        }
-
-        return true;
+        return $operation();
     }
 
     /**
@@ -184,7 +102,6 @@ class SecurityService
             );
 
             return true;
-
         } catch (Exception $e) {
             // If caching fails, allow the request but log the error
             $this->loggingService->logError(
@@ -195,47 +112,6 @@ class SecurityService
 
             return true;
         }
-    }
-
-    /**
-     * Apply rate limiting to an operation.
-     *
-     * @param string $identifier Unique identifier for rate limiting
-     * @param callable $operation The operation to execute
-     * @param int $maxRequests Maximum requests allowed
-     * @param int $timeWindow Time window in seconds
-     * @return mixed The result of the operation
-     * @throws InvalidArgumentException When rate limit is exceeded
-     */
-    public function applyRateLimit(string $identifier, callable $operation, int $maxRequests = 100, int $timeWindow = 3600)
-    {
-        if (!$this->checkRateLimit($identifier, $maxRequests, $timeWindow)) {
-            throw new Exception('Rate limit exceeded');
-        }
-
-        return $operation();
-    }
-
-    /**
-     * Generate a simple request signature for integrity verification.
-     *
-     * @param array $payload The request payload
-     * @param string $secret Secret key for signing
-     * @return string Request signature
-     */
-    public function generateRequestSignature(array $payload, string $secret): string
-    {
-        if (trim($secret) === '') {
-            throw new InvalidArgumentException('Secret cannot be empty');
-        }
-
-        // Sort the payload keys for deterministic JSON encoding
-        ksort($payload);
-        $payloadJson = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $timestamp = isset($payload['timestamp']) ? $payload['timestamp'] : time();
-        $stringToSign = $timestamp . '.' . $payloadJson;
-
-        return hash_hmac('sha256', $stringToSign, $secret);
     }
 
     /**
@@ -255,7 +131,7 @@ class SecurityService
         // Validate timestamp if present
         if (isset($payload['timestamp'])) {
             $currentTime = time();
-            $requestTime = (int) $payload['timestamp'];
+            $requestTime = (int)$payload['timestamp'];
             $toleranceSeconds = 300;
 
             if (abs($currentTime - $requestTime) > $toleranceSeconds) {
@@ -289,6 +165,28 @@ class SecurityService
         }
 
         return true;
+    }
+
+    /**
+     * Generate a simple request signature for integrity verification.
+     *
+     * @param array $payload The request payload
+     * @param string $secret Secret key for signing
+     * @return string Request signature
+     */
+    public function generateRequestSignature(array $payload, string $secret): string
+    {
+        if (trim($secret) === '') {
+            throw new InvalidArgumentException('Secret cannot be empty');
+        }
+
+        // Sort the payload keys for deterministic JSON encoding
+        ksort($payload);
+        $payloadJson = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $timestamp = isset($payload['timestamp']) ? $payload['timestamp'] : time();
+        $stringToSign = $timestamp . '.' . $payloadJson;
+
+        return hash_hmac('sha256', $stringToSign, $secret);
     }
 
     /**
@@ -456,6 +354,107 @@ class SecurityService
             'is_secure' => empty($warnings),
             'warnings' => $warnings
         ];
+    }
+
+    /**
+     * Validate OpenAI API key format and basic validity.
+     *
+     * @param string $apiKey The API key to validate
+     * @return bool True if the API key appears valid
+     * @throws InvalidApiKeyException When API key is invalid
+     */
+    public function validateApiKey(string $apiKey): bool
+    {
+        if (trim($apiKey) === '') {
+            throw new InvalidApiKeyException('API key cannot be empty.');
+        }
+
+        // Check a basic format first (must start with sk-)
+        if (!str_starts_with($apiKey, 'sk-')) {
+            $this->loggingService->logSecurityEvent(
+                'invalid_api_key_format',
+                'API key does not match expected OpenAI format',
+                ['key_length' => strlen($apiKey), 'key_prefix' => substr($apiKey, 0, 3)]
+            );
+
+            throw new InvalidApiKeyException('Invalid API key format');
+        }
+
+        // Check for obvious test patterns first (before length validation)
+        $testPatterns = ['sk-test', 'sk-fake', 'sk-demo', 'sk-your-api-key-here'];
+        $keyLower = strtolower($apiKey);
+        foreach ($testPatterns as $pattern) {
+            if (str_starts_with($keyLower, strtolower($pattern))) {
+                $this->loggingService->logSecurityEvent(
+                    'suspicious_api_key',
+                    'API key appears to be invalid or test key',
+                    []
+                );
+                throw new InvalidApiKeyException('API key appears to be invalid or a test key.');
+            }
+        }
+
+        // Check length first - this catches boundary conditions like very long keys
+        if (strlen($apiKey) !== 164) { // sk- + 164 characters
+            $this->loggingService->logSecurityEvent(
+                'invalid_api_key_format',
+                'API key does not match expected OpenAI format',
+                ['key_length' => strlen($apiKey), 'key_prefix' => substr($apiKey, 0, 3)]
+            );
+            throw new InvalidApiKeyException('API key length is invalid.');
+        }
+
+        // Check if the API key matches the expected OpenAI format (only for proper length keys)
+        if (!preg_match(self::OPENAI_API_KEY_PATTERN, $apiKey)) {
+            $this->loggingService->logSecurityEvent(
+                'invalid_api_key_format',
+                'API key does not match expected OpenAI format',
+                ['key_length' => strlen($apiKey), 'key_prefix' => substr($apiKey, 0, 3)]
+            );
+
+            throw new InvalidApiKeyException('Invalid API key format');
+        }
+
+        // Check for other obvious invalid patterns (like repeated chars) - only for proper length keys
+        if ($this->isObviouslyInvalidApiKey($apiKey)) {
+            $this->loggingService->logSecurityEvent(
+                'suspicious_api_key',
+                'API key appears to be invalid or test key',
+                []
+            );
+
+            throw new InvalidApiKeyException('API key appears to be invalid or a test key.');
+        }
+
+        return true;
+    }
+
+    /**
+     * Validate OpenAI organization ID format.
+     *
+     * @param string $organizationId The organization ID to validate
+     * @return bool True if the organization ID appears valid
+     * @throws InvalidArgumentException When organization ID is invalid
+     */
+    public function validateOrganizationId(string $organizationId): bool
+    {
+        if (trim($organizationId) === '') {
+            return true; // Organization ID is optional
+        }
+
+        if (!preg_match(self::OPENAI_ORG_PATTERN, $organizationId)) {
+            $this->loggingService->logSecurityEvent(
+                'invalid_organization_id',
+                'Organization ID does not match expected format',
+                ['org_length' => strlen($organizationId)]
+            );
+
+            throw new InvalidArgumentException(
+                'Invalid organization ID format. Organization IDs should start with "org-" and contain 24 characters after the prefix.'
+            );
+        }
+
+        return true;
     }
 
     /**

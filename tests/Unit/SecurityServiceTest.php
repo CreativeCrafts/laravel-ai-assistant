@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\Services\SecurityService;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
 use CreativeCrafts\LaravelAiAssistant\Services\LoggingService;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
+use CreativeCrafts\LaravelAiAssistant\Services\SecurityService;
 
 /**
  * Comprehensive unit tests for SecurityService.
- *
  * Tests all public methods including API key validation, rate limiting,
  * request signing, and data sanitization functionality.
  */
@@ -29,7 +28,7 @@ afterEach(function () {
 });
 
 test('validate api key with valid key', function () {
-    $validApiKey = 'sk-abcdef1234567890abcdef1234567890abcdef123456789012';
+    $validApiKey = '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';
 
     $result = $this->securityService->validateApiKey($validApiKey);
 
@@ -309,8 +308,9 @@ test('generate secure token throws exception for short length', function () {
 });
 
 test('validate configuration security with valid config', function () {
+    $validApiKey = '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';
     $config = [
-        'api_key' => 'sk-abcdef1234567890abcdef1234567890abcdef123456789012',
+        'api_key' => $validApiKey,
         'organization_id' => 'org-1234567890abcdef12345678'
     ];
 
@@ -336,8 +336,9 @@ test('validate configuration security throws exception for missing api key', fun
 });
 
 test('validate configuration security with warnings', function () {
+    $validApiKey = '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';
     $config = [
-        'api_key' => 'sk-abcdef1234567890abcdef1234567890abcdef123456789012',
+        'api_key' => $validApiKey,
         'organization_id' => '', // Empty org ID should trigger warning
         'debug_mode' => true // Debug mode should trigger warning
     ];

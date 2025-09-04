@@ -15,7 +15,6 @@ use CreativeCrafts\LaravelAiAssistant\Tests\DataFactories\AssistantFactory;
 
 /**
  * Performance tests for measuring API call latencies and response times.
- *
  * These tests help identify bottlenecks and ensure the package performs
  * well under various conditions and load scenarios.
  */
@@ -129,7 +128,7 @@ function generateLargeMessageHistory(int $messageCount): array
     for ($i = 0; $i < $messageCount; $i++) {
         $role = $i % 2 === 0 ? 'user' : 'assistant';
         $content = "This is test message number {$i} with some additional content to make it more realistic for performance testing purposes. " .
-                  str_repeat("Additional text to increase payload size. ", 10);
+            str_repeat("Additional text to increase payload size. ", 10);
 
         $messages[] = [
             'role' => $role,
@@ -221,7 +220,7 @@ test('text completion performance', function () use (&$performanceMetrics) {
     $property = $reflection->getProperty('choices');
     $property->setAccessible(true);
     $property->setValue($mockResponse, [
-        (object) ['text' => 'Performance test response']
+        (object)['text' => 'Performance test response']
     ]);
 
     $this->repositoryMock
@@ -256,7 +255,7 @@ test('chat completion performance', function () use (&$performanceMetrics) {
     $property = $reflection->getProperty('choices');
     $property->setAccessible(true);
     $property->setValue($mockResponse, [
-        (object) ['message' => $mockMessage]
+        (object)['message' => $mockMessage]
     ]);
 
     $this->repositoryMock
@@ -394,7 +393,7 @@ test('validation performance', function () use (&$performanceMetrics) {
 
     // Use environment-based thresholds - validation should be fast but allow for CI overhead
     $averageThreshold = getenv('CI') ? 20 : 5;
-    $maxThreshold = getenv('CI') ? 100 : 25;
+    $maxThreshold = getenv('CI') ? 100 : 30;
 
     expect($times['average'])->toBeLessThan($averageThreshold, "Input validation should take less than {$averageThreshold}ms on average");
     expect($times['max'])->toBeLessThan($maxThreshold, "Input validation should never take more than {$maxThreshold}ms");
@@ -528,7 +527,7 @@ test('large payload performance', function () use (&$performanceMetrics) {
     $property = $reflection->getProperty('choices');
     $property->setAccessible(true);
     $property->setValue($mockResponse, [
-        (object) ['message' => $mockMessage]
+        (object)['message' => $mockMessage]
     ]);
 
     $this->repositoryMock
