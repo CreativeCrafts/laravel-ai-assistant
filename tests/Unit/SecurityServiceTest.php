@@ -28,7 +28,7 @@ afterEach(function () {
 });
 
 test('validate api key with valid key', function () {
-    $validApiKey = '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';
+    $validApiKey = 'sk-proj-sRum7W1AChLYOkji4VOzoI4P0OPhXkRfp7mn1fH6lOCxaS_II3Tt6lvbSdF3NcvJUde795bsfffffkskkdskdlkslkskldklskdkdfkldfkfdkfdklfklflkfkldklfdkfklfdkldkfklfklfkfkkfklflkf';
 
     $result = $this->securityService->validateApiKey($validApiKey);
 
@@ -308,7 +308,7 @@ test('generate secure token throws exception for short length', function () {
 });
 
 test('validate configuration security with valid config', function () {
-    $validApiKey = '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';
+    $validApiKey = 'sk-proj-sRum7W1AChLYOkji4VOzoI4P0OPhXkRfp7mn1fH6lOCxaS_II3Tt6lvbSdF3NcvJUde795bsfffffkskkdskdlkslkskldklskdkdfkldfkfdkfdklfklflkfkldklfdkfklfdkldkfklfklfkfkkfklflkf';
     $config = [
         'api_key' => $validApiKey,
         'organization_id' => 'org-1234567890abcdef12345678'
@@ -336,7 +336,7 @@ test('validate configuration security throws exception for missing api key', fun
 });
 
 test('validate configuration security with warnings', function () {
-    $validApiKey = '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';
+    $validApiKey = 'sk-proj-sRum7W1AChLYOkji4VOzoI4P0OPhXkRfp7mn1fH6lOCxaS_II3Tt6lvbSdF3NcvJUde795bsfffffkskkdskdlkslkskldklskdkdfkldfkfdkfdklfklflkfkldklfdkfklfdkldkfklfklfkfkkfklflkf';
     $config = [
         'api_key' => $validApiKey,
         'organization_id' => '', // Empty org ID should trigger warning
