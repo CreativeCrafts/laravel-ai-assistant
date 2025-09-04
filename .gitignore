@@ -9,3 +9,10 @@ phpstan.neon
 testbench.yaml
 vendor
 node_modules
+.junie
+PACKAGING_VERIFICATION_REPORT.md
+SECURITY_VERIFICATION_REPORT.md
+CHANGELOG_OLD.md
+SCALING_VERIFICATION_REPORT.md
+validation_performance_test.php
+src/LaravelAiAssistantServiceProvider.php.backup

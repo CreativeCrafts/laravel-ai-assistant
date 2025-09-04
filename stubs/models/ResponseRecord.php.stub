@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class ResponseRecord extends Model
+{
+    protected $table = 'ai_responses';
+
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id', 'conversation_id', 'status', 'output_summary', 'token_usage', 'timings', 'error'
+    ];
+
+    protected $casts = [
+        'token_usage' => 'array',
+        'timings' => 'array',
+        'error' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /**
+     * Get the conversation that owns the response.
+     */
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(Conversation::class, 'conversation_id', 'id');
+    }
+
+    /**
+     * Get the tool invocations for the response.
+     */
+    public function toolInvocations(): HasMany
+    {
+        return $this->hasMany(ToolInvocation::class, 'response_id', 'id');
+    }
+}

@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
 use CreativeCrafts\LaravelAiAssistant\Assistant;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 
 interface AssistantContract
 {
@@ -404,4 +405,10 @@ interface AssistantContract
      *               response format and whether streaming was used.
      */
     public function sendChatMessage(): array;
+
+    /**
+     * Typed DTO alternative to sendChatMessage().
+     * Prefer this or Ai::chat()->send() for a Laravel-native, strongly-typed API.
+     */
+    public function sendChatMessageDto(): ChatResponseDto;
 }

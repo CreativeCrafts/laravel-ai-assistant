@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
-use OpenAI\Responses\Assistants\AssistantResponse;
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
 
 interface NewAssistantResponseDataContract
 {

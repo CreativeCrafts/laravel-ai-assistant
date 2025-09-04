@@ -1,82 +1,104 @@
 {
-    "name": "creativecrafts/laravel-ai-assistant",
-    "description": "A handy package to access and interact with OpenAi endpoint",
-    "keywords": [
-        "creativeCrafts",
-        "laravel",
-        "laravel-ai-assistant",
-        "openai",
-        "chatgpt",
-        "ai assistant"
+  "name": "creativecrafts/laravel-ai-assistant",
+  "description": "A handy package to access and interact with OpenAi endpoint",
+  "keywords": [
+    "creativeCrafts",
+    "laravel",
+    "laravel-ai-assistant",
+    "openai",
+    "chatgpt",
+    "ai assistant"
+  ],
+  "homepage": "https://github.com/creativecrafts/laravel-ai-assistant",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Godspower Oduose",
+      "email": "creativecraftssolutions@gmail.com",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": "^8.3|^8.2",
+    "guzzlehttp/guzzle": "^7.9",
+    "illuminate/contracts": "^12|^11|^10.0",
+    "openai-php/client": "^0.10",
+    "spatie/laravel-package-tools": "^1.19",
+    "symfony/http-client": "^6.3|^7.2"
+  },
+  "require-dev": {
+    "fakerphp/faker": "^1.24",
+    "larastan/larastan": "^2.11",
+    "laravel/pint": "^1.24",
+    "mikey179/vfsstream": "^1.6",
+    "mockery/mockery": "^1.6",
+    "nunomaduro/collision": "^8.8|^7.0",
+    "nunomaduro/mock-final-classes": "^1.2",
+    "orchestra/testbench": "^10.0|^9.15|^8.0",
+    "pestphp/pest": "^3.8",
+    "pestphp/pest-plugin-arch": "^3.1",
+    "pestphp/pest-plugin-laravel": "^3.2",
+    "phpstan/extension-installer": "^1.4",
+    "phpstan/phpstan-phpunit": "^1.4",
+    "roave/security-advisories": "dev-latest"
+  },
+  "autoload": {
+    "psr-4": {
+      "CreativeCrafts\\LaravelAiAssistant\\": "src/",
+      "CreativeCrafts\\LaravelAiAssistant\\Database\\Factories\\": "database/factories/"
+    },
+    "files": [
+      "src/Compat/OpenAI/aliases.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "CreativeCrafts\\LaravelAiAssistant\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "post-autoload-dump": "@php ./vendor/bin/testbench package:discover --ansi",
+    "analyse": "vendor/bin/phpstan analyse",
+    "test": "vendor/bin/pest",
+    "test-coverage": "vendor/bin/pest --coverage",
+    "test-mutation": "vendor/bin/infection",
+    "format": "vendor/bin/pint",
+    "check-deps": "composer outdated --direct",
+    "validate-composer": "composer validate --strict",
+    "security-audit": "composer audit",
+    "quality": [
+      "@validate-composer",
+      "@analyse",
+      "@test",
+      "@format"
     ],
-    "homepage": "https://github.com/creativecrafts/laravel-ai-assistant",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Godspower Oduose",
-            "email": "creativecraftssolutions@gmail.com",
-            "role": "Developer"
-        }
-    ],
-    "require": {
-        "php": "^8.3|^8.2",
-        "guzzlehttp/guzzle": "^7.9",
-        "illuminate/contracts": "^12.0|^11.0|^10.0",
-        "openai-php/client": "^0.7|^0.10",
-        "spatie/laravel-package-tools": "^1.19",
-        "symfony/http-client": "^6.3|^7.2"
-    },
-    "require-dev": {
-        "fakerphp/faker": "^1.24",
-        "larastan/larastan": "^2.9",
-        "laravel/pint": "^1.21",
-        "mikey179/vfsstream": "^1.6",
-        "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6|^7.0",
-        "nunomaduro/mock-final-classes": "^1.2",
-        "orchestra/testbench": "^10.0|^9.11|^8.0",
-        "pestphp/pest": "^3.7",
-        "pestphp/pest-plugin-arch": "^3.0",
-        "pestphp/pest-plugin-laravel": "^3.1",
-        "phpstan/extension-installer": "^1.4",
-        "phpstan/phpstan-phpunit": "^1.4"
-    },
-    "autoload": {
-        "psr-4": {
-            "CreativeCrafts\\LaravelAiAssistant\\": "src/",
-            "CreativeCrafts\\LaravelAiAssistant\\Database\\Factories\\": "database/factories/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "CreativeCrafts\\LaravelAiAssistant\\Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "post-autoload-dump": "@php ./vendor/bin/testbench package:discover --ansi",
-        "analyse": "vendor/bin/phpstan analyse",
-        "test": "vendor/bin/pest",
-        "test-coverage": "vendor/bin/pest --coverage",
-        "format": "vendor/bin/pint"
-    },
-    "config": {
-        "sort-packages": true,
-        "allow-plugins": {
-            "pestphp/pest-plugin": true,
-            "phpstan/extension-installer": true,
-            "php-http/discovery": true
-        }
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "CreativeCrafts\\LaravelAiAssistant\\LaravelAiAssistantServiceProvider"
-            ],
-            "aliases": {
-                "LaravelAiAssistant": "CreativeCrafts\\LaravelAiAssistant\\Facades\\LaravelAiAssistant"
-            }
-        }
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": true
+    "ci": [
+      "@validate-composer",
+      "@audit",
+      "@analyse",
+      "@test-coverage"
+    ]
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true,
+      "phpstan/extension-installer": true,
+      "php-http/discovery": true
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "CreativeCrafts\\LaravelAiAssistant\\LaravelAiAssistantServiceProvider"
+      ],
+      "aliases": {
+        "AiAssistant": "CreativeCrafts\\LaravelAiAssistant\\Facades\\AiAssistant",
+        "Assistant": "CreativeCrafts\\LaravelAiAssistant\\Facades\\Assistant",
+        "Ai": "CreativeCrafts\\LaravelAiAssistant\\Facades\\Ai"
+      }
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
 }

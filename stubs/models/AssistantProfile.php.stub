@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class AssistantProfile extends Model
+{
+    protected $table = 'ai_assistant_profiles';
+
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id', 'name', 'default_model', 'default_instructions', 'tools', 'metadata'
+    ];
+
+    protected $casts = [
+        'tools' => 'array',
+        'metadata' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+}

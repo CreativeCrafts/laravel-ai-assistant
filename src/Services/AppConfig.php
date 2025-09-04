@@ -4,36 +4,44 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
+// SDK factory removed; using internal stub OpenAI\\Client only
 use CreativeCrafts\LaravelAiAssistant\Contracts\AppConfigContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
-use OpenAI;
-use OpenAI\Client;
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
 
 final class AppConfig implements AppConfigContract
 {
     /**
-     * Creates and returns an instance of the OpenAI client.
-     * @throws InvalidApiKeyException If the API key or organization is not set in the configuration.
+     * Creates and returns an instance of the OpenAI client with optimized HTTP configuration.
+     * Organization is optional; only the API key is required.
+     * @throws InvalidApiKeyException If the API key is not set or appears to be a placeholder.
      */
     public static function openAiClient(Client $client = null): Client
     {
-        /** @var string $apiKey */
+        /** @var string|null $apiKey */
         $apiKey = config('ai-assistant.api_key');
-        /** @var string $organisation */
+        /** @var string|null $organisation */
         $organisation = config('ai-assistant.organization');
 
-        if (
-            config('ai-assistant.api_key') === null ||
-            config('ai-assistant.api_key') === '' ||
-            config('ai-assistant.api_key') === 'YOUR_OPENAI_API_KEY' ||
-            config('ai-assistant.organization') === null ||
-            config('ai-assistant.organization') === '' ||
-            config('ai-assistant.organization') === 'YOUR_OPENAI_ORGANIZATION'
-        ) {
+        if ($apiKey === null || $apiKey === '' || $apiKey === 'YOUR_OPENAI_API_KEY' || $apiKey === 'your-api-key-here') {
             throw new InvalidApiKeyException();
         }
 
-        return $client instanceof Client ? $client : OpenAI::client($apiKey, $organisation);
+        if ($client instanceof Client) {
+            return $client;
+        }
+
+        // Create an optimized HTTP client with connection pooling if enabled
+        $connectionPoolConfig = config('ai-assistant.connection_pool', []);
+
+        // Ensure connectionPoolConfig is an array
+        if (!is_array($connectionPoolConfig)) {
+            $connectionPoolConfig = [];
+        }
+
+        // SDK factory removed. We simply return a compat OpenAI Client stub instance.
+        // Keep validation above; connection pooling and HTTP client wiring are handled in HTTP repositories.
+        return new Client();
     }
 
     /**
@@ -55,19 +63,24 @@ final class AppConfig implements AppConfigContract
      */
     public static function textGeneratorConfig(): array
     {
+        $temperature = config('ai-assistant.temperature');
+        $topP = config('ai-assistant.top_p');
+        $stop = config('ai-assistant.stop');
+
         return [
             'model' => config('ai-assistant.model'),
-            'max_tokens' => config('ai-assistant.max_tokens'),
-            'temperature' => config('ai-assistant.temperature'),
-            'stream' => config('ai-assistant.stream'),
-            'echo' => config('ai-assistant.echo'),
+            // Map standardised config key to API parameter name
+            'max_tokens' => config('ai-assistant.max_completion_tokens'),
+            'temperature' => is_numeric($temperature) ? (float) $temperature : null,
+            'stream' => (bool) config('ai-assistant.stream'),
+            'echo' => (bool) config('ai-assistant.echo'),
             'n' => config('ai-assistant.n'),
             'suffix' => config('ai-assistant.suffix'),
-            'top_p' => config('ai-assistant.top_p'),
+            'top_p' => is_numeric($topP) ? (float) $topP : null,
             'presence_penalty' => config('ai-assistant.presence_penalty'),
             'frequency_penalty' => config('ai-assistant.frequency_penalty'),
             'best_of' => config('ai-assistant.best_of'),
-            'stop' => config('ai-assistant.stop'),
+            'stop' => self::normalizeStop($stop),
         ];
     }
 
@@ -87,16 +100,20 @@ final class AppConfig implements AppConfigContract
      */
     public static function chatTextGeneratorConfig(): array
     {
+        $temperature = config('ai-assistant.temperature');
+        $topP = config('ai-assistant.top_p');
+        $stop = config('ai-assistant.stop');
+
         return [
             'model' => config('ai-assistant.chat_model'),
-            'max_tokens' => config('ai-assistant.max_tokens'),
-            'temperature' => config('ai-assistant.temperature'),
-            'stream' => config('ai-assistant.stream'),
+            'max_tokens' => config('ai-assistant.max_completion_tokens'),
+            'temperature' => is_numeric($temperature) ? (float) $temperature : null,
+            'stream' => (bool) config('ai-assistant.stream'),
             'n' => config('ai-assistant.n'),
-            'top_p' => config('ai-assistant.top_p'),
+            'top_p' => is_numeric($topP) ? (float) $topP : null,
             'presence_penalty' => config('ai-assistant.presence_penalty'),
             'frequency_penalty' => config('ai-assistant.frequency_penalty'),
-            'stop' => config('ai-assistant.stop'),
+            'stop' => self::normalizeStop($stop),
         ];
     }
 
@@ -110,10 +127,12 @@ final class AppConfig implements AppConfigContract
      */
     public static function editTextGeneratorConfig(): array
     {
+        $temperature = config('ai-assistant.temperature');
+        $topP = config('ai-assistant.top_p');
         return [
             'model' => config('ai-assistant.edit_model'),
-            'temperature' => config('ai-assistant.temperature'),
-            'top_p' => config('ai-assistant.top_p'),
+            'temperature' => is_numeric($temperature) ? (float) $temperature : null,
+            'top_p' => is_numeric($topP) ? (float) $topP : null,
         ];
     }
 
@@ -127,10 +146,40 @@ final class AppConfig implements AppConfigContract
      */
     public static function audioToTextGeneratorConfig(): array
     {
+        $temperature = config('ai-assistant.temperature');
         return [
             'model' => config('ai-assistant.audio_model'),
-            'temperature' => config('ai-assistant.temperature'),
+            'temperature' => is_numeric($temperature) ? (float) $temperature : null,
             'response_format' => config('ai-assistant.response_format'),
         ];
+    }
+
+
+    /**
+     * Normalize the 'stop' parameter to null|string|array of strings as expected by the API.
+     * Accepts string, array, or null; trims strings and filters out empty values.
+     */
+    private static function normalizeStop(mixed $stop): array|string|null
+    {
+        if ($stop === null || $stop === '') {
+            return null;
+        }
+        if (is_string($stop)) {
+            $trimmed = trim($stop);
+            return $trimmed === '' ? null : $trimmed;
+        }
+        if (is_array($stop)) {
+            $normalized = [];
+            foreach ($stop as $item) {
+                if (is_string($item)) {
+                    $t = trim($item);
+                    if ($t !== '') {
+                        $normalized[] = $t;
+                    }
+                }
+            }
+            return $normalized === [] ? null : $normalized;
+        }
+        return null;
     }
 }

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
-use OpenAI\Client;
-use OpenAI\Responses\Assistants\AssistantResponse;
-use OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
-use OpenAI\Responses\Threads\ThreadResponse;
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
+use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse;
 
 interface AssistantResourceContract
 {

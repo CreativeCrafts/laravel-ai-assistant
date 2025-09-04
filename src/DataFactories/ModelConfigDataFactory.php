@@ -49,7 +49,7 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
 
         return new TranscribeToData(
             model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.audio_model'))->value(),
-            temperature: $configData->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
+            temperature: $configData->float(key: 'temperature', default: is_numeric(Config::get('ai-assistant.temperature')) ? (float) Config::get('ai-assistant.temperature') : 0.0),
             responseFormat: $configData->string(key: 'response_format', default: 'json')->value(),
             filePath: $config['file'],
             language: $configData->string(key: 'language', default: 'en')->value(),
@@ -88,8 +88,8 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
 
         return new CreateAssistantData(
             model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value(),
-            topP: $configData->float(key: 'top_p', default: Config::integer(key: 'ai-assistant.top_p')),
-            temperature: $configData->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
+            topP: $configData->float(key: 'top_p', default: is_numeric(Config::get('ai-assistant.top_p')) ? (float) Config::get('ai-assistant.top_p') : 1.0),
+            temperature: $configData->float(key: 'temperature', default: is_numeric(Config::get('ai-assistant.temperature')) ? (float) Config::get('ai-assistant.temperature') : 0.0),
             assistantDescription: $configData->string(key: 'description')->value(),
             assistantName: $configData->string(key: 'name')->value(),
             instructions: $configData->string(key: 'instructions')->value(),
@@ -138,7 +138,7 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
             stopSequences: $configData->array(key: 'stop'),
             stream: $configData->boolean(key: 'stream'),
             streamOptions: $configData->array(key: 'stream_options'),
-            topP: $configData->float(key: 'top_p', default: Config::integer(key: 'ai-assistant.top_p'))
+            topP: $configData->float(key: 'top_p', default: Config::float(key: 'ai-assistant.top_p'))
         );
     }
 
