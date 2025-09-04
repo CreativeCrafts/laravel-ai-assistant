@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0-beta] - 2025-09-03
 
-### 🚀 Major Release—Complete Architecture Overhaul
+### 🚀 Major Release—Complete Architecture Overhaul (Not production ready)
 
 This is a major release featuring a complete architectural redesign, enhanced performance, security improvements, and extensive new functionality.
 **This release contains breaking changes**—please see [UPGRADE.md](UPGRADE.md) for detailed migration instructions.
