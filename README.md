@@ -5,15 +5,18 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 
-Laravel AI Assistant is an enterprise-grade, comprehensive package designed to seamlessly integrate OpenAI's powerful language models into your Laravel applications. It provides an easy-to-use, fluent API with advanced features including streaming responses, background job processing, lazy loading optimization, comprehensive metrics collection, robust security controls, and sophisticated error handling. Perfect for building production-ready AI-powered applications with enterprise-level reliability and performance.
+Laravel AI Assistant is an enterprise-grade, comprehensive package designed to seamlessly integrate OpenAI's powerful language models into your Laravel applications. It provides an easy-to-use, fluent
+API with advanced features including streaming responses, background job processing, lazy loading optimization, comprehensive metrics collection, robust security controls, and sophisticated error
+handling. Perfect for building production-ready AI-powered applications with enterprise-level reliability and performance.
 
 ---
 
-## 🔄 Migration Guide
+## 🔄 Migration Guide (Version 3.x is current in beta and not ready for production)
 
 ### Upgrading to Latest Version
 
 #### From v2.x to v3.x
+
 - **Breaking Change:** The default model has been updated from `gpt-4` to `gpt-5`
 - **Breaking Change:** Streaming configuration has been moved from root level to `streaming` array
 - **New Feature:** Responses API is now the default for new installations
@@ -33,6 +36,7 @@ Laravel AI Assistant is an enterprise-grade, comprehensive package designed to s
   ```
 
 #### From v1.x to v2.x
+
 - **Breaking Change:** Minimum PHP version increased to 8.2
 - **Breaking Change:** Laravel 9 support dropped, minimum Laravel 10 required
 - **New Feature:** Background job processing added
@@ -44,6 +48,7 @@ Laravel AI Assistant is an enterprise-grade, comprehensive package designed to s
   ```
 
 #### Migration Steps
+
 1. **Update Dependencies:**
    ```bash
    composer update creativecrafts/laravel-ai-assistant
@@ -55,12 +60,12 @@ Laravel AI Assistant is an enterprise-grade, comprehensive package designed to s
    ```
 
 3. **Update Environment Variables:**
-   - Review your `.env` file against the new configuration options
-   - Update any deprecated environment variables
+    - Review your `.env` file against the new configuration options
+    - Update any deprecated environment variables
 
 4. **Test Your Implementation:**
-   - Run your test suite to ensure compatibility
-   - Check for any deprecated method usage
+    - Run your test suite to ensure compatibility
+    - Check for any deprecated method usage
 
 5. **Update Database (if using Eloquent persistence):**
    ```bash
@@ -69,6 +74,7 @@ Laravel AI Assistant is an enterprise-grade, comprehensive package designed to s
    ```
 
 #### Deprecated Features
+
 - ⚠️ `Assistant::sendMessage()` - Use `sendChatMessage()` instead
 - ⚠️ Root-level streaming config - Use `streaming` array configuration
 - ⚠️ Legacy thread management - Migrate to Responses API for better performance
@@ -86,18 +92,18 @@ For detailed migration instructions, see the [migration documentation](docs/Migr
 - [Configuration](#configuration)
 - [Core Usage](#core-usage)
 - [Advanced Features](#advanced-features)
-  - [Streaming Service](#streaming-service)
-  - [Background Jobs](#background-jobs)
-  - [Lazy Loading](#lazy-loading)
-  - [Metrics Collection](#metrics-collection)
-  - [Security Features](#security-features)
-  - [Performance Optimizations](#performance-optimizations)
+    - [Streaming Service](#streaming-service)
+    - [Background Jobs](#background-jobs)
+    - [Lazy Loading](#lazy-loading)
+    - [Metrics Collection](#metrics-collection)
+    - [Security Features](#security-features)
+    - [Performance Optimizations](#performance-optimizations)
 - [Error Handling & Exceptions](#error-handling--exceptions)
 - [Best Practices](#best-practices)
 - [Cookbook](#cookbook)
-  - [Chat with JSON output](#chat-with-json-output)
-  - [Function calling with a Laravel job executor (queue)](#function-calling-with-a-laravel-job-executor-queue)
-  - [Attach files and enable file search (vector stores)](#attach-files-and-enable-file-search-vector-stores)
+    - [Chat with JSON output](#chat-with-json-output)
+    - [Function calling with a Laravel job executor (queue)](#function-calling-with-a-laravel-job-executor-queue)
+    - [Attach files and enable file search (vector stores)](#attach-files-and-enable-file-search-vector-stores)
 - [Examples](#examples)
 - [Testing](#testing)
 - [Contributing](#contributing)
@@ -107,9 +113,11 @@ For detailed migration instructions, see the [migration documentation](docs/Migr
 
 ## Overview
 
-Laravel AI Assistant simplifies the integration of AI models into your Laravel application with enterprise-grade features. Whether you're building a conversational chatbot, automating content creation, transcribing audio files, or processing large-scale AI operations, this package provides a clean, expressive API to handle complex tasks with minimal effort.
+Laravel AI Assistant simplifies the integration of AI models into your Laravel application with enterprise-grade features. Whether you're building a conversational chatbot, automating content
+creation, transcribing audio files, or processing large-scale AI operations, this package provides a clean, expressive API to handle complex tasks with minimal effort.
 
 The package now includes advanced architectural improvements:
+
 - **Enterprise-grade streaming** with memory management and performance monitoring
 - **Background job processing** for long-running AI operations
 - **Lazy loading optimization** for better resource management
@@ -125,22 +133,27 @@ The package now includes advanced architectural improvements:
 Get up and running with Laravel AI Assistant in just 5 minutes:
 
 ### 1. Install the Package
+
 ```bash
 composer require creativecrafts/laravel-ai-assistant
 ```
 
 ### 2. Set Your API Key
+
 Add your OpenAI API key to your `.env` file:
+
 ```env
 OPENAI_API_KEY=your-openai-api-key-here
 ```
 
 ### 3. Publish Configuration (Optional)
+
 ```bash
 php artisan vendor:publish --tag="laravel-ai-assistant-config"
 ```
 
 ### 4. Start Using AI Assistant
+
 ```php
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 
@@ -156,7 +169,9 @@ $response = Ai::assistant()
 ```
 
 ### 5. Enable Advanced Features (Optional)
+
 For production use, consider enabling these features in your `.env`:
+
 ```env
 # Background job processing
 AI_BACKGROUND_JOBS_ENABLED=true
@@ -180,6 +195,7 @@ AI_CONNECTION_POOL_ENABLED=true
 ## Features
 
 ### Core Features
+
 - **Fluent API:** Chain method calls for a clean and intuitive setup
 - **Chat Messaging:** Easily manage user, developer, and tool messages
 - **Audio Transcription:** Convert audio files to text with optional prompts
@@ -188,6 +204,7 @@ AI_CONNECTION_POOL_ENABLED=true
 - **DTOs & Factories:** Use data transfer objects to structure and validate your data
 
 ### Advanced Features
+
 - **Streaming Service:** Real-time response streaming with memory management and buffering
 - **Background Jobs:** Queue long-running AI operations with progress tracking
 - **Lazy Loading:** Optimize resource usage with intelligent lazy initialization
@@ -204,21 +221,22 @@ AI_CONNECTION_POOL_ENABLED=true
 Pick the entrypoint that best matches your use case:
 
 - AiAssistant (Responses API)
-  - Ephemeral, per-turn options. Best for one-off chat turns with modern Responses + Conversations APIs.
-  - Strongly-typed DTOs are available via sendChatMessageDto() and ResponseEnvelope via sendChatMessageEnvelope().
-  - Great when you want full control over tools, files, response formats, and streaming.
+    - Ephemeral, per-turn options. Best for one-off chat turns with modern Responses + Conversations APIs.
+    - Strongly-typed DTOs are available via sendChatMessageDto() and ResponseEnvelope via sendChatMessageEnvelope().
+    - Great when you want full control over tools, files, response formats, and streaming.
 
 - Assistant (legacy Chat Completions style)
-  - Persistent-style builder with backwards compatibility. Returns arrays by default, DTO via sendChatMessageDto().
-  - Useful when migrating existing code; supports streaming and many configuration options.
+    - Persistent-style builder with backwards compatibility. Returns arrays by default, DTO via sendChatMessageDto().
+    - Useful when migrating existing code; supports streaming and many configuration options.
 
 - Facade Ai
-  - Ai::chat() provides a discoverable, typed ChatSession over AiAssistant.
-  - Ai::assistant() gives you the Assistant builder when you prefer that flow.
+    - Ai::chat() provides a discoverable, typed ChatSession over AiAssistant.
+    - Ai::assistant() gives you the Assistant builder when you prefer that flow.
 
 Quick examples
 
 - One-off turn (modern Responses API)
+
 ```php
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 
@@ -230,6 +248,7 @@ echo $response->content; // normalized text content when available
 ```
 
 - Streaming (text chunks)
+
 ```php
 foreach (Ai::chat('Stream a limerick about Laravel')->streamText(fn($t) => print($t)) as $chunk) {
     // $chunk is a string delta
@@ -237,6 +256,7 @@ foreach (Ai::chat('Stream a limerick about Laravel')->streamText(fn($t) => print
 ```
 
 - Assistant (legacy-style)
+
 ```php
 use CreativeCrafts\LaravelAiAssistant\Assistant;
 
@@ -247,6 +267,7 @@ $result = $assistant->sendChatMessageDto();
 ```
 
 When to choose which
+
 - Prefer Ai::chat() / AiAssistant for new work and modern Responses + Conversations features (tool calls, file_search, json_schema).
 - Use Assistant when migrating older code or when its builder API matches your needs today.
 
@@ -273,6 +294,7 @@ php artisan vendor:publish --tag="ai-assistant-config"
 After publishing, you will find a configuration file at `config/ai-assistant.php`. The configuration includes:
 
 ### API Credentials
+
 Set your OpenAI API key and organization:
 
 ```php
@@ -281,11 +303,14 @@ Set your OpenAI API key and organization:
 ```
 
 Note:
-- This package uses openai-php/client ^0.10. For chat completions use $client->chat()->create([...]). For legacy text completions use $client->completions()->create([...]). Do not chain $client->chat()->completions()->create([...]).
+
+- This package uses openai-php/client ^0.10. For chat completions use $client->chat()->create([...]). For legacy text completions use $client->completions()->create([...]). Do not chain $client->
+  chat()->completions()->create([...]).
 - AppConfig::openAiClient requires only ai-assistant.api_key. The organization id is optional. If provided, it will be used; otherwise the client is created with API key only.
 - Configuration uses the key max_completion_tokens. AppConfig maps this to the OpenAI API parameter max_tokens in request payloads.
 
 ### Model Settings
+
 Configure your default models for different operations:
 
 ```php
@@ -296,6 +321,7 @@ Configure your default models for different operations:
 ```
 
 ### Advanced Configuration
+
 Configure advanced features like streaming, caching, and security:
 
 ```php
@@ -340,6 +366,7 @@ Configure advanced features like streaming, caching, and security:
 ## Core Usage
 
 ### Initializing the Assistant
+
 Create a new assistant instance using the fluent API:
 
 ```php
@@ -349,6 +376,7 @@ $assistant = AiAssistant::init();
 ```
 
 ### Basic Chat Operations
+
 Configure and send chat messages:
 
 ```php
@@ -361,6 +389,7 @@ $response = AiAssistant::init()
 ```
 
 ### Audio Transcription
+
 Transcribe audio files with language specification:
 
 ```php
@@ -370,6 +399,7 @@ $transcription = AiAssistant::init()
 ```
 
 ### Creating AI Assistants
+
 Create and configure AI assistants with custom tools:
 
 ```php
@@ -1184,6 +1214,7 @@ $raw = $response->toArray();
 ```
 
 Tips:
+
 - Prefer Ai::chat() for modern Responses + Conversations flows.
 - setToolChoice('none') if you want pure JSON without tool calls.
 
@@ -1254,11 +1285,13 @@ if ($toolCalls !== []) {
 ```
 
 Notes:
+
 - With AI_TOOL_CALLING_EXECUTOR=queue, the package dispatches ExecuteToolCallJob internally (requires a working queue).
 - For local development, set executor to sync to avoid queue setup: AI_TOOL_CALLING_EXECUTOR=sync.
 - Related config: AI_TOOL_CALLING_MAX_ROUNDS, AI_TOOL_CALLING_PARALLEL.
 
 Troubleshooting:
+
 - If jobs don’t run, verify your queue worker and connection settings.
 - Check logs: the executor logs dispatch events with correlation IDs.
 
@@ -1276,6 +1309,7 @@ $result = AiAssistant::init()
 ```
 
 Variants:
+
 - Disable automatic file_search while still attaching files:
 
 ```php
@@ -1286,6 +1320,7 @@ $result = AiAssistant::init()
     ->setUserMessage('Do not use RAG; answer generally.')
     ->sendChatMessage();
 ```
+
 ---
 
 ## 📊 Performance Benchmarks
@@ -1295,12 +1330,14 @@ Laravel AI Assistant is optimized for enterprise-scale applications. Below are p
 ### Benchmark Results
 
 #### Response Times (Average)
+
 - **Simple Chat Message:** ~800ms-1.2s (depends on model and complexity)
 - **Streaming Response:** First token ~400ms, subsequent tokens ~50-100ms
 - **File Processing:** ~2-5s per MB (varies by file type)
 - **Background Jobs:** Queue dispatch ~50ms, processing time varies
 
 #### Throughput (With Connection Pooling)
+
 - **Concurrent Requests:** Up to 100 simultaneous connections
 - **Requests per Second:** 50-150 RPS (depends on response complexity)
 - **Memory Usage:** ~10-50MB per active request
@@ -1309,53 +1346,64 @@ Laravel AI Assistant is optimized for enterprise-scale applications. Below are p
 ### Performance Optimization Tips
 
 #### 1. Enable Connection Pooling
+
 ```env
 AI_CONNECTION_POOL_ENABLED=true
 AI_MAX_CONNECTIONS=100
 AI_MAX_CONNECTIONS_PER_HOST=10
 ```
+
 **Impact:** 30-50% improvement in response times for multiple requests
 
 #### 2. Use Background Jobs for Long Operations
+
 ```env
 AI_BACKGROUND_JOBS_ENABLED=true
 AI_QUEUE_NAME=ai-assistant
 ```
+
 **Impact:** Prevents blocking the main thread, improves user experience
 
 #### 3. Optimize Streaming Configuration
+
 ```env
 AI_STREAMING_ENABLED=true
 AI_STREAMING_BUFFER_SIZE=8192
 AI_STREAMING_CHUNK_SIZE=1024
 ```
+
 **Impact:** 60-80% faster perceived response times for long responses
 
 #### 4. Configure Memory Monitoring
+
 ```env
 AI_MEMORY_MONITORING_ENABLED=true
 AI_MEMORY_THRESHOLD_MB=256
 ```
+
 **Impact:** Prevents memory exhaustion, maintains system stability
 
 #### 5. Enable Metrics Collection
+
 ```env
 AI_METRICS_ENABLED=true
 AI_METRICS_DRIVER=redis  # or database
 ```
+
 **Impact:** Provides insights for further optimization
 
 ### Model-Specific Performance
 
-| Model | Avg Response Time | Tokens/Sec | Best Use Case |
-|-------|------------------|------------|---------------|
-| `gpt-5` | 1.2s | 80-120 | Complex reasoning, latest features |
-| `gpt-4o` | 0.8s | 120-180 | Balanced performance and capability |
-| `gpt-4o-mini` | 0.4s | 200-300 | Simple tasks, high throughput |
+| Model         | Avg Response Time | Tokens/Sec | Best Use Case                       |
+|---------------|-------------------|------------|-------------------------------------|
+| `gpt-5`       | 1.2s              | 80-120     | Complex reasoning, latest features  |
+| `gpt-4o`      | 0.8s              | 120-180    | Balanced performance and capability |
+| `gpt-4o-mini` | 0.4s              | 200-300    | Simple tasks, high throughput       |
 
 ### Scaling Recommendations
 
 #### Small Applications (< 1,000 requests/day)
+
 ```env
 AI_CONNECTION_POOL_ENABLED=false
 AI_BACKGROUND_JOBS_ENABLED=false
@@ -1363,6 +1411,7 @@ AI_METRICS_ENABLED=false
 ```
 
 #### Medium Applications (1,000 - 50,000 requests/day)
+
 ```env
 AI_CONNECTION_POOL_ENABLED=true
 AI_MAX_CONNECTIONS=50
@@ -1372,6 +1421,7 @@ AI_METRICS_DRIVER=database
 ```
 
 #### Large Applications (> 50,000 requests/day)
+
 ```env
 AI_CONNECTION_POOL_ENABLED=true
 AI_MAX_CONNECTIONS=100
@@ -1623,6 +1673,7 @@ AI_ASSISTANT_LAZY_LOADING_ENABLED=true
 ```
 
 Notes:
+
 - If you set `AI_ASSISTANT_PERSISTENCE_DRIVER=eloquent`, publish and run the package migrations:
 
 ```bash
@@ -1647,14 +1698,18 @@ Common issues and their solutions when working with Laravel AI Assistant:
 ### Installation & Configuration Issues
 
 #### Issue: "Class 'OpenAI\Client' not found"
+
 **Solution:**
+
 ```bash
 composer require openai-php/client
 composer dump-autoload
 ```
 
 #### Issue: "OPENAI_API_KEY environment variable is required"
+
 **Solution:**
+
 1. Add your API key to `.env`:
    ```env
    OPENAI_API_KEY=sk-your-actual-api-key-here
@@ -1665,7 +1720,9 @@ composer dump-autoload
    ```
 
 #### Issue: Service provider not loading
+
 **Solution:**
+
 ```bash
 # Clear all caches
 php artisan config:clear
@@ -1679,8 +1736,10 @@ composer dump-autoload
 ### Runtime Issues
 
 #### Issue: "Connection timeout" errors
+
 **Symptoms:** Requests taking too long or timing out
 **Solutions:**
+
 1. Increase timeout values:
    ```env
    AI_STREAMING_TIMEOUT=300
@@ -1692,8 +1751,10 @@ composer dump-autoload
    ```
 
 #### Issue: High memory usage
+
 **Symptoms:** Memory exhaustion during large operations
 **Solutions:**
+
 1. Enable memory monitoring:
    ```env
    AI_MEMORY_MONITORING_ENABLED=true
@@ -1705,8 +1766,10 @@ composer dump-autoload
    ```
 
 #### Issue: "Rate limit exceeded" errors
+
 **Symptoms:** 429 HTTP status codes from OpenAI
 **Solutions:**
+
 1. Enable retry mechanism:
    ```env
    AI_RESPONSES_RETRY_ENABLED=true
@@ -1721,14 +1784,18 @@ composer dump-autoload
 ### Database & Persistence Issues
 
 #### Issue: "Table doesn't exist" when using Eloquent persistence
+
 **Solution:**
+
 ```bash
 php artisan vendor:publish --tag="laravel-ai-assistant-migrations"
 php artisan migrate
 ```
 
 #### Issue: Eloquent models not found
+
 **Solution:**
+
 ```bash
 php artisan vendor:publish --tag="ai-assistant-models"
 ```
@@ -1736,7 +1803,9 @@ php artisan vendor:publish --tag="ai-assistant-models"
 ### Performance Issues
 
 #### Issue: Slow response times
+
 **Diagnostic Steps:**
+
 1. Check your model selection:
    ```env
    OPENAI_CHAT_MODEL=gpt-4o-mini  # Faster than gpt-5
@@ -1752,7 +1821,9 @@ php artisan vendor:publish --tag="ai-assistant-models"
    ```
 
 #### Issue: Queue jobs not processing
+
 **Solution:**
+
 1. Ensure queue worker is running:
    ```bash
    php artisan queue:work --queue=ai-assistant
@@ -1766,7 +1837,9 @@ php artisan vendor:publish --tag="ai-assistant-models"
 ### API & Authentication Issues
 
 #### Issue: "Invalid API key" errors
+
 **Solutions:**
+
 1. Verify your API key format (starts with `sk-`):
    ```env
    OPENAI_API_KEY=sk-your-48-character-key-here
@@ -1775,7 +1848,9 @@ php artisan vendor:publish --tag="ai-assistant-models"
 3. Ensure no extra spaces in `.env` file
 
 #### Issue: Organization access errors
+
 **Solution:**
+
 ```env
 OPENAI_ORGANIZATION=org-your-organization-id
 ```
@@ -1783,7 +1858,9 @@ OPENAI_ORGANIZATION=org-your-organization-id
 ### Streaming Issues
 
 #### Issue: Streaming responses not working
+
 **Solutions:**
+
 1. Check if streaming is enabled:
    ```env
    AI_STREAMING_ENABLED=true
@@ -1804,8 +1881,10 @@ OPENAI_ORGANIZATION=org-your-organization-id
 ### Development & Testing Issues
 
 #### Issue: Tests failing with API key errors
+
 **Solution:**
 Use the test configuration override:
+
 ```php
 // In your test
 config(['ai-assistant.api_key' => 'test_key_123']);
@@ -1813,7 +1892,9 @@ config(['ai-assistant.mock_responses' => true]);
 ```
 
 #### Issue: Mock responses not working
+
 **Solution:**
+
 ```env
 AI_ASSISTANT_MOCK=true
 ```
@@ -1821,6 +1902,7 @@ AI_ASSISTANT_MOCK=true
 ### Debug Mode
 
 Enable debug logging for troubleshooting:
+
 ```env
 LOG_LEVEL=debug
 AI_METRICS_ENABLED=true
@@ -1828,6 +1910,7 @@ AI_LOG_MEMORY_USAGE=true
 ```
 
 Then check your Laravel logs:
+
 ```bash
 tail -f storage/logs/laravel.log
 ```
@@ -1864,10 +1947,12 @@ php artisan optimize:clear
 ## Testing
 
 Bootstrap: tests/Pest.php applies the shared TestCase across the test suite. The shared tests/TestCase.php configures:
+
 - database.default = testing
 - ai-assistant.api_key = 'test_key_123' (bypasses ServiceProvider OPENAI_API_KEY validation in tests)
 
-If you author tests that boot the app outside the shared TestCase, set this config key manually inside the test or provide OPENAI_API_KEY in env to avoid ConfigurationValidationException during package boot.
+If you author tests that boot the app outside the shared TestCase, set this config key manually inside the test or provide OPENAI_API_KEY in env to avoid ConfigurationValidationException during
+package boot.
 
 The package has 100% code and mutation test coverage. Run tests using:
 
@@ -2107,6 +2192,7 @@ if ($toolCalls !== []) {
 ### Deprecation notes (legacy Assistants/Threads/Runs)
 
 The following legacy methods are deprecated. Use the new replacements:
+
 - createThread(), writeMessage(), runMessageThread(), listMessages() → startConversation(), sendChatMessage()/streamChatMessage(), and AssistantService::listConversationItems().
 - createAssistant/getAssistantViaId → Prefer local config + per‑turn instructions via instructions().
 
@@ -2122,7 +2208,6 @@ See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md for the complete migration 
 - Verified addImageFromFile/addImageFromUrl block shapes in payload
 - Checked file_search toggles based on includeFileSearchTool()/useFileSearch(false)
 
-
 ---
 
 ## Additional Documentation
@@ -2133,7 +2218,6 @@ See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md for the complete migration 
 - Tests Guide: tests/README.md
 - Contributing: CONTRIBUTING.md
 
-
 ---
 
 ## Migration Guide (2.0)
@@ -2141,10 +2225,12 @@ See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md for the complete migration 
 This release introduces a unified, typed, Laravel-native API while preserving backwards compatibility. Here’s how to migrate gradually.
 
 Key goals
+
 - Prefer Ai::chat() entrypoint and the ChatSession for discoverability and strong typing.
 - Keep existing code working, but note deprecations on array-returning methods.
 
 Recommended new entrypoint
+
 ```php
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 
@@ -2167,6 +2253,7 @@ foreach (Ai::chat('stream me')->stream() as $event) {
 ```
 
 Files and Tools helpers
+
 ```php
 // Files helper mirrors AiAssistant capabilities
 Ai::chat('Explain these docs')
@@ -2176,25 +2263,28 @@ Ai::chat('Explain these docs')
 ```
 
 Backwards compatibility and deprecations
+
 - AiAssistant::sendChatMessage(): array is deprecated. Use one of:
-  - Ai::chat()->send() which returns ChatResponseDto, or
-  - AiAssistant::sendChatMessageDto(): ChatResponseDto, or
-  - AiAssistant::sendChatMessageEnvelope(): ResponseEnvelope
+    - Ai::chat()->send() which returns ChatResponseDto, or
+    - AiAssistant::sendChatMessageDto(): ChatResponseDto, or
+    - AiAssistant::sendChatMessageEnvelope(): ResponseEnvelope
 - AiAssistant::continueWithToolResults(array): array is deprecated. Use:
-  - Ai::chat()->continueWithToolResults($results) → ChatResponseDto, or
-  - AiAssistant::continueWithToolResultsDto()/continueWithToolResultsEnvelope()
+    - Ai::chat()->continueWithToolResults($results) → ChatResponseDto, or
+    - AiAssistant::continueWithToolResultsDto()/continueWithToolResultsEnvelope()
 - AiAssistant::reply(?string): array is deprecated. Use:
-  - Ai::chat($message)->send() or Ai::chat()->setUserMessage($message)->send()
+    - Ai::chat($message)->send() or Ai::chat()->setUserMessage($message)->send()
 - Assistant::sendChatMessage(): array is deprecated. Use:
-  - Assistant::sendChatMessageDto(): ChatResponseDto, or
-  - Ai::chat() for the new fluent chat entrypoint
+    - Assistant::sendChatMessageDto(): ChatResponseDto, or
+    - Ai::chat() for the new fluent chat entrypoint
 
 Why DTOs?
+
 - ChatResponseDto provides a stable, typed surface while preserving access to the underlying normalized array via toArray().
 - StreamingEventDto provides a consistent event shape for streaming.
 - ResponseEnvelope represents the normalized Responses API envelope when you need full fidelity.
 
 Minimal migration examples
+
 ```php
 // Old
 $assistant = new \CreativeCrafts\LaravelAiAssistant\AiAssistant('Help me');
@@ -2210,6 +2300,7 @@ $dto = $assistant->sendChatMessageDto(); // ChatResponseDto
 ```
 
 Notes
+
 - All deprecated methods remain functional in 2.x for BC but will be removed in a future major release. Update at your convenience.
 - The new API follows Laravel conventions (facades + fluent builders) and improves discoverability (tools(), files()).
 - Tests and fakes continue to work. For unit tests, prefer asserting on DTOs.
