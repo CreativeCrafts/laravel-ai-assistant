@@ -613,6 +613,8 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         return true;
     }
 
+    // ===== Helpers =====
+
     /**
      * List messages for a specific thread and return the content of the first message.
      *
@@ -732,10 +734,6 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         $response = $this->repository->translateAudio($payload);
         return is_object($response) && property_exists($response, 'text') ? (string)$response->text : '';
     }
-
-    // =========================
-    // Responses + Conversations Orchestrator methods
-    // =========================
 
     /**
      * Generate text completion using the repository abstraction.
@@ -1119,8 +1117,6 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         }
         return $id;
     }
-
-    // ===== Helpers =====
 
     /**
      * Convenience wrapper: streaming response for a user text message.
@@ -1534,6 +1530,10 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         return $validated;
     }
 
+    // =========================
+    // Responses + Conversations Orchestrator methods
+    // =========================
+
     private function buildResponsesCreatePayload(
         string $conversationId,
         ?string $instructions,
@@ -1673,7 +1673,7 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
                             continue;
                         }
                         $messageBlocks[] = $block;
-                        if (($block['type'] ?? null) === 'text' && isset($block['text'])) {
+                        if (isset($block['text']) && in_array(($block['type'] ?? null), ['text', 'output_text'], true)) {
                             $blockTexts[] = (string)$block['text'];
                         }
                     }
