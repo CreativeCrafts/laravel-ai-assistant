@@ -5,6 +5,27 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.5-beta] - 2025-09-05
+
+"feat: make OpenAI SDK optional, add Compat aliases; default file purpose to "assistants"
+
+• Move openai-php/client from required dependency to a suggested package
+• Provide internal Compat classes with class_alias mappings so common OpenAI\Client and response types resolve when the SDK isn’t installed
+• Expand alias coverage (Client, Chat, Completions incl. streaming, Audio, Meta, StreamResponse, Threads messages/runs)
+• Align file upload defaults with OpenAI Files API
+• Change default purpose from "assistants/answers" to "assistants"
+• Validate and normalize purposes; allow: assistants, batch, fine-tune, vision, user_data
+• Propagate purpose parameter through AssistantService, AiAssistant, FilesHelper, Http repository, and tests
+• Internal refactors and polish
+• Add and normalize endpoint() helpers in HTTP repositories
+• Minor CS tweaks (casts/spacing), improved docblocks, consistent timeout casting
+• Docs: update README to explain optional SDK usage and client behavior
+
+Files changed: README.md, composer.json, src/Compat/OpenAI/aliases.php, src/AiAssistant.php, src/Services/AssistantService.php, src/Support/FilesHelper.php, src/Contracts/FilesRepositoryContract.php,
+src/Repositories/Http/{ConversationsHttpRepository,FilesHttpRepository, ResponsesHttpRepository}.php, tests/Fakes/FakeFilesRepository.php
+
+Note: No breaking API changes; added optional $purpose params have sensible defaults.
+
 ## [3.0.0-beta] - 2025-09-03
 
 ### 🚀 Major Release—Complete Architecture Overhaul (Not production ready)
