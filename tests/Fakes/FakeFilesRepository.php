@@ -11,7 +11,7 @@ final class FakeFilesRepository implements FilesRepositoryContract
     public array $uploads = [];
     public array $deleted = [];
 
-    public function upload(string $filePath, string $purpose = 'assistants/answers'): array
+    public function upload(string $filePath, string $purpose = 'assistants'): array
     {
         $id = 'file_' . md5($filePath . '|' . $purpose);
         $this->uploads[] = compact('filePath', 'purpose', 'id');

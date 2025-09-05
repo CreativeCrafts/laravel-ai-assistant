@@ -13,7 +13,7 @@ interface FilesRepositoryContract
      * @param string $purpose
      * @return array File resource as array
      */
-    public function upload(string $filePath, string $purpose = 'assistants/answers'): array;
+    public function upload(string $filePath, string $purpose = 'assistants'): array;
 
     /**
      * Retrieve a file by id.

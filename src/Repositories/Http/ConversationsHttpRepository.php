@@ -46,14 +46,13 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
         $response = $this->http->post($this->endpoint('conversations'), [
             'headers' => ['Content-Type' => 'application/json'],
             'json' => $payload,
-            'timeout' => (float) $timeout,
+            'timeout' => (float)$timeout,
         ]);
         return $this->decodeOrFail($response);
     }
 
     /**
      * Retrieves a specific conversation by its ID via HTTP API request.
-     *
      * Sends a GET request to the conversation endpoint to fetch detailed
      * information about a specific conversation instance.
      *
@@ -76,14 +75,13 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
             $timeout = 120;
         }
         $response = $this->http->get($this->endpoint("conversations/{$conversationId}"), [
-            'timeout' => (float) $timeout,
+            'timeout' => (float)$timeout,
         ]);
         return $this->decodeOrFail($response);
     }
 
     /**
      * Retrieves a list of items from a specific conversation via HTTP API request.
-     *
      * Sends a GET request to the conversation items endpoint to fetch all items
      * associated with a particular conversation. Items typically represent messages,
      * responses, or other conversation elements.
@@ -112,7 +110,7 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
         }
         $response = $this->http->get($this->endpoint("conversations/{$conversationId}/items"), [
             'query' => $params,
-            'timeout' => (float) $timeout,
+            'timeout' => (float)$timeout,
         ]);
         return $this->decodeOrFail($response);
     }
@@ -148,7 +146,7 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
         }
         $response = $this->http->post($this->endpoint("conversations/{$conversationId}/items"), [
             'json' => $payload,
-            'timeout' => (float) $timeout,
+            'timeout' => (float)$timeout,
         ]);
         return $this->decodeOrFail($response);
     }
@@ -182,12 +180,34 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
             $timeout = 120;
         }
         $response = $this->http->delete($this->endpoint("conversations/{$conversationId}/items/{$itemId}"), [
-            'timeout' => (float) $timeout,
+            'timeout' => (float)$timeout,
         ]);
         if ($response->getStatusCode() >= Response::HTTP_BAD_REQUEST) {
             $this->throwForError($response);
         }
         return true;
+    }
+
+    /**
+     * Constructs a complete API endpoint URL by combining the base path with a given path.
+     * This method normalises the URL construction by ensuring proper formatting
+     * of the base path and the provided path segment. It removes trailing slashes
+     * from the base path and leading slashes from the provided path, then combines
+     * them with a single forward slash separator to create a well-formed endpoint URL.
+     *
+     * @param string $path The API path segments to append to the base path.
+     *                    Can include leading slashes which will be normalised.
+     *                    Examples: 'conversations', '/conversations/123/items'
+     * @return string The complete endpoint URL formed by combining the base path
+     *                with the provided path segment, properly formatted with
+     *                appropriate slash separators. For example, if basePath is
+     *                '/v1' and a path is 'conversations', it returns '/v1/conversations'.
+     */
+    private function endpoint(string $path): string
+    {
+        $prefix = rtrim($this->basePath, '/');
+        $suffix = ltrim($path, '/');
+        return $prefix . '/' . $suffix;
     }
 
     /**
@@ -220,7 +240,6 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
 
     /**
      * Throws an ApiResponseValidationException based on the error response from the API.
-     *
      * This method extracts error information from an HTTP response and throws
      * an appropriate exception with a meaningful error message. It attempts to
      * parse the response body as JSON to extract a structured error message,
@@ -239,7 +258,7 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
      */
     private function throwForError(ResponseInterface $response): void
     {
-        $body = (string) $response->getBody();
+        $body = (string)$response->getBody();
         $msg = 'OpenAI API error';
         $json = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
         if (is_array($json)) {
@@ -258,28 +277,5 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
             $msg = $body;
         }
         throw new ApiResponseValidationException($msg, $response->getStatusCode());
-    }
-
-    /**
-     * Constructs a complete API endpoint URL by combining the base path with a given path.
-     *
-     * This method normalises the URL construction by ensuring proper formatting
-     * of the base path and the provided path segment. It removes trailing slashes
-     * from the base path and leading slashes from the provided path, then combines
-     * them with a single forward slash separator to create a well-formed endpoint URL.
-     *
-     * @param string $path The API path segments to append to the base path.
-     *                    Can include leading slashes which will be normalised.
-     *                    Examples: 'conversations', '/conversations/123/items'
-     * @return string The complete endpoint URL formed by combining the base path
-     *                with the provided path segment, properly formatted with
-     *                appropriate slash separators. For example, if basePath is
-     *                '/v1' and a path is 'conversations', it returns '/v1/conversations'.
-     */
-    private function endpoint(string $path): string
-    {
-        $prefix = rtrim($this->basePath, '/');
-        $suffix = ltrim($path, '/');
-        return $prefix . '/' . $suffix;
     }
 }

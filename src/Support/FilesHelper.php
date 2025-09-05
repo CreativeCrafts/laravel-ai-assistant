@@ -13,7 +13,7 @@ final readonly class FilesHelper
     {
     }
 
-    public function upload(string $path, string $purpose = 'assistants/answers'): string
+    public function upload(string $path, string $purpose = 'assistants'): string
     {
         return $this->core->uploadFile($path, $purpose);
     }
@@ -24,9 +24,9 @@ final readonly class FilesHelper
         return $this;
     }
 
-    public function addImageFromFile(string $path): self
+    public function addImageFromFile(string $path, string $purpose = 'assistants'): self
     {
-        $this->core->addImageFromFile($path);
+        $this->core->addImageFromFile($path, $purpose);
         return $this;
     }
 
@@ -36,21 +36,21 @@ final readonly class FilesHelper
         return $this;
     }
 
-    public function addImageFromUploadedFile(UploadedFile $file): self
+    public function addImageFromUploadedFile(UploadedFile $file, string $purpose = 'assistants'): self
     {
-        $this->core->addImageFromUploadedFile($file);
+        $this->core->addImageFromUploadedFile($file, $purpose);
         return $this;
     }
 
-    public function attachUploadedFile(UploadedFile $file): self
+    public function attachUploadedFile(UploadedFile $file, string $purpose = 'assistants'): self
     {
-        $this->core->attachUploadedFile($file);
+        $this->core->attachUploadedFile($file, $purpose);
         return $this;
     }
 
-    public function attachFilesFromStorage(array $paths): self
+    public function attachFilesFromStorage(array $paths, string $purpose = 'assistants'): self
     {
-        $this->core->attachFilesFromStorage($paths);
+        $this->core->attachFilesFromStorage($paths, $purpose);
         return $this;
     }
 
@@ -69,9 +69,9 @@ final readonly class FilesHelper
         return $this;
     }
 
-    public function addInputImageFromFile(string $path): self
+    public function addInputImageFromFile(string $path, string $purpose = 'assistants'): self
     {
-        $this->core->addInputImageFromFile($path);
+        $this->core->addInputImageFromFile($path, $purpose);
         return $this;
     }
 

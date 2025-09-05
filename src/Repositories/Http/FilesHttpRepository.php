@@ -29,15 +29,15 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
      *
      * @param string $filePath The absolute or relative path to the file to be uploaded.
      *                         The file must be readable and accessible to the current process.
-     * @param string $purpose The intended purpose for the uploaded file. Defaults to 'assistants/answers'.
-     *                        Common values include 'assistants', 'fine-tune', or other OpenAI-supported purposes.
+     * @param string $purpose The intended purpose for the uploaded file. Defaults to 'assistants'.
+     *                        Allowed values include 'assistants', 'batch', 'fine-tune', 'vision', 'user_data'.
      * @return array The decoded JSON response from the OpenAI API containing file metadata,
      *               including the file ID, filename, purpose, and other file properties.
      * @throws FileOperationException If the file is not readable or cannot be opened for reading.
      * @throws ApiResponseValidationException If the API response indicates an error or contains invalid data.
      * @throws JsonException|GuzzleException If the API response cannot be decoded as valid JSON.
      */
-    public function upload(string $filePath, string $purpose = 'assistants/answers'): array
+    public function upload(string $filePath, string $purpose = 'assistants'): array
     {
         if (!is_readable($filePath)) {
             throw new FileOperationException("File not readable: {$filePath}");
@@ -113,6 +113,21 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
     }
 
     /**
+     * Constructs a complete API endpoint URL by combining the base path with the given path.
+     * This method ensures proper URL formatting by removing trailing slashes from the base path
+     * and leading slashes from the provided path, then joining them with a single slash separator.
+     *
+     * @param string $path The relative path to append to the base path (e.g. 'files' or 'files/123')
+     * @return string The complete endpoint URL with proper slash formatting
+     */
+    private function endpoint(string $path): string
+    {
+        $prefix = rtrim($this->basePath, '/');
+        $suffix = ltrim($path, '/');
+        return $prefix . '/' . $suffix;
+    }
+
+    /**
      * Decodes a JSON response from the API or throws an exception on failure.
      * This method validates the HTTP response status code and attempts to decode
      * the JSON response body. If the status code indicates an error (>= 400) or
@@ -149,29 +164,14 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
      */
     private function throwForError(ResponseInterface $response): void
     {
-        $body = (string) $response->getBody();
+        $body = (string)$response->getBody();
         $msg = 'OpenAI API error';
         $json = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
         if (is_array($json) && isset($json['error']['message'])) {
-            $msg = (string) $json['error']['message'];
+            $msg = (string)$json['error']['message'];
         } elseif ($body !== '') {
             $msg = $body;
         }
         throw new ApiResponseValidationException($msg, $response->getStatusCode());
-    }
-
-    /**
-     * Constructs a complete API endpoint URL by combining the base path with the given path.
-     * This method ensures proper URL formatting by removing trailing slashes from the base path
-     * and leading slashes from the provided path, then joining them with a single slash separator.
-     *
-     * @param string $path The relative path to append to the base path (e.g. 'files' or 'files/123')
-     * @return string The complete endpoint URL with proper slash formatting
-     */
-    private function endpoint(string $path): string
-    {
-        $prefix = rtrim($this->basePath, '/');
-        $suffix = ltrim($path, '/');
-        return $prefix . '/' . $suffix;
     }
 }

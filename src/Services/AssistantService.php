@@ -1097,11 +1097,21 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
     /**
      * Upload a file and return its id.
      */
-    public function uploadFile(string $filePath, string $purpose = 'assistants/answers'): string
+    public function uploadFile(string $filePath, string $purpose = 'assistants'): string
     {
         if ($filePath === '' || !is_readable($filePath)) {
             throw new FileOperationException("File not readable: {$filePath}");
         }
+        // Normalize and validate purpose per OpenAI Files API
+        $purpose = trim((string)$purpose);
+        if ($purpose === '' || $purpose === 'assistant') {
+            $purpose = 'assistants';
+        }
+        $allowed = ['assistants', 'batch', 'fine-tune', 'vision', 'user_data'];
+        if (!in_array($purpose, $allowed, true)) {
+            $purpose = 'assistants';
+        }
+
         $res = $this->facade()->files()->upload($filePath, $purpose);
         $id = (string)($res['id'] ?? ($res['data']['id'] ?? ''));
         if ($id === '') {

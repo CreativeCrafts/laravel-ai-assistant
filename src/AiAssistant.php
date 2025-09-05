@@ -580,20 +580,20 @@ class AiAssistant implements AiAssistantContract
     /**
      * Attach a Laravel UploadedFile to this turn (as file_reference / file_search attachment).
      */
-    public function attachUploadedFile(UploadedFile $file): self
+    public function attachUploadedFile(UploadedFile $file, string $purpose = 'assistants'): self
     {
         $path = $file->getRealPath();
         if (!is_string($path) || $path === '') {
             throw new InvalidArgumentException('UploadedFile does not have a valid real path.');
         }
-        $fileId = $this->uploadFile($path, 'assistants/answers');
+        $fileId = $this->uploadFile($path, $purpose);
         return $this->attachFilesToTurn([$fileId]);
     }
 
     /**
      * Upload a file to OpenAI and return the file_id.
      */
-    public function uploadFile(string $path, string $purpose = 'assistants/answers'): string
+    public function uploadFile(string $path, string $purpose = 'assistants'): string
     {
         $this->client = $this->client ?? resolve(AssistantService::class);
         return $this->client->uploadFile($path, $purpose);
@@ -638,14 +638,14 @@ class AiAssistant implements AiAssistantContract
     /**
      * Add an input_image from a Laravel UploadedFile for this turn.
      */
-    public function addImageFromUploadedFile(UploadedFile $file): self
+    public function addImageFromUploadedFile(UploadedFile $file, string $purpose = 'assistants'): self
     {
         $path = $file->getRealPath();
         if (!is_string($path) || $path === '') {
             throw new InvalidArgumentException('UploadedFile does not have a valid real path.');
         }
         $this->client = $this->client ?? resolve(AssistantService::class);
-        $fileId = $this->client->uploadFile($path, 'assistants/answers');
+        $fileId = $this->client->uploadFile($path, $purpose);
         $imgs = (array)($this->chatTextGeneratorConfig['input_images'] ?? []);
         if (!in_array($fileId, $imgs, true)) {
             $imgs[] = $fileId;
@@ -658,7 +658,7 @@ class AiAssistant implements AiAssistantContract
      * Attach files from Laravel Storage disk paths to this turn.
      * Example: ['documents/report.pdf', 'invoices/2024-01.pdf']
      */
-    public function attachFilesFromStorage(array $paths): self
+    public function attachFilesFromStorage(array $paths, string $purpose = 'assistants'): self
     {
         $ids = [];
         foreach ($paths as $p) {
@@ -666,7 +666,7 @@ class AiAssistant implements AiAssistantContract
                 continue;
             }
             $abs = Storage::path($p);
-            $id = $this->uploadFile($abs, 'assistants/answers');
+            $id = $this->uploadFile($abs, $purpose);
             if (is_string($id) && $id !== '') {
                 $ids[] = $id;
             }
@@ -801,18 +801,18 @@ class AiAssistant implements AiAssistantContract
     /**
      * Clarified helper name: add an input_image from a local file by uploading it.
      */
-    public function addInputImageFromFile(string $path): self
+    public function addInputImageFromFile(string $path, string $purpose = 'assistants'): self
     {
-        return $this->addImageFromFile($path);
+        return $this->addImageFromFile($path, $purpose);
     }
 
     /**
      * Upload an image file and attach it to the next turn as an input_image block.
      */
-    public function addImageFromFile(string $path): self
+    public function addImageFromFile(string $path, string $purpose = 'assistants'): self
     {
         $this->client = $this->client ?? resolve(AssistantService::class);
-        $fileId = $this->client->uploadFile($path, 'assistants/answers');
+        $fileId = $this->client->uploadFile($path, $purpose);
         $imgs = (array)($this->chatTextGeneratorConfig['input_images'] ?? []);
         if (!in_array($fileId, $imgs, true)) {
             $imgs[] = $fileId;

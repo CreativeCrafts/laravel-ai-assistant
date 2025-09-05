@@ -22,9 +22,11 @@
     "php": "^8.3|^8.2",
     "guzzlehttp/guzzle": "^7.9",
     "illuminate/contracts": "^12|^11|^10.0",
-    "openai-php/client": "^0.10",
     "spatie/laravel-package-tools": "^1.19",
     "symfony/http-client": "^6.3|^7.2"
+  },
+  "suggest": {
+    "openai-php/client": "^0.10 to use the official OpenAI PHP SDK. If not installed, the package falls back to internal Compat classes."
   },
   "require-dev": {
     "fakerphp/faker": "^1.24",

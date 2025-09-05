@@ -304,8 +304,8 @@ Set your OpenAI API key and organization:
 
 Note:
 
-- This package uses openai-php/client ^0.10. For chat completions use $client->chat()->create([...]). For legacy text completions use $client->completions()->create([...]). Do not chain $client->
-  chat()->completions()->create([...]).
+- This package can optionally use openai-php/client ^0.10. If you install the SDK, you can use the full client; otherwise the package provides internal Compat classes and class aliases so common OpenAI\… types resolve at runtime.
+- For chat completions use $client->chat()->create([...]). For legacy text completions use $client->completions()->create([...]). Do not chain $client->chat()->completions()->create([...]).
 - AppConfig::openAiClient requires only ai-assistant.api_key. The organization id is optional. If provided, it will be used; otherwise the client is created with API key only.
 - Configuration uses the key max_completion_tokens. AppConfig maps this to the OpenAI API parameter max_tokens in request payloads.
 
