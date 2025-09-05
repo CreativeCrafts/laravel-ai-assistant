@@ -269,7 +269,7 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
             }
         }
 
-        $contentBlocks = [['type' => 'text', 'text' => $message]];
+        $contentBlocks = [['type' => 'input_text', 'text' => $message]];
         foreach ($imageInputs as $img) {
             if (is_string($img)) {
                 $contentBlocks[] = [
@@ -1161,7 +1161,7 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
             }
         }
 
-        $contentBlocks = [['type' => 'text', 'text' => $message]];
+        $contentBlocks = [['type' => 'input_text', 'text' => $message]];
         foreach ($imageInputs as $img) {
             if (is_string($img)) {
                 $contentBlocks[] = [
@@ -1564,7 +1564,33 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         }
         if (!empty($inputItems)) {
             // Ensure shape matches Responses API: input: [ { role, content: [ blocks... ] } ]
-            $payload['input'] = $inputItems;
+            // Backward-compat: convert legacy 'text' blocks to 'input_text' to satisfy Responses API schema
+            $normalizedInput = [];
+            foreach ($inputItems as $itm) {
+                if (!is_array($itm)) {
+                    continue;
+                }
+                $role = $itm['role'] ?? null;
+                $content = $itm['content'] ?? [];
+                if (!is_array($content)) {
+                    $content = [];
+                }
+                $normBlocks = [];
+                foreach ($content as $blk) {
+                    if (is_array($blk)) {
+                        if (($blk['type'] ?? null) === 'text') {
+                            $blk['type'] = 'input_text';
+                        }
+                        $normBlocks[] = $blk;
+                    }
+                }
+                $new = ['role' => $role, 'content' => $normBlocks];
+                if (isset($itm['attachments']) && is_array($itm['attachments'])) {
+                    $new['attachments'] = $itm['attachments'];
+                }
+                $normalizedInput[] = $new;
+            }
+            $payload['input'] = $normalizedInput;
         }
         if (!empty($metadata)) {
             $payload['metadata'] = $metadata;
