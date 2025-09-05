@@ -48,13 +48,42 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
             throw new FileOperationException("Failed to open file: {$filePath}");
         }
 
+        // Detect MIME type to help the API infer file type and ensure an image has a proper extension
+        $mime = null;
+        if (function_exists('finfo_open')) {
+            $f = finfo_open(FILEINFO_MIME_TYPE);
+            if ($f) {
+                $detected = finfo_file($f, $filePath);
+                if (is_string($detected) && $detected !== '') {
+                    $mime = $detected;
+                }
+                finfo_close($f);
+            }
+        }
+        $imageExtMap = [
+            'image/jpeg' => 'jpg',
+            'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+        ];
+        $hasKnownImageExt = (bool)preg_match('/\.(jpe?g|png|gif|webp)$/i', $filename);
+        if ($mime !== null && isset($imageExtMap[$mime]) && !$hasKnownImageExt) {
+            $filename .= '.' . $imageExtMap[$mime];
+        }
+
+        $filePart = [
+            'name' => 'file',
+            'filename' => $filename,
+            'contents' => $resource,
+        ];
+        if (is_string($mime) && $mime !== '') {
+            $filePart['headers'] = ['Content-Type' => $mime];
+        }
+
         $response = $this->http->post($this->endpoint('files'), [
             'multipart' => [
-                [
-                    'name' => 'file',
-                    'filename' => $filename,
-                    'contents' => $resource,
-                ],
+                $filePart,
                 [
                     'name' => 'purpose',
                     'contents' => $purpose,

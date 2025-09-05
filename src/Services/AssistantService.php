@@ -1107,7 +1107,7 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         if ($purpose === '' || $purpose === 'assistant') {
             $purpose = 'assistants';
         }
-        $allowed = ['assistants', 'batch', 'fine-tune', 'vision', 'user_data'];
+        $allowed = ['assistants', 'batch', 'fine-tune', 'vision', 'user_data', 'responses'];
         if (!in_array($purpose, $allowed, true)) {
             $purpose = 'assistants';
         }
