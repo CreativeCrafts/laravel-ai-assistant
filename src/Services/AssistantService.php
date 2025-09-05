@@ -274,18 +274,18 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
             if (is_string($img)) {
                 $contentBlocks[] = [
                     'type' => 'input_image',
-                    'image' => ['file_id' => $img],
+                    'file_id' => $img,
                 ];
             } elseif (is_array($img)) {
                 if (isset($img['file_id']) && is_string($img['file_id'])) {
                     $contentBlocks[] = [
                         'type' => 'input_image',
-                        'image' => ['file_id' => $img['file_id']],
+                        'file_id' => $img['file_id'],
                     ];
                 } elseif (isset($img['url']) && is_string($img['url'])) {
                     $contentBlocks[] = [
                         'type' => 'input_image',
-                        'image' => ['url' => $img['url']],
+                        'image_url' => $img['url'],
                     ];
                 }
             }
@@ -1166,18 +1166,18 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
             if (is_string($img)) {
                 $contentBlocks[] = [
                     'type' => 'input_image',
-                    'image' => ['file_id' => $img],
+                    'file_id' => $img,
                 ];
             } elseif (is_array($img)) {
                 if (isset($img['file_id']) && is_string($img['file_id'])) {
                     $contentBlocks[] = [
                         'type' => 'input_image',
-                        'image' => ['file_id' => $img['file_id']],
+                        'file_id' => $img['file_id'],
                     ];
                 } elseif (isset($img['url']) && is_string($img['url'])) {
                     $contentBlocks[] = [
                         'type' => 'input_image',
-                        'image' => ['url' => $img['url']],
+                        'image_url' => $img['url'],
                     ];
                 }
             }
@@ -1580,6 +1580,15 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
                     if (is_array($blk)) {
                         if (($blk['type'] ?? null) === 'text') {
                             $blk['type'] = 'input_text';
+                        }
+                        // Normalize input_image legacy nested shape: image: { file_id | url }
+                        if (($blk['type'] ?? null) === 'input_image' && isset($blk['image']) && is_array($blk['image'])) {
+                            if (isset($blk['image']['file_id']) && is_string($blk['image']['file_id'])) {
+                                $blk['file_id'] = $blk['image']['file_id'];
+                            } elseif (isset($blk['image']['url']) && is_string($blk['image']['url'])) {
+                                $blk['image_url'] = $blk['image']['url'];
+                            }
+                            unset($blk['image']);
                         }
                         $normBlocks[] = $blk;
                     }
