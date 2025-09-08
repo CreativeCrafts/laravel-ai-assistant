@@ -7,18 +7,23 @@ namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
+use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
+use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
-use GuzzleHttp\Exception\GuzzleException;
 use JsonException;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final readonly class FilesHttpRepository implements FilesRepositoryContract
 {
+    private OpenAITransport $transport;
+
     public function __construct(
         private GuzzleClient $http,
         private string $basePath = '/v1'
     ) {
+        $this->transport = new GuzzleOpenAITransport($this->http, $this->basePath);
     }
 
     /**
@@ -34,8 +39,8 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
      * @return array The decoded JSON response from the OpenAI API containing file metadata,
      *               including the file ID, filename, purpose, and other file properties.
      * @throws FileOperationException If the file is not readable or cannot be opened for reading.
-     * @throws ApiResponseValidationException If the API response indicates an error or contains invalid data.
-     * @throws JsonException|GuzzleException If the API response cannot be decoded as valid JSON.
+     * @throws ApiResponseValidationException If the API response indicates an error or contains invalid data, or on transport/network errors.
+     * @throws JsonException If the API response cannot be decoded as valid JSON.
      */
     public function upload(string $filePath, string $purpose = 'assistants'): array
     {
@@ -81,15 +86,22 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
             $filePart['headers'] = ['Content-Type' => $mime];
         }
 
-        $response = $this->http->post($this->endpoint('files'), [
-            'multipart' => [
-                $filePart,
-                [
-                    'name' => 'purpose',
-                    'contents' => $purpose,
+        try {
+            $response = $this->http->post($this->endpoint('files'), [
+                'multipart' => [
+                    $filePart,
+                    [
+                        'name' => 'purpose',
+                        'contents' => $purpose,
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        } catch (Throwable $e) {
+            if (is_resource($resource)) {
+                fclose($resource);
+            }
+            throw new ApiResponseValidationException($e->getMessage() ?: 'Transport error during file upload.');
+        }
 
         if (is_resource($resource)) {
             fclose($resource);
@@ -100,45 +112,28 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
 
     /**
      * Retrieves metadata and information for a specific file from the OpenAI API.
-     * This method fetches detailed information about a previously uploaded file using its
-     * unique file identifier. The returned data includes file properties such as filename,
-     * size, purpose, creation timestamp, and other metadata associated with the file.
+     * This method delegates to the transport for unified retries and exceptions.
      *
-     * @param string $fileId The unique identifier of the file to retrieve. This ID is typically
-     *                       obtained from a previous file upload operation or file listing.
-     * @return array The decoded JSON response from the OpenAI API containing complete file metadata,
-     *               including properties like id, filename, bytes, purpose, created_at, and status.
-     * @throws ApiResponseValidationException If the API response indicates an error (e.g. file not found)
-     *                                       or contains invalid data.
-     * @throws JsonException|GuzzleException If the API response cannot be decoded as valid JSON or
-     *                                      if there's a network/HTTP communication error.
+     * @param string $fileId The unique identifier of the file to retrieve.
+     * @return array The decoded JSON response from the OpenAI API containing complete file metadata.
+     * @throws ApiResponseValidationException If the API response indicates an error or the response format is invalid.
      */
     public function retrieve(string $fileId): array
     {
-        $response = $this->http->get($this->endpoint("files/{$fileId}"));
-        return $this->decodeOrFail($response);
+        return $this->transport->getJson($this->endpoint("files/{$fileId}"));
     }
 
     /**
      * Deletes a specific file from the OpenAI API.
-     * This method sends a DELETE request to the OpenAI Files API to permanently remove
-     * a previously uploaded file. Once deleted, the file cannot be recovered and will
-     * no longer be accessible for use with assistants or other OpenAI services.
+     * Delegates to the transport for unified retries and exception handling.
      *
-     * @param string $fileId The unique identifier of the file to delete. This ID is typically
-     *                       obtained from a previous file upload operation or file listing.
+     * @param string $fileId The unique identifier of the file to delete.
      * @return bool Returns true if the file was successfully deleted.
-     * @throws ApiResponseValidationException If the API response indicates an error (e.g. file not found,
-     *                                       insufficient permissions) or contains invalid data.
-     * @throws GuzzleException|JsonException If there's a network/HTTP communication error during the request.
+     * @throws ApiResponseValidationException When the API returns an error response (status >= 400).
      */
     public function delete(string $fileId): bool
     {
-        $response = $this->http->delete($this->endpoint("files/{$fileId}"));
-        if ($response->getStatusCode() >= Response::HTTP_BAD_REQUEST) {
-            $this->throwForError($response);
-        }
-        return true;
+        return $this->transport->delete($this->endpoint("files/{$fileId}"));
     }
 
     /**

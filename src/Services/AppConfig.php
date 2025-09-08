@@ -31,17 +31,20 @@ final class AppConfig implements AppConfigContract
             return $client;
         }
 
-        // Create an optimized HTTP client with connection pooling if enabled
-        $connectionPoolConfig = config('ai-assistant.connection_pool', []);
-
-        // Ensure connectionPoolConfig is an array
-        if (!is_array($connectionPoolConfig)) {
-            $connectionPoolConfig = [];
+        // Timeouts shared with HTTP repositories
+        $timeout = config('ai-assistant.responses.timeout', 120);
+        if (!is_numeric($timeout)) {
+            $timeout = 120;
         }
 
-        // SDK factory removed. We simply return a compat OpenAI Client stub instance.
-        // Keep validation above; connection pooling and HTTP client wiring are handled in HTTP repositories.
-        return new Client();
+        // Instantiate our internal OpenAI client with real HTTP wiring for chat.completions
+        return new Client(
+            http: null,
+            apiKey: (string)$apiKey,
+            organization: is_string($organisation) ? $organisation : null,
+            baseUri: 'https://api.openai.com',
+            timeout: (float)$timeout,
+        );
     }
 
     /**

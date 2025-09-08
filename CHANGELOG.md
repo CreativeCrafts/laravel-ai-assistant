@@ -5,6 +5,28 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.11] - 2025-09-08
+
+feat: add OpenAI transport layer and refactor clients/repositories
+
+• Introduce OpenAITransport interface and GuzzleOpenAITransport implementation
+• Unified JSON, multipart, DELETE and SSE streaming helpers
+• Built-in retries with exponential backoff and optional jitter
+• Idempotency-Key handling (configurable) and consistent error normalization
+• Centralized timeout resolution
+• Wire Compat OpenAI Client to real HTTP via transport
+• Keep legacy constructor signature for BC (HttpClientInterface arg ignored)
+• Support API key, organization header, base URI and per-call timeouts
+• Add Compat OpenAI resources backed by transport
+• Assistants, Chat (incl. streamed responses), Completions
+• Threads (+messages, +runs), Audio (transcribe/translate)
+• Refactor HTTP repositories to delegate network I/O to transport
+• Conversations: POST/GET/DELETE now via transport; simpler list query building
+• Responses: create/stream/get/cancel/delete now via transport; remove duplicated retry/decoder logic
+• Files: upload/retrieve/delete via transport; safer file handling and resource cleanup on errors
+• Update AppConfig to instantiate the compat Client with configured API key/org/timeout
+• Remove stray phpunit.xml.dist.bak
+
 ## [3.0.5-beta] - 2025-09-05
 
 "feat: make OpenAI SDK optional, add Compat aliases; default file purpose to "assistants"
