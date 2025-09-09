@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 feat (data-factory): support array-based response_format with json_schema options and stricter validation
 
 - Accept an array form for response_format with { type, json_schema } and validate required fields
-- Support json_schema { name, schema?, strict? } and return standardized structure
+- Support json_schema { name, schema?, strict? } and return standardised structure
 - Normalise validation and error messages; minor style tidy-ups (spacing, docblocks)
 - Clear cached config when appropriate
 - Add idempotency key generation, content-type–aware decode, refined error detail assembly
