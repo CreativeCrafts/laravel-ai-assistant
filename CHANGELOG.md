@@ -5,6 +5,27 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.13] - 2025-09-09
+
+feat (data-factory): support array-based response_format with json_schema options and stricter validation
+
+- Accept an array form for response_format with { type, json_schema } and validate required fields
+- Support json_schema { name, schema?, strict? } and return standardized structure
+- Normalise validation and error messages; minor style tidy-ups (spacing, docblocks)
+- Clear cached config when appropriate
+- Add idempotency key generation, content-type–aware decode, refined error detail assembly
+- Group retry helpers, reintroduce SSE timeout, and tidy imports/formatting
+
+## [3.0.12] - 2025-09-09
+
+feat: Improve GuzzleOpenAITransport: robust decode, idempotency key
+
+• Add generateIdempotencyKey() with secure random_bytes and layered fallbacks
+• Make decodeOrFail() content-type aware (handles text/plain) and validate JSON with JSON_THROW_ON_ERROR
+• Move endpoint() and delete() earlier; group retry helpers; reintroduce resolveSseTimeout()
+• Fix error detail assembly to only include fields when present
+• Tidy imports and minor formatting for readability
+
 ## [3.0.11] - 2025-09-08
 
 feat: add OpenAI transport layer and refactor clients/repositories

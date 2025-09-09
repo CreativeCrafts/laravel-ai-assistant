@@ -19,7 +19,6 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
 {
     /**
      * Builds and returns a TranscribeToData object based on the provided configuration.
-     *
      * This method creates a TranscribeToData object using the given configuration array.
      * It sets default values from the application's configuration if certain keys are not provided.
      *
@@ -30,7 +29,6 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
      *                      - 'file' (required): The path to the audio file to be transcribed.
      *                      - 'language' (required): The language of the audio file.
      *                      - 'prompt' (optional): A prompt to guide the transcription.
-     *
      * @return TranscribeToDataContract A TranscribeToData object containing the configured transcription parameters.
      */
     public static function buildTranscribeData(array $config): TranscribeToDataContract
@@ -42,14 +40,14 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
             if (is_array($config['response_format'])) {
                 throw new InvalidArgumentException(message: 'Response format must be a string');
             }
-            if (! in_array($config['response_format'], $validResponseFormats, strict: true)) {
+            if (!in_array($config['response_format'], $validResponseFormats, strict: true)) {
                 throw new InvalidArgumentException(message: 'Invalid response format');
             }
         }
 
         return new TranscribeToData(
             model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.audio_model'))->value(),
-            temperature: $configData->float(key: 'temperature', default: is_numeric(Config::get('ai-assistant.temperature')) ? (float) Config::get('ai-assistant.temperature') : 0.0),
+            temperature: $configData->float(key: 'temperature', default: is_numeric(Config::get('ai-assistant.temperature')) ? (float)Config::get('ai-assistant.temperature') : 0.0),
             responseFormat: $configData->string(key: 'response_format', default: 'json')->value(),
             filePath: $config['file'],
             language: $configData->string(key: 'language', default: 'en')->value(),
@@ -59,7 +57,6 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
 
     /**
      * Builds and returns a CreateAssistantData object based on the provided configuration.
-     *
      * This method creates a CreateAssistantData object using the given configuration array.
      * It sets default values from the application's configuration if certain keys are not provided.
      *
@@ -75,7 +72,6 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
      *                      - 'tool_resources' (optional): An array of resources for the tools.
      *                      - 'metadata' (optional): Additional metadata for the assistant.
      *                      - 'response_format' (optional): The desired format of the response.
-     *
      * @return CreateAssistantDataContract A CreateAssistantData object containing the configured assistant parameters.
      */
     public static function buildCreateAssistantData(array $config): CreateAssistantDataContract
@@ -88,8 +84,8 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
 
         return new CreateAssistantData(
             model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value(),
-            topP: $configData->float(key: 'top_p', default: is_numeric(Config::get('ai-assistant.top_p')) ? (float) Config::get('ai-assistant.top_p') : 1.0),
-            temperature: $configData->float(key: 'temperature', default: is_numeric(Config::get('ai-assistant.temperature')) ? (float) Config::get('ai-assistant.temperature') : 0.0),
+            topP: $configData->float(key: 'top_p', default: is_numeric(Config::get('ai-assistant.top_p')) ? (float)Config::get('ai-assistant.top_p') : 1.0),
+            temperature: $configData->float(key: 'temperature', default: is_numeric(Config::get('ai-assistant.temperature')) ? (float)Config::get('ai-assistant.temperature') : 0.0),
             assistantDescription: $configData->string(key: 'description')->value(),
             assistantName: $configData->string(key: 'name')->value(),
             instructions: $configData->string(key: 'instructions')->value(),
@@ -106,7 +102,7 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
         $configData = fluent($config);
         $cacheKey = $configData->string(key: 'cacheConfig.key')->value();
 
-        if (! isset($config['cacheConfig']) && Cache::has($cacheKey)) {
+        if (!isset($config['cacheConfig']) && Cache::has($cacheKey)) {
             Cache::forget($cacheKey);
         }
 
@@ -143,36 +139,52 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
     }
 
     /**
-     * Constructs the response format configuration array based on the provided configuration.
+     * Builds and validates a response format configuration array for AI assistant requests.
+     * This method processes the response_format configuration and converts it into a standardized
+     * array format that can be used by the AI service. It handles both string and array formats
+     * for response_format and performs validation to ensure the configuration is valid.
      *
-     * This private method validates and builds the response format array using the given configuration options.
-     * It checks if the "response_format" key is set and is a string, then validates it against the allowed values:
-     * "json_schema", "text", "json_object", and "auto". If an invalid format is provided, the method throws an
-     * InvalidArgumentException.
-     *
-     * The method handles the response format as follows:
-     * - For "json_object" or "text": Returns an array with a single "type" key set to the value of "response_format".
-     * - For "json_schema": Expects an additional "json_schema" key in the configuration and returns an array with:
-     *     - "type" set to the value from the "json_schema" key.
-     *     - "json_schema" as an array containing a "name" key, also set to the value from the "json_schema" key.
-     * - For "auto" or if "response_format" is not provided as a valid string, an empty array is returned.
-     *
-     * @param array $config The configuration array which may contain:
-     *                      - "response_format" (string, optional): One of "json_schema", "text", "json_object", or "auto".
-     *                      - "json_schema" (string, required if "response_format" is "json_schema"): The schema name to use.
-     *
-     * @return array The constructed response format configuration array.
-     *
-     * @throws InvalidArgumentException If the provided "response_format" is not one of the allowed values.
+     * @param array $config An associative array containing configuration options:
+     *                      - 'response_format' (optional): Can be either a string ('json_schema', 'text', 'json_object', 'auto')
+     *                        or an array with 'type' key and optional 'json_schema' configuration
+     *                      - 'json_schema' (optional): Array containing JSON schema configuration when response_format is 'json_schema'
+     *                        - 'name' (required): String name for the JSON schema
+     *                        - 'schema' (optional): The actual JSON schema definition
+     *                        - 'strict' (optional): Boolean indicating strict mode
+     * @return array A standardized response format array containing:
+     *               - 'type': The response format type
+     *               - 'json_schema': Array with schema configuration (only when type is 'json_schema')
+     *               Returns empty array if no valid response_format is provided
+     * @throws InvalidArgumentException When response_format configuration is invalid or missing required fields
      */
     private function buildResponseFormat(array $config): array
     {
+        if (isset($config['response_format']) && is_array($config['response_format'])) {
+            $rf = $config['response_format'];
+
+            if (!isset($rf['type']) || !is_string($rf['type'])) {
+                throw new InvalidArgumentException('response_format array must include a string "type"');
+            }
+
+            if ($rf['type'] === 'json_schema') {
+                if (!isset($rf['json_schema']) || !is_array($rf['json_schema'])) {
+                    throw new InvalidArgumentException('response_format.json_schema must be an array when type is "json_schema"');
+                }
+                if (!isset($rf['json_schema']['name']) || !is_string($rf['json_schema']['name'])) {
+                    throw new InvalidArgumentException('response_format.json_schema.name must be a string');
+                }
+            }
+
+            return $rf;
+        }
+
         $responseFormat = [];
         if (isset($config['response_format']) && is_string($config['response_format'])) {
             $validResponseFormats = ['json_schema', 'text', 'json_object', 'auto'];
-            if (! in_array($config['response_format'], $validResponseFormats, strict: true)) {
-                throw new InvalidArgumentException(message: 'Invalid response format');
+            if (!in_array($config['response_format'], $validResponseFormats, true)) {
+                throw new InvalidArgumentException('Invalid response format');
             }
+
             if ($config['response_format'] === 'json_object' || $config['response_format'] === 'text') {
                 $responseFormat = [
                     'type' => fluent($config)->string(key: 'response_format')->value(),
@@ -180,14 +192,29 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
             }
 
             if ($config['response_format'] === 'json_schema') {
-                $responseFormat = [
-                    'type' => fluent($config)->string(key: 'json_schema')->value(),
-                    'json_schema' => [
-                        'name' => fluent($config)->string(key: 'json_schema')->value(),
-                    ],
-                ];
+                $jsonSchemaConfig = $config['json_schema'] ?? null;
+                if (is_array($jsonSchemaConfig)) {
+                    if (!isset($jsonSchemaConfig['name']) || !is_string($jsonSchemaConfig['name'])) {
+                        throw new InvalidArgumentException('json_schema.name must be a string when response_format is "json_schema"');
+                    }
+                    $responseFormat = [
+                        'type' => 'json_schema',
+                        'json_schema' => [
+                            'name' => $jsonSchemaConfig['name'],
+                            ...(isset($jsonSchemaConfig['schema']) ? ['schema' => $jsonSchemaConfig['schema']] : []),
+                            ...(isset($jsonSchemaConfig['strict']) ? ['strict' => (bool)$jsonSchemaConfig['strict']] : []),
+                        ],
+                    ];
+                } else {
+                    $name = fluent($config)->string(key: 'json_schema')->value();
+                    $responseFormat = [
+                        'type' => $name,
+                        'json_schema' => ['name' => $name],
+                    ];
+                }
             }
         }
+
         return $responseFormat;
     }
 }
