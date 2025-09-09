@@ -119,16 +119,25 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
             );
         }
 
+        $model = $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value();
+        $temperature = $configData->float(
+            key: 'temperature',
+            default: Config::float(key: 'ai-assistant.temperature')
+        );
+        if (str_starts_with($model, 'gpt-5') || str_starts_with($model, 'o3') || str_starts_with($model, 'o4')) {
+            $temperature = 1.0;
+        }
+
         return new ChatCompletionData(
             model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value(),
             message: $chatMessages,
-            temperature: $configData->float(key: 'temperature', default: Config::float(key: 'ai-assistant.temperature')),
+            temperature: $temperature,
             store: $configData->boolean(key: 'store'),
             reasoningEffort: $configData->string(key: 'reasoning_effort', default: '')->value(),
             metadata: $configData->array(key: 'metadata'),
             maxCompletionTokens: $configData->integer(key: 'max_completion_tokens'),
             numberOfCompletionChoices: $configData->integer(key: 'n', default: 1),
-            outputTypes: $configData->array(key: 'modalities'),
+            outputTypes: isset($config['modalities']) ? $configData->array(key: 'modalities') : null,
             audio: $configData->array(key: 'audio'),
             responseFormat: (new self())->buildResponseFormat($config),
             stopSequences: $configData->array(key: 'stop'),

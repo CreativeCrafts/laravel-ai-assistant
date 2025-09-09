@@ -5,6 +5,17 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.14-beta] - 2025-09-09
+
+fix(data-factory): set temp=1.0 for gpt-5/o3/o4 models; make modalities optional
+
+- Read model/temperature from config and force temperature=1.0 for reasoning-capable models
+  (gpt-5, o3, o4) to comply with model constraints.
+- Only include outputTypes when the `modalities` key is provided; otherwise pass null to
+  avoid sending an invalid parameter.
+
+File: src/DataFactories/ModelConfigDataFactory.php
+
 ## [3.0.13-beta] - 2025-09-09
 
 feat (data-factory): support array-based response_format with json_schema options and stricter validation
