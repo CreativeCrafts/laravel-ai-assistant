@@ -97,56 +97,6 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
         );
     }
 
-    public static function buildChatCompletionData(array $config): ChatCompletionDataContract
-    {
-        $configData = fluent($config);
-        $cacheKey = $configData->string(key: 'cacheConfig.key')->value();
-
-        if (!isset($config['cacheConfig']) && Cache::has($cacheKey)) {
-            Cache::forget($cacheKey);
-        }
-
-        $chatMessages = $config['messages'];
-        if (isset($config['cacheConfig'])) {
-            $cached = Cache::get($cacheKey);
-            if ($cached) {
-                $chatMessages = array_merge([$cached], $chatMessages);
-            }
-            Cache::put(
-                $cacheKey,
-                $chatMessages,
-                $configData->integer(key: 'cacheConfig.ttl', default: 60)
-            );
-        }
-
-        $model = $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value();
-        $temperature = $configData->float(
-            key: 'temperature',
-            default: Config::float(key: 'ai-assistant.temperature')
-        );
-        if (str_starts_with($model, 'gpt-5') || str_starts_with($model, 'o3') || str_starts_with($model, 'o4')) {
-            $temperature = 1.0;
-        }
-
-        return new ChatCompletionData(
-            model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value(),
-            message: $chatMessages,
-            temperature: $temperature,
-            store: $configData->boolean(key: 'store'),
-            reasoningEffort: $configData->string(key: 'reasoning_effort', default: '')->value(),
-            metadata: $configData->array(key: 'metadata'),
-            maxCompletionTokens: $configData->integer(key: 'max_completion_tokens'),
-            numberOfCompletionChoices: $configData->integer(key: 'n', default: 1),
-            outputTypes: isset($config['modalities']) ? $configData->array(key: 'modalities') : null,
-            audio: $configData->array(key: 'audio'),
-            responseFormat: (new self())->buildResponseFormat($config),
-            stopSequences: $configData->array(key: 'stop'),
-            stream: $configData->boolean(key: 'stream'),
-            streamOptions: $configData->array(key: 'stream_options'),
-            topP: $configData->float(key: 'top_p', default: Config::float(key: 'ai-assistant.top_p'))
-        );
-    }
-
     /**
      * Builds and validates a response format configuration array for AI assistant requests.
      * This method processes the response_format configuration and converts it into a standardized
@@ -225,5 +175,56 @@ final class ModelConfigDataFactory implements ModelConfigDataFactoryContract
         }
 
         return $responseFormat;
+    }
+
+    public static function buildChatCompletionData(array $config): ChatCompletionDataContract
+    {
+        $configData = fluent($config);
+        $cacheKey = $configData->string(key: 'cacheConfig.key')->value();
+
+        if (!isset($config['cacheConfig']) && Cache::has($cacheKey)) {
+            Cache::forget($cacheKey);
+        }
+
+        $chatMessages = $config['messages'];
+        if (isset($config['cacheConfig'])) {
+            $cached = Cache::get($cacheKey);
+            if ($cached) {
+                $chatMessages = array_merge([$cached], $chatMessages);
+            }
+            Cache::put(
+                $cacheKey,
+                $chatMessages,
+                $configData->integer(key: 'cacheConfig.ttl', default: 60)
+            );
+        }
+
+        $model = $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value();
+        $temperature = $configData->float(
+            key: 'temperature',
+            default: Config::float(key: 'ai-assistant.temperature')
+        );
+        // comply with model constraints.
+        if (str_starts_with($model, 'gpt-5') || str_starts_with($model, 'o3') || str_starts_with($model, 'o4')) {
+            $temperature = 1.0;
+        }
+
+        return new ChatCompletionData(
+            model: $configData->string(key: 'model', default: Config::string(key: 'ai-assistant.model'))->value(),
+            message: $chatMessages,
+            temperature: $temperature,
+            store: $configData->boolean(key: 'store'),
+            reasoningEffort: $configData->string(key: 'reasoning_effort', default: '')->value(),
+            metadata: $configData->array(key: 'metadata'),
+            maxCompletionTokens: $configData->integer(key: 'max_completion_tokens'),
+            numberOfCompletionChoices: $configData->integer(key: 'n', default: 1),
+            outputTypes: isset($config['modalities']) ? $configData->array(key: 'modalities') : null,
+            audio: $configData->array(key: 'audio'),
+            responseFormat: (new self())->buildResponseFormat($config),
+            stopSequences: $configData->array(key: 'stop'),
+            stream: $configData->boolean(key: 'stream'),
+            streamOptions: $configData->array(key: 'stream_options'),
+            topP: $configData->float(key: 'top_p', default: Config::float(key: 'ai-assistant.top_p'))
+        );
     }
 }
