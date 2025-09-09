@@ -17,13 +17,13 @@ use Generator;
  */
 final readonly class ChatSession
 {
-    public function __construct(private AiAssistant $core)
-    {
+    public function __construct(
+        private AiAssistant $core
+    ) {
     }
 
     /**
      * Create a new ChatSession instance with an optional initial prompt.
-     *
      * This static factory method provides a convenient way to instantiate a new
      * ChatSession with an underlying AiAssistant core. The prompt parameter allows
      * you to set an initial message or context for the chat session.
@@ -31,7 +31,6 @@ final readonly class ChatSession
      * @param string|null $prompt The initial prompt or message to start the chat session with.
      *                           If null is provided, it will be converted to an empty string.
      *                           Defaults to an empty string if not specified.
-     *
      * @return self A new ChatSession instance configured with the provided prompt
      */
     public static function make(?string $prompt = ''): self
@@ -39,41 +38,45 @@ final readonly class ChatSession
         return new self(new AiAssistant($prompt ?? ''));
     }
 
-    // Configuration chainers
+    
     public function instructions(string $instructions): self
     {
-    $this->core->instructions($instructions);
-    return $this;
+        $this->core->instructions($instructions);
+        return $this;
     }
+
     public function setUserMessage(string $text): self
     {
-    $this->core->setUserMessage($text);
-    return $this;
+        $this->core->setUserMessage($text);
+        return $this;
     }
+
     public function setDeveloperMessage(string $text): self
     {
-    $this->core->setDeveloperMessage($text);
-    return $this;
+        $this->core->setDeveloperMessage($text);
+        return $this;
     }
+
     public function setModelName(string $model): self
     {
-    $this->core->setModelName($model);
-    return $this;
+        $this->core->setModelName($model);
+        return $this;
     }
+
     public function setResponseFormatText(): self
     {
-    $this->core->setResponseFormatText();
-    return $this;
+        $this->core->setResponseFormatText();
+        return $this;
     }
+
     public function setResponseFormatJsonSchema(array $jsonSchema, ?string $name = 'response'): self
     {
-    $this->core->setResponseFormatJsonSchema($jsonSchema, $name);
-    return $this;
+        $this->core->setResponseFormatJsonSchema($jsonSchema, $name);
+        return $this;
     }
 
     /**
      * Get a ToolsBuilder instance for configuring AI assistant tools and functions.
-     *
      * This method provides access to a fluent interface for defining and configuring
      * tools that the AI assistant can use during the chat session. Tools allow the
      * assistant to perform actions like function calls, API requests, or other
@@ -90,7 +93,6 @@ final readonly class ChatSession
 
     /**
      * Get a FilesHelper instance for managing file operations within the chat session.
-     *
      * This method provides access to a helper class that facilitates file-related
      * operations for the AI assistant, such as uploading files, managing file
      * attachments, or processing file content that can be used as context in
@@ -107,7 +109,6 @@ final readonly class ChatSession
 
     /**
      * Send the configured chat message to the AI assistant and receive a response.
-     *
      * This method executes the chat request using the current configuration (instructions,
      * user message, model, tools, etc.) and returns the AI assistant's response wrapped
      * in a strongly typed data transfer object. This is a synchronous operation that
@@ -125,7 +126,6 @@ final readonly class ChatSession
 
     /**
      * Stream the chat response as a series of events in real-time.
-     *
      * This method initiates a streaming chat request that yields events as they arrive
      * from the AI assistant, allowing for real-time processing of the response. Each
      * event is wrapped in a strongly typed StreamingEventDto for consistent handling.
@@ -140,7 +140,6 @@ final readonly class ChatSession
      *                                 stop the streaming process early. The callback should
      *                                 return true to stop streaming or false to continue.
      *                                 Useful for implementing cancellation logic. Defaults to null.
-     *
      * @return Generator<StreamingEventDto> A generator that yields StreamingEventDto objects
      *                                      representing each event in the streaming response,
      *                                      allowing for memory-efficient real-time processing
@@ -166,7 +165,6 @@ final readonly class ChatSession
 
     /**
      * Continue the chat conversation with tool execution results.
-     *
      * This method allows you to provide the results of tool calls that were requested
      * by the AI assistant in a previous response. The assistant will then continue
      * the conversation using these tool results to generate its next response.
@@ -174,7 +172,6 @@ final readonly class ChatSession
      * @param array $toolResults An array of tool execution results, typically containing
      *                          the output from functions or tools that the AI requested
      *                          to be called in a previous interaction
-     *
      * @return ChatResponseDto The AI assistant's response after processing the tool results,
      *                        wrapped in a strongly typed data transfer object
      */
@@ -184,9 +181,8 @@ final readonly class ChatSession
         return ChatResponseDto::fromArray($arr);
     }
 
-     /**
+    /**
      * Get direct access to the underlying AiAssistant core instance.
-     *
      * This method provides an escape hatch to access the raw AiAssistant instance
      * when you need functionality that isn't exposed through the ChatSession's
      * fluent interface. Use this sparingly and prefer the typed methods when possible.
