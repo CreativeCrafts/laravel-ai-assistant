@@ -7,11 +7,11 @@ namespace CreativeCrafts\LaravelAiAssistant\Transport;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MaxRetryAttemptsExceededException;
 use GuzzleHttp\Client as GuzzleClient;
+use JsonException;
 use Psr\Http\Message\ResponseInterface;
+use SplFileInfo;
 use Symfony\Component\HttpFoundation\Response as Http;
 use Throwable;
-use JsonException;
-use SplFileInfo;
 
 final readonly class GuzzleOpenAITransport implements OpenAITransport
 {
@@ -35,6 +35,22 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         ];
         $res = $this->requestWithRetry('POST', $path, $options, $idempotent);
         return $this->decodeOrFail($res);
+    }
+
+    public function delete(string $path, array $headers = [], ?float $timeout = null): bool
+    {
+        $payload = [];
+        $headers = $this->prepareHeaders($headers, false, $payload, false);
+        $timeout = $this->resolveTimeout($timeout);
+        $options = [
+            'headers' => $headers,
+            'timeout' => $timeout,
+        ];
+        $res = $this->requestWithRetry('DELETE', $path, $options, false);
+        if ($res->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
+            $this->throwForError($res);
+        }
+        return true;
     }
 
     public function postMultipart(string $path, array $fields, array $headers = [], ?float $timeout = null, bool $idempotent = false): array
@@ -199,22 +215,6 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         return $this->decodeOrFail($res);
     }
 
-    public function delete(string $path, array $headers = [], ?float $timeout = null): bool
-    {
-        $payload = [];
-        $headers = $this->prepareHeaders($headers, false, $payload, false);
-        $timeout = $this->resolveTimeout($timeout);
-        $options = [
-            'headers' => $headers,
-            'timeout' => $timeout,
-        ];
-        $res = $this->requestWithRetry('DELETE', $path, $options, false);
-        if ($res->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
-            $this->throwForError($res);
-        }
-        return true;
-    }
-
     public function streamSse(string $path, array $payload, array $headers = [], ?float $timeout = null, bool $idempotent = false): iterable
     {
         $headers = $this->prepareHeaders($headers + ['Accept' => 'text/event-stream'], true, $payload, $idempotent);
@@ -247,18 +247,6 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         }
     }
 
-    private function resolveSseTimeout(?float $timeout): float
-    {
-        if ($timeout !== null) {
-            return (float)$timeout;
-        }
-        $sse = config('ai-assistant.streaming.sse_timeout');
-        if (is_numeric($sse)) {
-            return (float)$sse;
-        }
-        return $this->resolveTimeout(null);
-    }
-
     private function prepareHeaders(array $headers, bool $isStream, array &$payload, bool $idempotent): array
     {
         $base = [
@@ -278,6 +266,25 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         return $headers;
     }
 
+    private function generateIdempotencyKey(): string
+    {
+        try {
+            return bin2hex(random_bytes(16));
+        } catch (Throwable) {
+            $ri = '';
+            try {
+                $ri = (string)random_int(PHP_INT_MIN, PHP_INT_MAX);
+            } catch (Throwable) {
+                $timeInt = (int)round(microtime(true) * 1_000_000);
+                $pid = (int)getmypid();
+                $hostCrc = (int)crc32((string)gethostname());
+                $ri = (string)(($timeInt ^ $pid) ^ $hostCrc);
+            }
+            $data = microtime(true) . '|' . (string)getmypid() . '|' . (string)$ri;
+            return hash('sha256', (string)$data);
+        }
+    }
+
     private function resolveTimeout(?float $timeout): float
     {
         if ($timeout !== null) {
@@ -288,17 +295,6 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
             $cfg = 120;
         }
         return (float)$cfg;
-    }
-
-    private function endpoint(string $path): string
-    {
-        // If an absolute API path is provided (e.g., '/v1/responses'), return as-is to avoid double prefixing
-        if ($path !== '' && $path[0] === '/') {
-            return $path;
-        }
-        $prefix = rtrim($this->basePath, '/');
-        $suffix = ltrim($path, '/');
-        return $prefix . '/' . $suffix;
     }
 
     private function requestWithRetry(string $method, string $path, array $options, bool $idempotent): ResponseInterface
@@ -353,48 +349,15 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         throw new MaxRetryAttemptsExceededException('Maximum retry attempts exceeded for OpenAI request.');
     }
 
-    private function isRetryableResponse(ResponseInterface $response): bool
+    private function endpoint(string $path): string
     {
-        $status = $response->getStatusCode();
-        if ($status === Http::HTTP_CONFLICT || $status === Http::HTTP_TOO_MANY_REQUESTS) {
-            return true;
+        // If an absolute API path is provided (e.g., '/v1/responses'), return as-is to avoid double prefixing
+        if ($path !== '' && $path[0] === '/') {
+            return $path;
         }
-        if ($status >= Http::HTTP_INTERNAL_SERVER_ERROR && $status <= Http::HTTP_VERSION_NOT_SUPPORTED) {
-            return true;
-        }
-        return false;
-    }
-
-    private function isRetryableException(Throwable $e): bool
-    {
-        return true;
-    }
-
-    private function computeDelay(int $attempt, float $initial, float $multiplier, float $max, bool $jitter): float
-    {
-        $delay = $initial * ($multiplier ** max(0, $attempt - 1));
-        $delay = min($delay, $max);
-        if ($jitter) {
-            try {
-                $rand = random_int(0, PHP_INT_MAX) / PHP_INT_MAX;
-            } catch (Throwable) {
-                $rand = 0.5;
-            }
-            $delay *= (0.5 + $rand * 0.5);
-        }
-        return $delay;
-    }
-
-    private function decodeOrFail(ResponseInterface $response): array
-    {
-        if ($response->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
-            $this->throwForError($response);
-        }
-        $data = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
-        if (!is_array($data)) {
-            throw new ApiResponseValidationException('Unexpected response format from OpenAI.');
-        }
-        return $data;
+        $prefix = rtrim($this->basePath, '/');
+        $suffix = ltrim($path, '/');
+        return $prefix . '/' . $suffix;
     }
 
     private function throwForError(ResponseInterface $response): void
@@ -448,13 +411,13 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         // Enrich message with type/code/param if present
         $details = [];
         if ($type) {
-        $details[] = "type=$type";
+            $details[] = "type=$type";
         }
         if ($code) {
-        $details[] = "code=$code";
+            $details[] = "code=$code";
         }
         if ($param) {
-        $details[] = "param=$param";
+            $details[] = "param=$param";
         }
         if ($details) {
             $msg .= ' [' . implode(' ', $details) . ']';
@@ -463,22 +426,70 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         throw new ApiResponseValidationException($msg, $response->getStatusCode());
     }
 
-    private function generateIdempotencyKey(): string
+    private function isRetryableResponse(ResponseInterface $response): bool
     {
-        try {
-            return bin2hex(random_bytes(16));
-        } catch (Throwable) {
-            $ri = '';
-            try {
-                $ri = (string)random_int(PHP_INT_MIN, PHP_INT_MAX);
-            } catch (Throwable) {
-                $timeInt = (int)round(microtime(true) * 1_000_000);
-                $pid = (int)getmypid();
-                $hostCrc = (int)crc32((string)gethostname());
-                $ri = (string)(($timeInt ^ $pid) ^ $hostCrc);
-            }
-            $data = microtime(true) . '|' . (string)getmypid() . '|' . (string)$ri;
-            return hash('sha256', (string)$data);
+        $status = $response->getStatusCode();
+        if ($status === Http::HTTP_CONFLICT || $status === Http::HTTP_TOO_MANY_REQUESTS) {
+            return true;
         }
+        if ($status >= Http::HTTP_INTERNAL_SERVER_ERROR && $status <= Http::HTTP_VERSION_NOT_SUPPORTED) {
+            return true;
+        }
+        return false;
+    }
+
+    private function isRetryableException(Throwable $e): bool
+    {
+        return true;
+    }
+
+    private function computeDelay(int $attempt, float $initial, float $multiplier, float $max, bool $jitter): float
+    {
+        $delay = $initial * ($multiplier ** max(0, $attempt - 1));
+        $delay = min($delay, $max);
+        if ($jitter) {
+            try {
+                $rand = random_int(0, PHP_INT_MAX) / PHP_INT_MAX;
+            } catch (Throwable) {
+                $rand = 0.5;
+            }
+            $delay *= (0.5 + $rand * 0.5);
+        }
+        return $delay;
+    }
+
+    /**
+     * @throws JsonException
+     */
+    private function decodeOrFail(ResponseInterface $response): array
+    {
+        if ($response->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
+            $this->throwForError($response);
+        }
+
+        $contentType = $response->getHeaderLine('Content-Type');
+        $body = (string)$response->getBody();
+
+        if (0 === mb_stripos($contentType, 'text/plain')) {
+            return ['text' => $body];
+        }
+
+        $data = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($data)) {
+            throw new ApiResponseValidationException('Unexpected response format from OpenAI.');
+        }
+        return $data;
+    }
+
+    private function resolveSseTimeout(?float $timeout): float
+    {
+        if ($timeout !== null) {
+            return (float)$timeout;
+        }
+        $sse = config('ai-assistant.streaming.sse_timeout');
+        if (is_numeric($sse)) {
+            return (float)$sse;
+        }
+        return $this->resolveTimeout(null);
     }
 }
