@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 /**
  * Laravel AI Assistant - Testing Environment Configuration
- *
  * This configuration is optimized for automated testing environments with:
  * - Deterministic settings for consistent test results
  * - Mocking capabilities to avoid actual API calls
@@ -124,6 +123,7 @@ return [
         'validate_schemas' => true,
         'check_required_fields' => true,
         'sanitize_inputs' => true,
+        'skip' => true,
     ],
 
     /**

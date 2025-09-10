@@ -5,6 +5,21 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.16-beta] - 2025-09-10
+
+feat(config): add skip-able config validation; default to skip in dev/test
+
+• Gate validateConfiguration() behind shouldSkipValidation()
+• Add shouldSkipValidation() checking:
+• AI_ASSISTANT_SKIP_VALIDATION constant
+• env: GITHUB_ACTIONS, CI, SKIP_AI_ASSISTANT_CONFIG_VALIDATION
+• config('ai-assistant.validation.skip')
+• Apply environment overlays before validation
+• Set validation.skip=true in development and testing overlays
+• Minor doc/grammar tweaks and helper reorganisation (no behaviour change)
+
+This allows CI and explicit overrides to bypass strict config validation while keeping production-safe defaults.
+
 ## [3.0.15-beta] - 2025-09-10
 
 feat: add streaming responses, install command, and webhook signature verification

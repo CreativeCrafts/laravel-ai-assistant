@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 /**
  * Laravel AI Assistant - Development Environment Configuration
- *
  * This configuration is optimized for development environments with:
  * - Faster, cheaper models for quicker iteration
  * - More verbose logging and debugging
@@ -96,4 +95,6 @@ return [
         'response_validation' => true,
         'performance_tracking' => true,
     ],
+
+    'validation' => ['skip' => true]
 ];

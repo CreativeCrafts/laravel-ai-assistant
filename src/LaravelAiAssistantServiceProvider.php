@@ -91,13 +91,16 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
         $this->app->alias(Assistant::class, 'assistant');
     }
 
+    /**
+     * @throws Exception
+     */
     public function packageBooted(): void
     {
-        // Apply environment overlay defaults before validation so tests and runtime
+        // Apply environment overlay defaults before validation, so tests and runtime
         // overrides remain the highest priority.
         $this->applyEnvironmentOverlayDefaults();
 
-        if (!app()->runningUnitTests() && !defined('PHPSTAN_RUNNING')) {
+        if (!defined('PHPSTAN_RUNNING') && !$this->shouldSkipValidation() && !app()->runningUnitTests()) {
             $this->validateConfiguration();
         }
 
@@ -130,7 +133,7 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
         $current = Config::get('ai-assistant', []);
         $current = is_array($current) ? $current : [];
 
-        // Load base package config directly from file to compare and compose
+        // Load base package config directly from the file to compare and compose
         $base = $this->loadPackageBaseConfig();
 
         // Determine overlay path(s) based on environment
@@ -207,6 +210,45 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
     }
 
     /**
+     * Decide whether to skip configuration validation.
+     * Skips when running in CI (e.g., GitHub Actions) or when an override flag is set.
+     * Supported toggles (any truthy value):
+     *  - env("GITHUB_ACTIONS")
+     *  - env("CI")
+     *  - env("SKIP_AI_ASSISTANT_CONFIG_VALIDATION")
+     *  - config('ai-assistant.validation.skip')
+     *  - constant AI_ASSISTANT_SKIP_VALIDATION set to true
+     */
+    protected function shouldSkipValidation(): bool
+    {
+        // Allow a constant to short-circuit (useful in static analysis or custom bootstraps)
+        if (defined('AI_ASSISTANT_SKIP_VALIDATION') && constant('AI_ASSISTANT_SKIP_VALIDATION')) {
+            return true;
+        }
+
+        // Check common CI / deployment markers
+        $markers = [
+            env('GITHUB_ACTIONS'),
+            env('CI'),
+            env('SKIP_AI_ASSISTANT_CONFIG_VALIDATION'),
+        ];
+
+        foreach ($markers as $marker) {
+            // Treat values like "1", "true", true as truthy
+            if (filter_var($marker, FILTER_VALIDATE_BOOLEAN)) {
+                return true;
+            }
+        }
+
+        // Config-based escape hatch
+        if (config('ai-assistant.validation.skip', false)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Validate the current package configuration
      */
     protected function validateConfiguration(): void
@@ -244,7 +286,7 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
             );
         }
 
-        // Validate API key format (should start with sk- for OpenAI keys, unless it's a test key)
+        // Validate an API key format (should start with sk - for OpenAI keys, unless it's a test key)
         if (!$this->isTestApiKey($apiKey) && !str_starts_with($apiKey, 'sk-')) {
             app(LoggingService::class)->logSecurityEvent(
                 'api_key_format_validation',
@@ -269,6 +311,30 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
     }
 
     /**
+     * Check if the given API key appears to be a test/mock key
+     */
+    protected function isTestApiKey(string $apiKey): bool
+    {
+        $testPatterns = [
+            'test',
+            'mock',
+            'fake',
+            'demo',
+            'example',
+            'YOUR_OPENAI_API_KEY',
+        ];
+
+        $lowerKey = strtolower($apiKey);
+        foreach ($testPatterns as $pattern) {
+            if (str_contains($lowerKey, strtolower($pattern))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Validate model configuration settings
      */
     protected function validateModelConfiguration(array $config): void
@@ -286,9 +352,18 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
 
             // Basic validation for known model patterns
             $validPatterns = [
-                'gpt-3.5-turbo', 'gpt-4', 'gpt-4o', 'gpt-4o-mini',
-                'text-davinci', 'text-curie', 'text-babbage', 'text-ada',
-                'whisper-1', 'tts-1', 'dall-e-2', 'dall-e-3'
+                'gpt-3.5-turbo',
+                'gpt-4',
+                'gpt-4o',
+                'gpt-4o-mini',
+                'text-davinci',
+                'text-curie',
+                'text-babbage',
+                'text-ada',
+                'whisper-1',
+                'tts-1',
+                'dall-e-2',
+                'dall-e-3'
             ];
 
             $isValid = false;
@@ -430,29 +505,5 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
                 Log::info('[AI Assistant] Using test API key in testing environment');
             }
         }
-    }
-
-    /**
-     * Check if the given API key appears to be a test/mock key
-     */
-    protected function isTestApiKey(string $apiKey): bool
-    {
-        $testPatterns = [
-            'test',
-            'mock',
-            'fake',
-            'demo',
-            'example',
-            'YOUR_OPENAI_API_KEY',
-        ];
-
-        $lowerKey = strtolower($apiKey);
-        foreach ($testPatterns as $pattern) {
-            if (str_contains($lowerKey, strtolower($pattern))) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
