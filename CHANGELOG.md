@@ -5,6 +5,19 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.15-beta] - 2025-09-10
+
+feat: add streaming responses, install command, and webhook signature verification
+
+• Introduce StreamedAiResponse and Blade stream component for real-time AI output
+• Add VerifyAiWebhookSignature middleware to secure inbound webhooks
+• Add InstallCommand to simplify package setup
+• Provide example stubs: StreamingController and routes
+• Update ChatSession flow and OpenAI compat aliases
+• Expand ModelConfigDataFactory and update corresponding tests
+• Refresh config, composer.json, .gitattributes, and README
+• Remove obsolete SCALING_VERIFICATION_REPORT.md
+
 ## [3.0.14-beta] - 2025-09-09
 
 fix(data-factory): set temp=1.0 for gpt-5/o3/o4 models; make modalities optional

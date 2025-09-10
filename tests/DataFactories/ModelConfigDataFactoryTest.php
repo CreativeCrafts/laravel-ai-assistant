@@ -17,12 +17,12 @@ describe('ModelConfigDataFactory::buildTranscribeData', function () {
         Config::set('ai-assistant.temperature', 0.5);
 
         $config = [
-            'model'           => 'custom_model',
-            'temperature'     => 0.7,
+            'model' => 'custom_model',
+            'temperature' => 0.7,
             'response_format' => 'json',
-            'file'            => '/path/to/audio.mp3',
-            'language'        => 'en',
-            'prompt'          => 'Test prompt'
+            'file' => '/path/to/audio.mp3',
+            'language' => 'en',
+            'prompt' => 'Test prompt'
         ];
 
         $data = ModelConfigDataFactory::buildTranscribeData($config);
@@ -41,7 +41,7 @@ describe('ModelConfigDataFactory::buildTranscribeData', function () {
         Config::set('ai-assistant.temperature', 0.5);
 
         $config = [
-            'file'     => '/path/to/audio.mp3',
+            'file' => '/path/to/audio.mp3',
         ];
 
         $data = ModelConfigDataFactory::buildTranscribeData($config);
@@ -59,16 +59,16 @@ describe('ModelConfigDataFactory::buildTranscribeData', function () {
 describe('ModelConfigDataFactory::buildCreateAssistantData', function () {
     it('builds a CreateAssistantData object with provided configuration values', function () {
         $config = [
-            'model'           => 'custom_model',
-            'top_p'           => 0.9,
-            'temperature'     => 0.7,
-            'description'     => 'Test assistant description',
-            'name'            => 'TestAssistant',
-            'instructions'    => 'Follow these instructions',
+            'model' => 'custom_model',
+            'top_p' => 0.9,
+            'temperature' => 0.7,
+            'description' => 'Test assistant description',
+            'name' => 'TestAssistant',
+            'instructions' => 'Follow these instructions',
             'reasoning_effort' => 'high',
-            'tools'           => ['tool1', 'tool2'],
-            'tool_resources'  => ['resource1'],
-            'metadata'        => ['key' => 'value'],
+            'tools' => ['tool1', 'tool2'],
+            'tool_resources' => ['resource1'],
+            'metadata' => ['key' => 'value'],
             'response_format' => 'auto',
         ];
 
@@ -94,9 +94,9 @@ describe('ModelConfigDataFactory::buildCreateAssistantData', function () {
         Config::set('ai-assistant.temperature', 0.5);
 
         $config = [
-            'description'      => 'Default description',
-            'name'             => 'DefaultAssistant',
-            'instructions'     => 'Do something',
+            'description' => 'Default description',
+            'name' => 'DefaultAssistant',
+            'instructions' => 'Do something',
             'reasoning_effort' => 'medium',
         ];
 
@@ -131,20 +131,20 @@ describe('ModelConfigDataFactory::buildChatCompletionData (Simplified)', functio
             ->with($cacheKey);
 
         $config = [
-            'messages'                    => ['message without cache'],
-            'model'                       => 'default-model',
-            'temperature'                 => 0.7,
-            'store'                       => false,
-            'reasoning_effort'            => 'low',
-            'metadata'                    => [],
-            'max_completion_tokens'       => 150,
+            'messages' => ['message without cache'],
+            'model' => 'default-model',
+            'temperature' => 0.7,
+            'store' => false,
+            'reasoning_effort' => 'low',
+            'metadata' => [],
+            'max_completion_tokens' => 150,
             'number_of_completion_choices' => 1,
-            'output_types'                => ['text'],
-            'audio'                       => [],
-            'response_format'             => 'auto',
-            'stop_sequences'              => [],
-            'stream'                      => false,
-            'top_p'                       => 1.0,
+            'output_types' => ['text'],
+            'audio' => [],
+            'response_format' => 'auto',
+            'stop_sequences' => [],
+            'stream' => false,
+            'top_p' => 1.0,
         ];
 
         $chatData = ModelConfigDataFactory::buildChatCompletionData($config);
@@ -157,7 +157,6 @@ describe('ModelConfigDataFactory::buildChatCompletionData (Simplified)', functio
             ->and($chatData->toArray()['reasoning_effort'])->toBe('low')
             ->and($chatData->toArray()['max_completion_tokens'])->toBe(150)
             ->and($chatData->toArray()['n'])->toBe(1)
-            ->and($chatData->toArray()['modalities'])->toEqual([])
             ->and($chatData->toArray()['stream'])->toBeFalse();
     });
 
@@ -213,7 +212,6 @@ describe('ModelConfigDataFactory::buildChatCompletionData (Simplified)', functio
             ->and($chatData->toArray()['metadata'])->toEqual(['meta' => 'data'])
             ->and($chatData->toArray()['max_completion_tokens'])->toBe(200)
             ->and($chatData->toArray()['n'])->toBe(3)
-            ->and($chatData->toArray()['modalities'])->toEqual([])
             ->and($chatData->toArray()['audio'])->toEqual(['voice' => 'en-US'])
             ->and($chatData->toArray()['stop'])->toEqual(['STOP'])
             ->and($chatData->toArray()['stream'])->toBeTrue();

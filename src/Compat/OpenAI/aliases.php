@@ -2,6 +2,14 @@
 
 declare(strict_types=1);
 
+$__ai_aliases_enabled = getenv('AI_ASSISTANT_COMPAT_OPENAI_ALIASES');
+if ($__ai_aliases_enabled === false) {
+    $__ai_aliases_enabled = '1';
+}
+if (in_array(strtolower((string)$__ai_aliases_enabled), ['0', 'false', 'off', 'no'], true)) {
+    return;
+}
+
 // Aliases to satisfy tests expecting the official OpenAI PHP SDK namespaces.
 // These map our internal Compat classes to the external-facing FQCNs used in tests.
 
