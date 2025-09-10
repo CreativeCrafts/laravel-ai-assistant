@@ -77,7 +77,7 @@ handling. Perfect for building production-ready AI-powered applications with ent
 
 - ⚠️ `Assistant::sendMessage()` - Use `sendChatMessage()` instead
 - ⚠️ Root-level streaming config - Use `streaming` array configuration
-- ⚠️ Legacy thread management - Migrate to Responses API for better performance
+- ⚠️ Legacy thread management—Migrate to Responses API for better performance
 
 For detailed migration instructions, see the [migration documentation](docs/Migrate_from_AssistantAPI_to_ResponseAPI.md).
 
@@ -152,7 +152,13 @@ OPENAI_API_KEY=your-openai-api-key-here
 php artisan vendor:publish --tag="laravel-ai-assistant-config"
 ```
 
-### 4. Start Using AI Assistant
+### 4. Run the Installer (Recommended)
+
+```bash
+php artisan ai:install
+```
+
+### 5. Start Using AI Assistant
 
 ```php
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
@@ -168,7 +174,24 @@ $response = Ai::assistant()
     ->sendChatMessage('Write a haiku about coding');
 ```
 
-### 5. Enable Advanced Features (Optional)
+### Mount built-in helper routes (optional)
+
+Add the macro to your route file to mount a small set of helper endpoints:
+
+```php
+use Illuminate\Support\Facades\Route;
+
+Route::aiAssistant([
+    'prefix' => 'ai',
+    'middleware' => ['web', 'auth:sanctum'],
+]);
+```
+
+This registers:
+• GET /ai/health – health probe
+• POST /ai/webhooks – incoming webhooks (secured with verify.ai.webhook middleware)
+
+### 6. Enable Advanced Features (Optional)
 
 For production use, consider enabling these features in your `.env`:
 
@@ -304,7 +327,8 @@ Set your OpenAI API key and organization:
 
 Note:
 
-- This package can optionally use openai-php/client ^0.10. If you install the SDK, you can use the full client; otherwise the package provides internal Compat classes and class aliases so common OpenAI\… types resolve at runtime.
+- This package can optionally use openai-php/client ^0.10. If you install the SDK, you can use the full client; otherwise the package provides internal Compat classes and class aliases so common
+  OpenAI\… types resolve at runtime.
 - For chat completions use $client->chat()->create([...]). For legacy text completions use $client->completions()->create([...]). Do not chain $client->chat()->completions()->create([...]).
 - AppConfig::openAiClient requires only ai-assistant.api_key. The organization id is optional. If provided, it will be used; otherwise the client is created with API key only.
 - Configuration uses the key max_completion_tokens. AppConfig maps this to the OpenAI API parameter max_tokens in request payloads.
@@ -424,6 +448,43 @@ $assistant = AiAssistant::init()
 ## Advanced Features
 
 ### Streaming Service
+
+#### SSE streaming with `StreamedAiResponse`
+
+Use the built-in SSE helper to stream tokens/events to the browser.
+
+**Controller:**
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Http\Responses\StreamedAiResponse;
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+use Illuminate\Http\Request;
+
+class StreamingController
+{
+    public function __invoke(Request $request)
+    {
+        $prompt = (string) $request->input('q', 'Say hello and count to 10.');
+        // Yields string deltas or arrays like ['type' => 'message', 'data' => '...']
+        $gen = Ai::chat($prompt)->stream();
+
+        return StreamedAiResponse::fromGenerator($gen);
+    }
+}
+```
+
+Frontend (Alpine.js example):
+
+```html
+
+<div x-data="{ out: '' }" x-init="
+    const es = new EventSource('/ai/stream');
+    es.addEventListener('message', e => { this.out += e.data; });
+    es.addEventListener('done', () => es.close());
+">
+    <pre x-text="out"></pre>
+</div>
+```
 
 The streaming service provides real-time response processing with advanced memory management and performance monitoring.
 
@@ -697,6 +758,32 @@ if ($securityService->validateApiKey($apiKey)) {
 if ($securityService->validateOrganizationId($orgId)) {
     echo "Organization ID is valid";
 }
+```
+
+#### Webhook signature verification
+
+Incoming webhooks to the package endpoint are protected by the `verify.ai.webhook` middleware. If you build your own controller/endpoint, apply it explicitly:
+
+```php
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiWebhookController;
+
+Route::post('/ai/webhook', [AiWebhookController::class, 'handle'])
+    ->middleware('verify.ai.webhook');
+```
+
+Environment/config:
+
+```env
+AI_ASSISTANT_WEBHOOK_SIGNING_SECRET=base64:GENERATE_A_STRONG_VALUE
+```
+
+```php
+// config/ai-assistant.php
+'webhooks' => [
+    'signing_secret' => env('AI_ASSISTANT_WEBHOOK_SIGNING_SECRET', ''),
+    'signature_header' => 'X-AI-Signature',
+],
 ```
 
 #### Rate Limiting
@@ -1780,6 +1867,14 @@ composer dump-autoload
    AI_BACKGROUND_JOBS_ENABLED=true
    AI_QUEUE_NAME=ai-assistant
    ```
+
+#### Issue: Webhook requests rejected (400/401)
+
+**Solutions:**
+
+1. Set `AI_ASSISTANT_WEBHOOK_SIGNING_SECRET` in `.env` and deploy the value across all app instances.
+2. Ensure your webhook sender includes an `X-AI-Signature` header with `HMAC-SHA256` over the raw body using the secret.
+3. If you implemented a custom endpoint, apply the `verify.ai.webhook` middleware.
 
 ### Database & Persistence Issues
 

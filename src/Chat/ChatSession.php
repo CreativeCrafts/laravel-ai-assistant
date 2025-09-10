@@ -38,7 +38,7 @@ final readonly class ChatSession
         return new self(new AiAssistant($prompt ?? ''));
     }
 
-    
+
     public function instructions(string $instructions): self
     {
         $this->core->instructions($instructions);

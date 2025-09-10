@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'preset' => env('AI_ASSISTANT_PRESET', 'simple'),
     /*
     |--------------------------------------------------------------------------
     | OpenAI API Configuration
