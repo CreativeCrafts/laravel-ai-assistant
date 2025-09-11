@@ -9,8 +9,6 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\AiAssistantContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FunctionCallParameterContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseEnvelope;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
 use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\StreamReader;
@@ -22,6 +20,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -733,6 +732,8 @@ class AiAssistant implements AiAssistantContract
     /**
      * Define a function tool from a callable by inferring a simple JSON Schema via Reflection.
      * Supports scalar types (string,int,float,bool) and array (as array of strings).
+     *
+     * @throws ReflectionException
      */
     public function includeFunctionFromCallable(
         callable $fn,
@@ -843,6 +844,9 @@ class AiAssistant implements AiAssistantContract
         $this->setTurn('input_images', $imgs);
         return $this;
     }
+    // =========================
+    // Responses/Conversations Fluent API (Migration: Fluent API updates)
+    // =========================
 
     /**
      * Attach a file_id as a file_reference block for this turn.
@@ -881,111 +885,6 @@ class AiAssistant implements AiAssistantContract
         }
         return $this;
     }
-
-    /**
-     * Generates a draft based on the provided prompt.
-     * This method sets the prompt in the text generator configuration and calls the processTextCompletion method to generate the draft.
-     */
-
-    /**
-     * Translates the current prompt to the specified language.
-     * This method creates a proper translation instruction with the current prompt and calls the processTextCompletion method to generate the translated text.
-     */
-
-    /**
-     * Initiates a chat response based on the current prompt.
-     * This method prepares the chat text generator configuration with the current prompt,
-     * then calls the processChatTextCompletion method to generate the chat response.
-     */
-
-    /**
-     * Adds a custom function to the chat text generator configuration and processes the chat completion.
-     * This method takes a CustomFunctionData object as a parameter, extracts the messages from the ChatMessageData instance,
-     * and appends the custom function data to the chat text generator configuration. It then calls the processChatTextCompletion method
-     * to generate the chat response with the custom function.
-     */
-
-    /**
-     * Performs spelling and grammar correction on the current prompt.
-     * This method appends a specific instruction to the prompt, indicating that the AI assistant should fix the spelling and grammar errors.
-     * It then calls the processTextEditCompletion method to generate the corrected text.
-     */
-
-    /**
-     * Improves the readability of the current prompt by generating an edited version.
-     * This method appends a specific instruction to the prompt, indicating that the AI assistant should edit the text to make it more readable.
-     * It then calls the processTextEditCompletion method to generate the improved text.
-     */
-
-    /**
-     * Transcribes an audio file to text using the specified language.
-     * This method opens the audio file specified by the prompt, sets the language for transcription,
-     * and optionally provides an optional text prompt for the transcription process.
-     * It then calls the transcribeTo method of the AssistantService client to perform the transcription.
-     *
-     * @throws InvalidArgumentException When language parameter is invalid.
-     * @throws FileOperationException When file cannot be opened or is invalid.
-     */
-    /**
-     * @deprecated since 1.8.0 Use AssistantService::transcribeTo() instead.
-     */
-
-    /**
-     * Translates an audio file to text using the specified language.
-     * This function opens the audio file specified by the prompt, sets the language for transcription,
-     * and then calls the translateTo method of the AssistantService client to perform the translation.
-     *
-     * @throws FileOperationException When file cannot be opened or is invalid.
-     */
-
-    /**
-     * Processes the text completion request using the provided configuration.
-     * This method checks if the 'stream' option is set in the text generator configuration.
-     * If it is, it calls the 'streamedCompletion' method of the AssistantService client.
-     * Otherwise, it calls the 'textCompletion' method of the AssistantService client.
-     */
-    /**
-     * @deprecated since 1.8.0 Use AssistantService::textCompletion() instead.
-     */
-
-    /**
-     * Processes the chat text completion request using the provided configuration.
-     * This method checks if the 'stream' option is set in the chat text generator configuration.
-     * If it is, it calls the 'streamedChat' method of the AssistantService client.
-     * Otherwise, it calls the 'chatTextCompletion' method of the AssistantService client.
-     * After processing the request, it caches the conversation using the ChatMessageData instance.
-     */
-    /**
-     * @deprecated since 1.8.0 Use AssistantService::chatTextCompletion() or sendChatMessage() instead.
-     */
-
-    /**
-     * Processes the text edit completion request using the provided instructions.
-     * This function checks the model specified in the edit text generator configuration.
-     * If the model is 'gpt-3.5-turbo' or starts with 'gpt-4', it prepares a chat text completion request
-     * by setting assistant instructions and calling the processChatTextCompletion method.
-     * The function then returns the content of the first message in the response.
-     * If the model is not 'gpt-3.5-turbo' or does not start with 'gpt-4', it prepares a text completion request
-     * by appending the instructions and the prompt to the text generator configuration,
-     * and then calls the processTextCompletion method.
-     *
-     * @throws ApiResponseValidationException When API response structure is invalid.
-     */
-
-
-    /**
-     * Safely open audio file for reading.
-     * This method opens the audio file with proper error handling and
-     * returns a file resource for use in API calls.
-     *
-     * @param string $filePath Path to the audio file
-     * @return resource File resource for the opened file
-     * @throws FileOperationException When file cannot be opened
-     */
-
-    // =========================
-    // Responses/Conversations Fluent API (Migration: Fluent API updates)
-    // =========================
 
     /**
      * Prefer this helper to write per-turn options. Mirrors to both turnOptions and chatTextGeneratorConfig for BC.

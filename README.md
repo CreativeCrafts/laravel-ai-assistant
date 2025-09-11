@@ -1,5 +1,61 @@
 # Laravel AI Assistant
 
+## 5‑Minute Sample App (Streaming + Webhook)
+
+Quick sanity check you can paste into a fresh Laravel app that has this package installed.
+
+### 1) Mount helper routes
+```php
+use Illuminate\Support\Facades\Route;
+
+Route::aiAssistant([
+    'prefix' => 'ai',
+    'middleware' => ['web', 'auth:sanctum'],
+]);
+```
+
+### 2) Add a streaming endpoint
+```php
+// routes/web.php
+use App\Http\Controllers\StreamingController;
+
+Route::get('/ai/stream', StreamingController::class);
+```
+
+```php
+// app/Http/Controllers/StreamingController.php
+namespace App\Http\Controllers;
+
+use CreativeCrafts\LaravelAiAssistant\Http\Responses\StreamedAiResponse;
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+use Illuminate\Http\Request;
+
+class StreamingController extends Controller
+{
+    public function __invoke(Request $request)
+    {
+        $prompt = (string) $request->input('q', 'Say hello and count to 10.');
+        $gen = Ai::chat($prompt)->stream();
+        return StreamedAiResponse::fromGenerator($gen);
+    }
+}
+```
+
+### 3) Secure your webhook (if used)
+```php
+Route::post('/ai/webhook', [\App\Http\Controllers\AiWebhookController::class, 'handle'])
+    ->middleware('verify.ai.webhook');
+```
+
+### 4) Configure environment
+```env
+AI_ASSISTANT_WEBHOOK_SIGNING_SECRET=base64:GENERATE_A_STRONG_VALUE
+AI_ASSISTANT_PRESET=simple
+```
+
+> Stubs available: `stubs/examples/routes.php`, `stubs/examples/StreamingController.php`
+
+
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)

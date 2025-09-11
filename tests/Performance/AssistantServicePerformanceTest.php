@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace CreativeCrafts\LaravelAiAssistant\Tests\Performance;
+
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Tests\TestCase;
 

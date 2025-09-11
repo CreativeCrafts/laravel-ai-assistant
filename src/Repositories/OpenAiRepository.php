@@ -15,11 +15,12 @@ use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Runs\Threa
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\OpenAiTransportException;
+use CreativeCrafts\LaravelAiAssistant\Support\Retry;
+use Illuminate\Support\Facades\Config;
 use Throwable;
 
 /**
  * Repository implementation for OpenAI API operations.
- *
  * This class wraps the OpenAI client and provides a clean abstraction
  * layer for all API operations used throughout the application.
  */
@@ -187,18 +188,31 @@ class OpenAiRepository implements OpenAiRepositoryContract
 
     /**
      * Execute a repository call and wrap transport errors.
-     *
      * @template T
+     *
      * @param callable():T $callback
      * @return T
      * @throws OpenAiTransportException
      */
     private function execute(callable $callback)
     {
-        try {
-            return $callback();
-        } catch (Throwable $e) {
-            throw OpenAiTransportException::from($e);
+        $max = (int)(Config::get('ai-assistant.transport.max_retries', 2));
+        $initial = (int)(Config::get('ai-assistant.transport.initial_delay_ms', 200));
+        $maxDelay = (int)(Config::get('ai-assistant.transport.max_delay_ms', 2000));
+        $delays = Retry::backoffDelays($max, $initial, $maxDelay);
+
+        $attempt = 0;
+        while (true) {
+            try {
+                return $callback();
+            } catch (Throwable $e) {
+                if ($attempt >= count($delays) || !Retry::shouldRetry($e)) {
+                    throw OpenAiTransportException::from($e);
+                }
+                Retry::usleepMs($delays[$attempt]);
+                $attempt++;
+                continue;
+            }
         }
     }
 }

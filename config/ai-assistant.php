@@ -392,4 +392,18 @@ return [
             ],
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Transport retry policy
+    |--------------------------------------------------------------------------
+    |
+    | Controls retry behavior for transient errors (timeouts, 429/5xx, etc.).
+    |
+    */
+    'transport' => [
+        'max_retries' => env('AI_TRANSPORT_MAX_RETRIES', 2),
+        'initial_delay_ms' => env('AI_TRANSPORT_INITIAL_DELAY_MS', 200),
+        'max_delay_ms' => env('AI_TRANSPORT_MAX_DELAY_MS', 2000),
+    ],
 ];

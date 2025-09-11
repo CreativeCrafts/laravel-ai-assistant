@@ -226,16 +226,17 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
             return true;
         }
 
-        // Check common CI / deployment markers
-        $markers = [
-            env('GITHUB_ACTIONS'),
-            env('CI'),
-            env('SKIP_AI_ASSISTANT_CONFIG_VALIDATION'),
+        // Check common CI / deployment markers (avoid env() in runtime code)
+        $rawMarkers = [
+            getenv('GITHUB_ACTIONS'),
+            getenv('CI'),
+            getenv('SKIP_AI_ASSISTANT_CONFIG_VALIDATION'),
         ];
 
-        foreach ($markers as $marker) {
-            // Treat values like "1", "true", true as truthy
-            if (filter_var($marker, FILTER_VALIDATE_BOOLEAN)) {
+        foreach ($rawMarkers as $marker) {
+            // getenv() returns string|false; treat "1"/"true"/true as truthy
+            $val = ($marker === false) ? '' : (string)$marker;
+            if (filter_var($val, FILTER_VALIDATE_BOOLEAN)) {
                 return true;
             }
         }

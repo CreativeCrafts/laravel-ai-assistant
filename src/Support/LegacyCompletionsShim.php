@@ -12,6 +12,8 @@ use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use InvalidArgumentException;
 
 /**
+ * @deprecated Use Support\LegacyCompletions instead. This shim will be removed in the next minor release.
+
  * @internal
  * @deprecated Will be removed in the next major release. Use Responses API methods on AiAssistant instead.
  */

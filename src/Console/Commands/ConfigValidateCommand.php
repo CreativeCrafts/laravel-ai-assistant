@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Console\Commands;
 
 use Illuminate\Console\Command;
-use Throwable;
+use JsonException;
 use RuntimeException;
+use Throwable;
 
 /**
  * Configuration validation command for AI Assistant
+ * This command validates all AI Assistant configuration settings including environment variables,
+ * API configuration, model settings, persistence, streaming, responses, tool calling, queues,
+ * metrics, and webhooks. It provides detailed validation reports and can output results in
+ * JSON format for programmatic consumption.
  */
 class ConfigValidateCommand extends Command
 {
@@ -19,6 +24,7 @@ class ConfigValidateCommand extends Command
     protected $signature = 'ai:config-validate 
                            {--json : Output results in JSON format}
                            {--strict : Enable strict validation mode}
+                           {--ci : CI mode (implies --strict and --json)}
                            {--show-values : Show configuration values (may expose secrets)}';
 
     /**
@@ -33,23 +39,47 @@ class ConfigValidateCommand extends Command
 
     /**
      * Execute the console command.
+     *
+     * @throws JsonException
      */
     public function handle(): int
     {
         $this->info('🔧 AI Assistant Configuration Validation');
         $this->newLine();
 
-        $this->strictMode = $this->option('strict');
+        $this->strictMode = $this->boolOption($this->option('strict'));
 
-        $this->validateConfiguration();
+                $ci = $this->boolOption($this->option('ci'));
+        if ($ci) {
+            $this->strictMode = true;
+        }
+$this->validateConfiguration();
 
-        if ($this->option('json')) {
+        if ($this->boolOption($this->option('json')) || $this->boolOption($this->option('ci'))) {
             $this->outputJson();
         } else {
             $this->outputReport();
         }
 
         return $this->hasErrors ? 1 : 0;
+    }
+
+    /**
+     * Normalize an option value (array|string|bool|null) to bool for static analysis and runtime safety.
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    private function boolOption(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+        $raw = is_array($value) ? reset($value) : $value;
+        if ($raw === null) {
+            return false;
+        }
+        return filter_var((string)$raw, FILTER_VALIDATE_BOOLEAN) === true;
     }
 
     /**
@@ -82,6 +112,142 @@ class ConfigValidateCommand extends Command
                 $this->hasErrors = true;
             }
         }
+    }
+
+    /**
+     * Add validation result
+     */
+    private function addValidationResult(string $section, string $level, string $message): void
+    {
+        $this->validationResults[$section][] = [
+            'level' => $level,
+            'message' => $message,
+            'timestamp' => now()->toISOString(),
+        ];
+    }
+
+    /**
+     * Output JSON report
+     *
+     * @throws JsonException
+     */
+    private function outputJson(): void
+    {
+        $status = 'valid';
+        if ($this->hasErrors) {
+            $status = 'invalid';
+        } elseif ($this->hasWarnings) {
+            $status = 'valid_with_warnings';
+        }
+
+        $report = [
+            'status' => $status,
+            'timestamp' => now()->toISOString(),
+            'validation_results' => $this->validationResults,
+            'summary' => [
+                'errors' => $this->hasErrors,
+                'warnings' => $this->hasWarnings,
+                'total_sections' => count($this->validationResults),
+                'strict_mode' => $this->strictMode,
+            ]
+        ];
+
+        if ($this->boolOption($this->option('show-values'))) {
+            $config = config('ai-assistant');
+            if (!is_array($config)) {
+                $config = [];
+            }
+            $report['configuration'] = $this->sanitizeConfigForDisplay($config);
+        }
+
+        $json = json_encode($report, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+        $this->line($json ?: '{}');
+    }
+
+    /**
+     * Sanitize configuration for display
+     */
+    private function sanitizeConfigForDisplay(array $config): array
+    {
+        $sensitiveKeys = ['api_key', 'secret', 'password', 'token', 'key'];
+
+        foreach ($config as $key => $value) {
+            if (is_array($value)) {
+                $config[$key] = $this->sanitizeConfigForDisplay($value);
+            } elseif (is_string($value)) {
+                foreach ($sensitiveKeys as $sensitiveKey) {
+                    if (stripos($key, $sensitiveKey) !== false) {
+                        $config[$key] = str_repeat('*', min(strlen($value), 20));
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $config;
+    }
+
+    /**
+     * Output detailed report
+     */
+    private function outputReport(): void
+    {
+        $this->newLine();
+        $this->info('📋 Configuration Validation Results:');
+        $this->newLine();
+
+        foreach ($this->validationResults as $section => $results) {
+            $this->line("<fg=cyan>{$section}:</>");
+
+            foreach ($results as $result) {
+                $icon = match ($result['level']) {
+                    'error' => '❌',
+                    'warning' => '⚠️',
+                    'success' => '✅',
+                    default => 'ℹ️'
+                };
+
+                $this->line("  {$icon} {$result['message']}");
+            }
+            $this->newLine();
+        }
+
+        // Show configuration values if requested
+        if ($this->boolOption($this->option('show-values'))) {
+            $this->showConfigurationValues();
+        }
+
+        // Summary
+        $this->info('📊 Validation Summary:');
+        if ($this->hasErrors) {
+            $this->error('❌ Configuration validation failed with errors');
+        } elseif ($this->hasWarnings) {
+            $this->warn('⚠️  Configuration validation completed with warnings');
+        } else {
+            $this->info('✅ All configuration settings are valid');
+        }
+    }
+
+    /**
+     * Show configuration values (sanitized)
+     *
+     * @throws JsonException
+     */
+    private function showConfigurationValues(): void
+    {
+        $this->newLine();
+        $this->info('🔍 Current Configuration Values:');
+        $this->newLine();
+
+        $config = config('ai-assistant');
+        if (!is_array($config)) {
+            $config = [];
+        }
+        $sanitized = $this->sanitizeConfigForDisplay($config);
+
+        $json = json_encode($sanitized, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $this->line($json ?: '{}');
+        $this->newLine();
     }
 
     /**
@@ -147,6 +313,21 @@ class ConfigValidateCommand extends Command
     }
 
     /**
+     * Get config key for environment variable
+     */
+    private function getConfigKeyForEnvVar(string $envVar): string
+    {
+        $mapping = [
+            'OPENAI_API_KEY' => 'ai-assistant.api_key',
+            'OPENAI_ORGANIZATION' => 'ai-assistant.organization',
+            'AI_ASSISTANT_PERSISTENCE_DRIVER' => 'ai-assistant.persistence.driver',
+            'AI_STREAMING_ENABLED' => 'ai-assistant.streaming.enabled',
+        ];
+
+        return $mapping[$envVar] ?? strtolower(str_replace('_', '.', $envVar));
+    }
+
+    /**
      * Validate API configuration
      */
     private function validateApiConfiguration(): void
@@ -181,8 +362,13 @@ class ConfigValidateCommand extends Command
         ];
 
         $validChatModels = [
-            'gpt-4', 'gpt-4-turbo', 'gpt-4-turbo-preview', 'gpt-4o', 'gpt-4o-mini',
-            'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'
+            'gpt-4',
+            'gpt-4-turbo',
+            'gpt-4-turbo-preview',
+            'gpt-4o',
+            'gpt-4o-mini',
+            'gpt-3.5-turbo',
+            'gpt-3.5-turbo-16k'
         ];
 
         foreach ($models as $type => $model) {
@@ -452,145 +638,5 @@ class ConfigValidateCommand extends Command
             'success',
             'Webhook configuration valid'
         );
-    }
-
-    /**
-     * Add validation result
-     */
-    private function addValidationResult(string $section, string $level, string $message): void
-    {
-        $this->validationResults[$section][] = [
-            'level' => $level,
-            'message' => $message,
-            'timestamp' => now()->toISOString(),
-        ];
-    }
-
-    /**
-     * Output detailed report
-     */
-    private function outputReport(): void
-    {
-        $this->newLine();
-        $this->info('📋 Configuration Validation Results:');
-        $this->newLine();
-
-        foreach ($this->validationResults as $section => $results) {
-            $this->line("<fg=cyan>{$section}:</>");
-
-            foreach ($results as $result) {
-                $icon = match($result['level']) {
-                    'error' => '❌',
-                    'warning' => '⚠️',
-                    'success' => '✅',
-                    default => 'ℹ️'
-                };
-
-                $this->line("  {$icon} {$result['message']}");
-            }
-            $this->newLine();
-        }
-
-        // Show configuration values if requested
-        if ($this->option('show-values')) {
-            $this->showConfigurationValues();
-        }
-
-        // Summary
-        $this->info('📊 Validation Summary:');
-        if ($this->hasErrors) {
-            $this->error('❌ Configuration validation failed with errors');
-        } elseif ($this->hasWarnings) {
-            $this->warn('⚠️  Configuration validation completed with warnings');
-        } else {
-            $this->info('✅ All configuration settings are valid');
-        }
-    }
-
-    /**
-     * Show configuration values (sanitized)
-     */
-    private function showConfigurationValues(): void
-    {
-        $this->newLine();
-        $this->info('🔍 Current Configuration Values:');
-        $this->newLine();
-
-        $config = config('ai-assistant');
-        if (!is_array($config)) {
-            $config = [];
-        }
-        $sanitized = $this->sanitizeConfigForDisplay($config);
-
-        $json = json_encode($sanitized, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        $this->line($json ?: '{}');
-        $this->newLine();
-    }
-
-    /**
-     * Sanitize configuration for display
-     */
-    private function sanitizeConfigForDisplay(array $config): array
-    {
-        $sensitiveKeys = ['api_key', 'secret', 'password', 'token', 'key'];
-
-        foreach ($config as $key => $value) {
-            if (is_array($value)) {
-                $config[$key] = $this->sanitizeConfigForDisplay($value);
-            } elseif (is_string($value)) {
-                foreach ($sensitiveKeys as $sensitiveKey) {
-                    if (stripos($key, $sensitiveKey) !== false) {
-                        $config[$key] = str_repeat('*', min(strlen($value), 20));
-                        break;
-                    }
-                }
-            }
-        }
-
-        return $config;
-    }
-
-    /**
-     * Output JSON report
-     */
-    private function outputJson(): void
-    {
-        $report = [
-            'status' => $this->hasErrors ? 'invalid' : ($this->hasWarnings ? 'valid_with_warnings' : 'valid'),
-            'timestamp' => now()->toISOString(),
-            'validation_results' => $this->validationResults,
-            'summary' => [
-                'errors' => $this->hasErrors,
-                'warnings' => $this->hasWarnings,
-                'total_sections' => count($this->validationResults),
-                'strict_mode' => $this->strictMode,
-            ]
-        ];
-
-        if ($this->option('show-values')) {
-            $config = config('ai-assistant');
-            if (!is_array($config)) {
-                $config = [];
-            }
-            $report['configuration'] = $this->sanitizeConfigForDisplay($config);
-        }
-
-        $json = json_encode($report, JSON_PRETTY_PRINT);
-        $this->line($json ?: '{}');
-    }
-
-    /**
-     * Get config key for environment variable
-     */
-    private function getConfigKeyForEnvVar(string $envVar): string
-    {
-        $mapping = [
-            'OPENAI_API_KEY' => 'ai-assistant.api_key',
-            'OPENAI_ORGANIZATION' => 'ai-assistant.organization',
-            'AI_ASSISTANT_PERSISTENCE_DRIVER' => 'ai-assistant.persistence.driver',
-            'AI_STREAMING_ENABLED' => 'ai-assistant.streaming.enabled',
-        ];
-
-        return $mapping[$envVar] ?? strtolower(str_replace('_', '.', $envVar));
     }
 }
