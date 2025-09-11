@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Console\Commands;
 
+use Artisan;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AppConfigContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Throwable;
-use Artisan;
 use RuntimeException;
+use Throwable;
 
 /**
  * Health check command for AI Assistant system diagnostics
@@ -90,11 +90,109 @@ class HealthCheckCommand extends Command
     }
 
     /**
+     * Add diagnostic result
+     */
+    private function addDiagnostic(string $category, string $level, mixed $message): void
+    {
+        $this->diagnostics[$category][] = [
+            'level' => $level,
+            'message' => $message,
+            'timestamp' => now()->toISOString(),
+        ];
+    }
+
+    /**
+     * Output JSON report
+     */
+    private function outputJson(): void
+    {
+        $report = [
+            'status' => $this->hasErrors ? 'error' : ($this->hasWarnings ? 'warning' : 'healthy'),
+            'timestamp' => now()->toISOString(),
+            'diagnostics' => $this->diagnostics,
+            'summary' => [
+                'errors' => $this->hasErrors,
+                'warnings' => $this->hasWarnings,
+                'total_checks' => count($this->diagnostics),
+            ]
+        ];
+
+        $json = json_encode($report, JSON_PRETTY_PRINT);
+        $this->line($json ?: '{}');
+    }
+
+    /**
+     * Output detailed report
+     */
+    private function outputReport(): void
+    {
+        $this->newLine();
+        $this->info('📋 Diagnostic Results:');
+        $this->newLine();
+
+        foreach ($this->diagnostics as $category => $results) {
+            $this->line("<fg=cyan>{$category}:</>");
+
+            foreach ($results as $result) {
+                $icon = match ($result['level']) {
+                    'error' => '❌',
+                    'warning' => '⚠️',
+                    'success' => '✅',
+                    default => 'ℹ️'
+                };
+
+                if (is_array($result['message'])) {
+                    $this->line("  {$icon} Details:");
+                    foreach ($result['message'] as $key => $value) {
+                        $this->line("    - {$key}: {$value}");
+                    }
+                } else {
+                    $this->line("  {$icon} {$result['message']}");
+                }
+            }
+            $this->newLine();
+        }
+
+        // Summary
+        $this->info('📊 Summary:');
+        if ($this->hasErrors) {
+            $this->error('❌ Health check failed with errors');
+        } elseif ($this->hasWarnings) {
+            $this->warn('⚠️  Health check completed with warnings');
+        } else {
+            $this->info('✅ All systems healthy');
+        }
+    }
+
+    /**
+     * Attempt to fix common issues
+     */
+    private function attemptFixes(): void
+    {
+        $this->newLine();
+        $this->info('🔧 Attempting automatic fixes...');
+
+        // Clear cache if cache issues detected
+        if (isset($this->diagnostics['Cache'])) {
+            foreach ($this->diagnostics['Cache'] as $diagnostic) {
+                if ($diagnostic['level'] === 'error') {
+                    $this->line('  - Clearing cache...');
+                    Artisan::call('cache:clear');
+                    $this->info('    ✅ Cache cleared');
+                }
+            }
+        }
+
+        // Additional fix attempts could be added here
+        $this->info('🔧 Automatic fixes completed');
+    }
+
+    /**
      * Check configuration
      */
     private function checkConfiguration(): void
     {
-        // Check API key
+        // Check an API key
         $apiKey = config('ai-assistant.api_key');
         if (!$apiKey) {
             throw new RuntimeException('OpenAI API key not configured');
@@ -301,103 +399,5 @@ class HealthCheckCommand extends Command
             'memory_usage' => sprintf('%.2f MB', $memoryUsageMB),
             'max_execution_time' => $maxExecutionTime,
         ]);
-    }
-
-    /**
-     * Add diagnostic result
-     */
-    private function addDiagnostic(string $category, string $level, mixed $message): void
-    {
-        $this->diagnostics[$category][] = [
-            'level' => $level,
-            'message' => $message,
-            'timestamp' => now()->toISOString(),
-        ];
-    }
-
-    /**
-     * Output detailed report
-     */
-    private function outputReport(): void
-    {
-        $this->newLine();
-        $this->info('📋 Diagnostic Results:');
-        $this->newLine();
-
-        foreach ($this->diagnostics as $category => $results) {
-            $this->line("<fg=cyan>{$category}:</>");
-
-            foreach ($results as $result) {
-                $icon = match($result['level']) {
-                    'error' => '❌',
-                    'warning' => '⚠️',
-                    'success' => '✅',
-                    default => 'ℹ️'
-                };
-
-                if (is_array($result['message'])) {
-                    $this->line("  {$icon} Details:");
-                    foreach ($result['message'] as $key => $value) {
-                        $this->line("    - {$key}: {$value}");
-                    }
-                } else {
-                    $this->line("  {$icon} {$result['message']}");
-                }
-            }
-            $this->newLine();
-        }
-
-        // Summary
-        $this->info('📊 Summary:');
-        if ($this->hasErrors) {
-            $this->error('❌ Health check failed with errors');
-        } elseif ($this->hasWarnings) {
-            $this->warn('⚠️  Health check completed with warnings');
-        } else {
-            $this->info('✅ All systems healthy');
-        }
-    }
-
-    /**
-     * Output JSON report
-     */
-    private function outputJson(): void
-    {
-        $report = [
-            'status' => $this->hasErrors ? 'error' : ($this->hasWarnings ? 'warning' : 'healthy'),
-            'timestamp' => now()->toISOString(),
-            'diagnostics' => $this->diagnostics,
-            'summary' => [
-                'errors' => $this->hasErrors,
-                'warnings' => $this->hasWarnings,
-                'total_checks' => count($this->diagnostics),
-            ]
-        ];
-
-        $json = json_encode($report, JSON_PRETTY_PRINT);
-        $this->line($json ?: '{}');
-    }
-
-    /**
-     * Attempt to fix common issues
-     */
-    private function attemptFixes(): void
-    {
-        $this->newLine();
-        $this->info('🔧 Attempting automatic fixes...');
-
-        // Clear cache if cache issues detected
-        if (isset($this->diagnostics['Cache'])) {
-            foreach ($this->diagnostics['Cache'] as $diagnostic) {
-                if ($diagnostic['level'] === 'error') {
-                    $this->line('  - Clearing cache...');
-                    Artisan::call('cache:clear');
-                    $this->info('    ✅ Cache cleared');
-                }
-            }
-        }
-
-        // Additional fix attempts could be added here
-        $this->info('🔧 Automatic fixes completed');
     }
 }

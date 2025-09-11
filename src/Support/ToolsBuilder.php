@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Support;
 
 use CreativeCrafts\LaravelAiAssistant\AiAssistant;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FunctionCallParameterContract;
+use ReflectionException;
 
 final readonly class ToolsBuilder
 {
@@ -23,6 +24,9 @@ final readonly class ToolsBuilder
         return $this;
     }
 
+    /**
+     * @throws ReflectionException
+     */
     public function includeFunctionFromCallable(callable $fn, ?string $exportedName = null, string $description = '', bool $isStrict = false): self
     {
         $this->core->includeFunctionFromCallable($fn, $exportedName, $description, $isStrict);

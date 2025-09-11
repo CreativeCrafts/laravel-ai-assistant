@@ -22,16 +22,22 @@ final class ThreadsToConversationsMapper
     }
 
     /**
-     * Persist a mapping between a legacy thread id and a conversation id.
+     * Get or create a conversation id for a given thread id.
+     *
+     * @param callable():string $createConversation callback that returns a conversation id
      */
-    public function map(string $threadId, string $conversationId, int $ttl = 86400): void
+    public function getOrMap(string $threadId, callable $createConversation, int $ttl = 86400): string
     {
-        if ($threadId === '' || $conversationId === '') {
-            throw new InvalidArgumentException('threadId and conversationId must be non-empty');
+        $existing = $this->get($threadId);
+        if ($existing !== null) {
+            return $existing;
         }
-        $this->map[$threadId] = $conversationId;
-        // also store in cache for cross-request reuse
-        $this->cache->cacheResponse(self::CACHE_PREFIX . $threadId, ['conversation_id' => $conversationId], $ttl);
+        $conversationId = (string)$createConversation();
+        if ($conversationId === '') {
+            throw new InvalidArgumentException('createConversation must return a non-empty conversationId');
+        }
+        $this->map($threadId, $conversationId, $ttl);
+        return $conversationId;
     }
 
     /**
@@ -54,21 +60,15 @@ final class ThreadsToConversationsMapper
     }
 
     /**
-     * Get or create a conversation id for a given thread id.
-     *
-     * @param callable():string $createConversation callback that returns a conversation id
+     * Persist a mapping between a legacy thread id and a conversation id.
      */
-    public function getOrMap(string $threadId, callable $createConversation, int $ttl = 86400): string
+    public function map(string $threadId, string $conversationId, int $ttl = 86400): void
     {
-        $existing = $this->get($threadId);
-        if ($existing !== null) {
-            return $existing;
+        if ($threadId === '' || $conversationId === '') {
+            throw new InvalidArgumentException('threadId and conversationId must be non-empty');
         }
-        $conversationId = (string)$createConversation();
-        if ($conversationId === '') {
-            throw new InvalidArgumentException('createConversation must return a non-empty conversationId');
-        }
-        $this->map($threadId, $conversationId, $ttl);
-        return $conversationId;
+        $this->map[$threadId] = $conversationId;
+        // also store in a cache for cross-request reuse
+        $this->cache->cacheResponse(self::CACHE_PREFIX . $threadId, ['conversation_id' => $conversationId], $ttl);
     }
 }

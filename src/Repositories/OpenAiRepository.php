@@ -196,9 +196,9 @@ class OpenAiRepository implements OpenAiRepositoryContract
      */
     private function execute(callable $callback)
     {
-        $max = (int)(Config::get('ai-assistant.transport.max_retries', 2));
-        $initial = (int)(Config::get('ai-assistant.transport.initial_delay_ms', 200));
-        $maxDelay = (int)(Config::get('ai-assistant.transport.max_delay_ms', 2000));
+        $max = Config::integer(key: 'ai-assistant.transport.max_retries', default: 2);
+        $initial = Config::integer(key: 'ai-assistant.transport.initial_delay_ms', default: 200);
+        $maxDelay = Config::integer(key: 'ai-assistant.transport.max_delay_ms', default: 2000);
         $delays = Retry::backoffDelays($max, $initial, $maxDelay);
 
         $attempt = 0;

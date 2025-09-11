@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Support;
 
+use Random\RandomException;
 use Throwable;
 
 final class Retry
@@ -12,13 +13,14 @@ final class Retry
      * Build exponential backoff delays in milliseconds with jitter.
      *
      * @return int[] delays in milliseconds
+     * @throws RandomException
      */
     public static function backoffDelays(int $maxRetries, int $initialMs, int $maxMs): array
     {
         $delays = [];
         $delay = max(0, $initialMs);
         for ($i = 0; $i < max(0, $maxRetries); $i++) {
-            $jitter = random_int(0, (int) floor($delay * 0.25));
+            $jitter = random_int(0, (int)floor($delay * 0.25));
             $delays[] = min($maxMs, $delay + $jitter);
             $delay = min($maxMs, $delay * 2);
         }
@@ -30,7 +32,7 @@ final class Retry
      */
     public static function shouldRetry(Throwable $e): bool
     {
-        $code = (int) $e->getCode();
+        $code = (int)$e->getCode();
         if (in_array($code, [408, 425, 429, 500, 502, 503, 504], true)) {
             return true;
         }
@@ -46,7 +48,7 @@ final class Retry
     public static function usleepMs(int $ms): void
     {
         if ($ms <= 0) {
-        return;
+            return;
         }
         usleep($ms * 1000);
     }

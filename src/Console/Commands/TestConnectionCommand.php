@@ -7,8 +7,8 @@ namespace CreativeCrafts\LaravelAiAssistant\Console\Commands;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use Illuminate\Console\Command;
-use Throwable;
 use RuntimeException;
+use Throwable;
 
 /**
  * API connectivity test command for AI Assistant
@@ -43,7 +43,7 @@ class TestConnectionCommand extends Command
         $this->info('🔌 AI Assistant API Connection Test');
         $this->newLine();
 
-        $this->timeout = (int) $this->option('timeout');
+        $this->timeout = (int)$this->option('timeout');
         $this->repository = app(OpenAiRepositoryContract::class);
         $this->assistantService = resolve(AssistantService::class);
 
@@ -94,6 +94,141 @@ class TestConnectionCommand extends Command
     }
 
     /**
+     * Format duration for display
+     */
+    private function formatDuration(float $duration): string
+    {
+        if ($duration < 1) {
+            return sprintf('%.0fms', $duration * 1000);
+        }
+
+        return sprintf('%.2fs', $duration);
+    }
+
+    /**
+     * Add test result
+     */
+    private function addTestResult(string $testName, string $status, ?string $message = null, ?float $duration = null): void
+    {
+        $this->testResults[$testName][] = [
+            'status' => $status,
+            'message' => $message,
+            'duration' => $duration,
+            'timestamp' => now()->toISOString(),
+        ];
+    }
+
+    /**
+     * Output JSON report
+     */
+    private function outputJson(): void
+    {
+        $summary = [
+            'total' => count($this->testResults),
+            'passed' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+        ];
+
+        foreach ($this->testResults as $results) {
+            foreach ($results as $result) {
+                match ($result['status']) {
+                    'passed' => $summary['passed']++,
+                    'failed' => $summary['failed']++,
+                    'skipped' => $summary['skipped']++,
+                    default => null
+                };
+            }
+        }
+
+        $report = [
+            'status' => $this->hasFailures ? 'failed' : 'passed',
+            'timestamp' => now()->toISOString(),
+            'test_results' => $this->testResults,
+            'summary' => $summary,
+            'configuration' => [
+                'timeout' => $this->timeout,
+                'skip_expensive' => $this->option('skip-expensive'),
+                'detailed' => $this->option('detailed'),
+            ]
+        ];
+
+        $json = json_encode($report, JSON_PRETTY_PRINT);
+        if ($json === false) {
+            $this->error('Failed to encode report as JSON');
+            return;
+        }
+        $this->line($json);
+    }
+
+    /**
+     * Output detailed report
+     */
+    private function outputReport(): void
+    {
+        $this->newLine();
+        $this->info('📋 Connection Test Results:');
+        $this->newLine();
+
+        foreach ($this->testResults as $testName => $results) {
+            $this->line("<fg=cyan>{$testName}:</>");
+
+            foreach ($results as $result) {
+                $icon = match ($result['status']) {
+                    'passed' => '✅',
+                    'failed' => '❌',
+                    'warning' => '⚠️',
+                    'skipped' => '⏭️',
+                    default => 'ℹ️'
+                };
+
+                $message = $result['message'] ?? $result['status'];
+                if ($result['duration'] && $this->option('detailed')) {
+                    $message .= " ({$this->formatDuration($result['duration'])})";
+                }
+
+                $this->line("  {$icon} {$message}");
+            }
+            $this->newLine();
+        }
+
+        // Summary
+        $totalTests = count($this->testResults);
+        $passedTests = 0;
+        $failedTests = 0;
+        $skippedTests = 0;
+
+        foreach ($this->testResults as $results) {
+            foreach ($results as $result) {
+                match ($result['status']) {
+                    'passed' => $passedTests++,
+                    'failed' => $failedTests++,
+                    'skipped' => $skippedTests++,
+                    default => null
+                };
+            }
+        }
+
+        $this->info('📊 Test Summary:');
+        $this->line("  Total Tests: {$totalTests}");
+        $this->line("  Passed: {$passedTests}");
+
+        if ($failedTests > 0) {
+            $this->line("  <fg=red>Failed: {$failedTests}</>");
+        }
+
+        if ($skippedTests > 0) {
+            $this->line("  <fg=yellow>Skipped: {$skippedTests}</>");
+        }
+
+        if ($this->hasFailures) {
+            $this->error('❌ Connection tests failed');
+        } else {
+            $this->info('✅ All connection tests passed');
+        }
+    }
+
+    /**
      * Test basic configuration
      */
     private function testBasicConfiguration(): void
@@ -126,7 +261,7 @@ class TestConnectionCommand extends Command
         try {
             // Test authentication by making a simple chat completion API call
             $response = $this->repository->createChatCompletion([
-                'model' => config('ai-assistant.models.chat', 'gpt-3.5-turbo'),
+                'model' => config('ai-assistant.models.chat', 'gpt-5-nano'),
                 'messages' => [['role' => 'user', 'content' => 'test']],
                 'max_tokens' => 1,
             ]);
@@ -150,7 +285,7 @@ class TestConnectionCommand extends Command
     {
         // Since models() method doesn't exist in the contract, test model availability
         // by trying to use configured models in a chat completion
-        $configuredModel = config('ai-assistant.models.chat', 'gpt-3.5-turbo');
+        $configuredModel = config('ai-assistant.models.chat', 'gpt-5-nano');
 
         try {
             $response = $this->repository->createChatCompletion([
@@ -188,7 +323,7 @@ class TestConnectionCommand extends Command
         $testMessage = 'Hello, this is a connection test. Please respond with "Connection successful".';
 
         $response = $this->assistantService->chatTextCompletion([
-            'model' => config('ai-assistant.models.chat', 'gpt-3.5-turbo'),
+            'model' => config('ai-assistant.models.chat', 'gpt-5-nano'),
             'messages' => [
                 [
                     'role' => 'user',
@@ -276,7 +411,7 @@ class TestConnectionCommand extends Command
             try {
                 // Test with a simple chat completion instead of models() which doesn't exist
                 $this->repository->createChatCompletion([
-                    'model' => config('ai-assistant.models.chat', 'gpt-3.5-turbo'),
+                    'model' => config('ai-assistant.models.chat', 'gpt-5-nano'),
                     'messages' => [['role' => 'user', 'content' => 'test']],
                     'max_tokens' => 1,
                 ]);
@@ -346,140 +481,5 @@ class TestConnectionCommand extends Command
                 throw new RuntimeException('Unexpected error type: ' . $e->getMessage());
             }
         }
-    }
-
-    /**
-     * Add test result
-     */
-    private function addTestResult(string $testName, string $status, ?string $message = null, ?float $duration = null): void
-    {
-        $this->testResults[$testName][] = [
-            'status' => $status,
-            'message' => $message,
-            'duration' => $duration,
-            'timestamp' => now()->toISOString(),
-        ];
-    }
-
-    /**
-     * Format duration for display
-     */
-    private function formatDuration(float $duration): string
-    {
-        if ($duration < 1) {
-            return sprintf('%.0fms', $duration * 1000);
-        }
-
-        return sprintf('%.2fs', $duration);
-    }
-
-    /**
-     * Output detailed report
-     */
-    private function outputReport(): void
-    {
-        $this->newLine();
-        $this->info('📋 Connection Test Results:');
-        $this->newLine();
-
-        foreach ($this->testResults as $testName => $results) {
-            $this->line("<fg=cyan>{$testName}:</>");
-
-            foreach ($results as $result) {
-                $icon = match($result['status']) {
-                    'passed' => '✅',
-                    'failed' => '❌',
-                    'warning' => '⚠️',
-                    'skipped' => '⏭️',
-                    default => 'ℹ️'
-                };
-
-                $message = $result['message'] ?? $result['status'];
-                if ($result['duration'] && $this->option('detailed')) {
-                    $message .= " ({$this->formatDuration($result['duration'])})";
-                }
-
-                $this->line("  {$icon} {$message}");
-            }
-            $this->newLine();
-        }
-
-        // Summary
-        $totalTests = count($this->testResults);
-        $passedTests = 0;
-        $failedTests = 0;
-        $skippedTests = 0;
-
-        foreach ($this->testResults as $results) {
-            foreach ($results as $result) {
-                match($result['status']) {
-                    'passed' => $passedTests++,
-                    'failed' => $failedTests++,
-                    'skipped' => $skippedTests++,
-                    default => null
-                };
-            }
-        }
-
-        $this->info('📊 Test Summary:');
-        $this->line("  Total Tests: {$totalTests}");
-        $this->line("  Passed: {$passedTests}");
-
-        if ($failedTests > 0) {
-            $this->line("  <fg=red>Failed: {$failedTests}</>");
-        }
-
-        if ($skippedTests > 0) {
-            $this->line("  <fg=yellow>Skipped: {$skippedTests}</>");
-        }
-
-        if ($this->hasFailures) {
-            $this->error('❌ Connection tests failed');
-        } else {
-            $this->info('✅ All connection tests passed');
-        }
-    }
-
-    /**
-     * Output JSON report
-     */
-    private function outputJson(): void
-    {
-        $summary = [
-            'total' => count($this->testResults),
-            'passed' => 0,
-            'failed' => 0,
-            'skipped' => 0,
-        ];
-
-        foreach ($this->testResults as $results) {
-            foreach ($results as $result) {
-                match($result['status']) {
-                    'passed' => $summary['passed']++,
-                    'failed' => $summary['failed']++,
-                    'skipped' => $summary['skipped']++,
-                    default => null
-                };
-            }
-        }
-
-        $report = [
-            'status' => $this->hasFailures ? 'failed' : 'passed',
-            'timestamp' => now()->toISOString(),
-            'test_results' => $this->testResults,
-            'summary' => $summary,
-            'configuration' => [
-                'timeout' => $this->timeout,
-                'skip_expensive' => $this->option('skip-expensive'),
-                'detailed' => $this->option('detailed'),
-            ]
-        ];
-
-        $json = json_encode($report, JSON_PRETTY_PRINT);
-        if ($json === false) {
-            $this->error('Failed to encode report as JSON');
-            return;
-        }
-        $this->line($json);
     }
 }

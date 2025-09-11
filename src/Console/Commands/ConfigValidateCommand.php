@@ -49,11 +49,11 @@ class ConfigValidateCommand extends Command
 
         $this->strictMode = $this->boolOption($this->option('strict'));
 
-                $ci = $this->boolOption($this->option('ci'));
+        $ci = $this->boolOption($this->option('ci'));
         if ($ci) {
             $this->strictMode = true;
         }
-$this->validateConfiguration();
+        $this->validateConfiguration();
 
         if ($this->boolOption($this->option('json')) || $this->boolOption($this->option('ci'))) {
             $this->outputJson();
@@ -362,13 +362,15 @@ $this->validateConfiguration();
         ];
 
         $validChatModels = [
+            'gpt-5',
+            'gpt-5-mini',
+            'gpt-5-nano',
             'gpt-4',
             'gpt-4-turbo',
             'gpt-4-turbo-preview',
             'gpt-4o',
             'gpt-4o-mini',
             'gpt-3.5-turbo',
-            'gpt-3.5-turbo-16k'
         ];
 
         foreach ($models as $type => $model) {

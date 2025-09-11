@@ -8,6 +8,9 @@ use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationExceptio
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use Exception;
 use InvalidArgumentException;
+use JsonException;
+use Random\RandomException;
+use RuntimeException;
 
 /**
  * Service for handling security-related operations.
@@ -41,10 +44,10 @@ class SecurityService
      * @return mixed The result of the operation
      * @throws InvalidArgumentException When rate limit is exceeded
      */
-    public function applyRateLimit(string $identifier, callable $operation, int $maxRequests = 100, int $timeWindow = 3600)
+    public function applyRateLimit(string $identifier, callable $operation, int $maxRequests = 100, int $timeWindow = 3600): mixed
     {
         if (!$this->checkRateLimit($identifier, $maxRequests, $timeWindow)) {
-            throw new Exception('Rate limit exceeded');
+            throw new RuntimeException('Rate limit exceeded');
         }
 
         return $operation();
@@ -150,7 +153,7 @@ class SecurityService
             }
         }
 
-        // Generate expected signature
+        // Generate the expected signature
         $expectedSignature = $this->generateRequestSignature($payload, $secret);
 
         // Use hash_equals for timing-safe comparison
@@ -173,6 +176,7 @@ class SecurityService
      * @param array $payload The request payload
      * @param string $secret Secret key for signing
      * @return string Request signature
+     * @throws JsonException
      */
     public function generateRequestSignature(array $payload, string $secret): string
     {
@@ -182,8 +186,8 @@ class SecurityService
 
         // Sort the payload keys for deterministic JSON encoding
         ksort($payload);
-        $payloadJson = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $timestamp = isset($payload['timestamp']) ? $payload['timestamp'] : time();
+        $payloadJson = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $timestamp = $payload['timestamp'] ?? time();
         $stringToSign = $timestamp . '.' . $payloadJson;
 
         return hash_hmac('sha256', $stringToSign, $secret);
@@ -238,10 +242,11 @@ class SecurityService
      * @param int $maxSize Maximum allowed size in bytes
      * @return bool True if size is acceptable
      * @throws InvalidArgumentException When request size exceeds limit
+     * @throws JsonException
      */
     public function validateRequestSize($data, int $maxSize = self::MAX_REQUEST_SIZE): bool
     {
-        $serialized = is_string($data) ? $data : json_encode($data);
+        $serialized = is_string($data) ? $data : json_encode($data, JSON_THROW_ON_ERROR);
         if ($serialized === false) {
             $serialized = '';
         }
@@ -269,6 +274,7 @@ class SecurityService
      *
      * @param int $length Token length in bytes
      * @return string Hex encoded random token
+     * @throws RandomException
      */
     public function generateSecureToken(int $length = 32): string
     {
