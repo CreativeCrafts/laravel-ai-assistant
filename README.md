@@ -1,5 +1,76 @@
 # Laravel AI Assistant
 
+Laravel AI Assistant is a Laravel package that provides a clean, testable, and extensible abstraction layer over the OpenAI APIs.
+It helps you integrate AI assistants, chat sessions, streaming responses (SSE), and tool invocations with minimal boilerplate — while remaining robust in production (retries, idempotency) and friendly to tests (contracts, fakes).
+
+---
+
+## 🚀 Installation
+
+```bash
+composer require creativecrafts/laravel-ai-assistant
+```
+
+Publish the config:
+```bash
+php artisan vendor:publish --tag=laravel-ai-assistant-config
+```
+
+Run the installer (recommended):
+```bash
+php artisan ai:install
+```
+
+---
+
+## 📖 Usage
+
+### Quick one-off prompts (`Ai::quick()`)
+
+Use when you need a single response with minimal setup (stateless).
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$response = Ai::quick("Explain Laravel queues in simple terms.");
+echo $response->text;
+
+// Force JSON output:
+$response = Ai::quick([
+    "messages" => [["role" => "user", "content" => "Give me a JSON object with 3 fun facts about cats."]],
+    "response_format" => "json",
+]);
+echo $response->json;
+```
+
+### Stateful conversations & streaming (`Ai::chat()`)
+
+Use when you need multi-turn interactions or streaming tokens.
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$chat = Ai::chat("You are a helpful assistant.");
+$chat->message("Hello, who won the 2022 World Cup?");
+
+// One-shot reply for this turn
+$reply = $chat->send();
+echo $reply->text;
+
+// Stream token-by-token (SSE/WebSockets/Livewire friendly)
+foreach ($chat->stream() as $chunk) {
+    echo $chunk;
+}
+```
+
+**When to use which?**
+
+- **`quick()`** → one-off Q&A, summarization, translation; **stateless** and minimal ceremony.
+- **`chat()`** → multi-turn conversations, memory/threads, **streaming** support.
+
+Both are intentionally provided: they cover different developer ergonomics and runtime needs.
+
+
 ## 5‑Minute Sample App (Streaming + Webhook)
 
 Quick sanity check you can paste into a fresh Laravel app that has this package installed.
@@ -54,6 +125,18 @@ AI_ASSISTANT_PRESET=simple
 ```
 
 > Stubs available: `stubs/examples/routes.php`, `stubs/examples/StreamingController.php`
+
+---
+
+## 🔐 Webhook Security
+
+Validate incoming webhook signatures using the middleware:
+
+```php
+Route::post("/ai/webhook", [\App\Http\Controllers\AiWebhookController::class, "handle"])
+    ->middleware("verify.ai.webhook");
+```
+
 
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
@@ -2151,6 +2234,37 @@ Please see [CONTRIBUTING](CONTRIBUTING.md) for details on how to contribute to t
 Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
 
 ---
+
+
+---
+
+## 🔄 Transport: Retries & Idempotency
+
+- All outbound calls use a centralized `Support\Retry::execute()` wrapper with **exponential backoff + jitter**, controlled by `ai-assistant.transport` config.
+- Mutating calls (create/update/delete/run/submit) automatically include an **Idempotency-Key** header generated via `Support\Idempotency`, preventing duplicate side effects on retries.
+
+Config example (`config/ai-assistant.php`):
+
+```php
+transport => [
+    max_retries => env(AI_TRANSPORT_MAX_RETRIES, 2),
+    initial_delay_ms => env(AI_TRANSPORT_INITIAL_DELAY_MS, 200),
+    max_delay_ms => env(AI_TRANSPORT_MAX_DELAY_MS, 2000),
+    retry_http_codes => [408, 425, 429, 500, 502, 503, 504],
+    retry_exception_classes => [
+        // \GuzzleHttp\Exception\ConnectException::class,
+        // \Illuminate\Http\Client\ConnectionException::class,
+    ],
+    idempotency => [
+        enabled => env(AI_IDEMPOTENCY_ENABLED, true),
+        header => env(AI_IDEMPOTENCY_HEADER, Idempotency-Key),
+        strategy => env(AI_IDEMPOTENCY_STRATEGY, hash),
+        hash_algo => env(AI_IDEMPOTENCY_HASH_ALGO, sha256),
+        prefix => env(AI_IDEMPOTENCY_PREFIX, aiasst:),
+    ],
+],
+```
+
 
 ## Credits
 
