@@ -5,18 +5,51 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.17-beta] - 2025-09-12
+
+feat!: expand ChatSession; add ChatOptions/StreamReader; deprecation controls
+
+- Introduce ChatOptions for strongly typed, chainable chat configuration (model, temperature, response_format, tool_choice, files, vector stores, metadata, idempotency, timeout)
+- Add StreamReader to normalise streaming events into text chunks; ChatSession::streamText now uses it
+- Enrich ChatSession API:
+- setResponseFormatText(), setResponseFormatJson(), setResponseFormatJsonSchema()
+- setTemperature(), setToolChoice(), attachFiles(), includeFileSearchTool(), includeFunctionCallTool()
+- attachUploadedFile(), attachFilesFromStorage(), addImageFromUploadedFile()
+- Improved make() to optionally seed the first user message; added setUserMessage()
+- AiManager::quick now accepts string or array (message/prompt, model, temperature, response_format) and returns a ChatSession for fluent chaining
+- DTOs:
+- ChatResponseDto::toArray now returns a structured payload (id, status, content, raw)
+- StreamingEventDto gains toArray()
+- Add Deprecation helper and config flag (ai-assistant.deprecations.emit via AI_ASSISTANT_EMIT_DEPRECATIONS) for opt-in E_USER_DEPRECATED notices
+- Composer/config:
+- Register MacroAndMiddlewareServiceProvider in extra.laravel.providers
+- Remove openai-php/client suggestion
+- SecurityService: tighten validateRequestSize signature (mixed) and rely on JSON_THROW_ON_ERROR
+- FilesHttpRepository: minor MIME comment fix; annotate retrieve() with @throws JsonException
+- OpenAiRepository: annotate transport methods with @throws RandomException
+- General docblock/typo/normalisation fixes
+
+BREAKING CHANGES:
+
+- ChatResponseDto::toArray changed shape (returns id/status/content/raw instead of the raw array). Use ->toArray()['raw'] if you need the original payload
+- FilesHelper removed several convenience methods:
+- attachFilesToTurn, addImageFromFile, addImageFromUrl, addImageFromUploadedFile,
+  attachUploadedFile, attachFilesFromStorage, attachFileReference, attachForFileSearch,
+  addInputImageFromFile, addInputImageFromUrl
+  Migrate to ChatSession helpers (attachFiles, includeFileSearchTool, attachUploadedFile, attachFilesFromStorage, addImageFromUploadedFile) or use Assistant/Service-level methods directly
+
 ## [3.0.16-beta] - 2025-09-10
 
 feat(config): add skip-able config validation; default to skip in dev/test
 
-• Gate validateConfiguration() behind shouldSkipValidation()
-• Add shouldSkipValidation() checking:
-• AI_ASSISTANT_SKIP_VALIDATION constant
-• env: GITHUB_ACTIONS, CI, SKIP_AI_ASSISTANT_CONFIG_VALIDATION
-• config('ai-assistant.validation.skip')
-• Apply environment overlays before validation
-• Set validation.skip=true in development and testing overlays
-• Minor doc/grammar tweaks and helper reorganisation (no behaviour change)
+- Gate validateConfiguration() behind shouldSkipValidation()
+- Add shouldSkipValidation() checking:
+- AI_ASSISTANT_SKIP_VALIDATION constant
+- env: GITHUB_ACTIONS, CI, SKIP_AI_ASSISTANT_CONFIG_VALIDATION
+- config('ai-assistant.validation.skip')
+- Apply environment overlays before validation
+- Set validation.skip=true in development and testing overlays
+- Minor doc/grammar tweaks and helper reorganisation (no behaviour change)
 
 This allows CI and explicit overrides to bypass strict config validation while keeping production-safe defaults.
 
@@ -24,14 +57,14 @@ This allows CI and explicit overrides to bypass strict config validation while k
 
 feat: add streaming responses, install command, and webhook signature verification
 
-• Introduce StreamedAiResponse and Blade stream component for real-time AI output
-• Add VerifyAiWebhookSignature middleware to secure inbound webhooks
-• Add InstallCommand to simplify package setup
-• Provide example stubs: StreamingController and routes
-• Update ChatSession flow and OpenAI compat aliases
-• Expand ModelConfigDataFactory and update corresponding tests
-• Refresh config, composer.json, .gitattributes, and README
-• Remove obsolete SCALING_VERIFICATION_REPORT.md
+- Introduce StreamedAiResponse and Blade stream component for real-time AI output
+- Add VerifyAiWebhookSignature middleware to secure inbound webhooks
+- Add InstallCommand to simplify package setup
+- Provide example stubs: StreamingController and routes
+- Update ChatSession flow and OpenAI compat aliases
+- Expand ModelConfigDataFactory and update corresponding tests
+- Refresh config, composer.json, .gitattributes, and README
+- Remove obsolete SCALING_VERIFICATION_REPORT.md
 
 ## [3.0.14-beta] - 2025-09-09
 

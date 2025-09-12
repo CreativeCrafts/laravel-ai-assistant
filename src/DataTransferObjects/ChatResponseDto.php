@@ -18,7 +18,6 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
 
     /**
      * Creates a new ChatResponseDto instance from an array of response data.
-     *
      * This factory method constructs a ChatResponseDto object by extracting and mapping
      * values from the provided array. It handles various response formats by checking
      * multiple possible locations for status information and uses the extractContent
@@ -39,7 +38,6 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
 
     /**
      * Converts the ChatResponseDto instance to an array representation.
-     *
      * Returns the raw response data originally used to create this DTO instance.
      * This method provides access to the complete, unprocessed response data from the AI service,
      * which may contain additional fields beyond those explicitly mapped to DTO properties.
@@ -48,12 +46,16 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
      */
     public function toArray(): array
     {
-        return $this->raw;
+        return [
+            'id' => $this->id,
+            'status' => $this->status,
+            'content' => $this->content,
+            'raw' => $this->raw ?? null,
+        ];
     }
 
     /**
      * Extracts content from the response data array.
-     *
      * Attempts to find content in the response data by checking for 'output_text'
      * first, then falling back to 'content'. Returns null if neither field is found.
      *

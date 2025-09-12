@@ -244,12 +244,9 @@ class SecurityService
      * @throws InvalidArgumentException When request size exceeds limit
      * @throws JsonException
      */
-    public function validateRequestSize($data, int $maxSize = self::MAX_REQUEST_SIZE): bool
+    public function validateRequestSize(mixed $data, int $maxSize = self::MAX_REQUEST_SIZE): bool
     {
         $serialized = is_string($data) ? $data : json_encode($data, JSON_THROW_ON_ERROR);
-        if ($serialized === false) {
-            $serialized = '';
-        }
         $size = strlen($serialized);
 
         if ($size > $maxSize) {

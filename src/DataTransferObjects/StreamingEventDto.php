@@ -32,4 +32,16 @@ final readonly class StreamingEventDto implements JsonSerializable
             'isFinal' => $this->isFinal,
         ];
     }
+
+    /**
+     * Convert the DTO to a plain array.
+     */
+    public function toArray(): array
+    {
+        return [
+            'type' => $this->type,
+            'data' => $this->data,
+            'isFinal' => $this->isFinal,
+        ];
+    }
 }

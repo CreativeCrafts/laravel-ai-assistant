@@ -406,4 +406,19 @@ return [
         'initial_delay_ms' => env('AI_TRANSPORT_INITIAL_DELAY_MS', 200),
         'max_delay_ms' => env('AI_TRANSPORT_MAX_DELAY_MS', 2000),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Deprecation warnings
+    |--------------------------------------------------------------------------
+    |
+    | Controls emission of deprecation warnings for legacy features.
+    |
+    */
+
+    'deprecations' => [
+        // Set to true to emit E_USER_DEPRECATED notices at runtime for legacy surfaces.
+        // Defaults are false to keep tests/CI noise-free.
+        'emit' => env('AI_ASSISTANT_EMIT_DEPRECATIONS', false),
+    ],
 ];

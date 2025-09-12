@@ -11,8 +11,9 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseEnvelope;
 use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
-use CreativeCrafts\LaravelAiAssistant\Services\StreamReader;
+use CreativeCrafts\LaravelAiAssistant\Support\Deprecation;
 use CreativeCrafts\LaravelAiAssistant\Support\LegacyCompletionsShim;
+use CreativeCrafts\LaravelAiAssistant\Support\StreamReader;
 use CreativeCrafts\LaravelAiAssistant\ValueObjects\TurnOptions;
 use Generator;
 use Illuminate\Contracts\Container\BindingResolutionException;
@@ -186,6 +187,18 @@ class AiAssistant implements AiAssistantContract
     public function setModelName(string $model): self
     {
         $this->setTurn('model', $model);
+        return $this;
+    }
+
+    /**
+     * Set the sampling temperature for this turn (0.0 – 2.0).
+     */
+    public function setTemperature(float $temperature): self
+    {
+        if ($temperature < 0.0 || $temperature > 2.0) {
+            throw new InvalidArgumentException('Temperature must be between 0.0 and 2.0');
+        }
+        $this->setTurn('temperature', $temperature);
         return $this;
     }
 
@@ -408,13 +421,15 @@ class AiAssistant implements AiAssistantContract
     }
 
     /**
-     * Send the prepared user message via Responses API.
-     * Returns a normalized ResponseEnvelope array.
-     *
-     * @deprecated since 2.0.0 Use Ai::chat()->send() for a fluent, typed API, or sendChatMessageEnvelope()/sendChatMessageDto() for direct typed envelopes.
+     * @deprecated 3.x Use sendChatMessageDto() or Facade Ai::chat()->send() which returns a ChatResponseDto.
+     * Array-returning responses will be removed in a future major version.
      */
     public function sendChatMessage(): array
     {
+        Deprecation::maybeOnce(
+            key: 'AiAssistant.sendChatMessage.array',
+            message: 'AiAssistant::sendChatMessage() returning array is deprecated. Use sendChatMessageDto() or Ai::chat()->send()'
+        );
         $this->client = $this->client ?? resolve(AssistantService::class);
         $conversationId = $this->conversationId();
         if ($conversationId === null || $conversationId === '') {
@@ -504,24 +519,25 @@ class AiAssistant implements AiAssistantContract
     }
 
     /**
-     * Simple text streaming wrapper. Calls $onTextChunk for text deltas/completions and yields the same text pieces.
+     * Backward-compat convenience: stream normalised text chunks (strings).
      *
-     * @param callable(string $text):void $onTextChunk
-     * @param callable():bool|null $shouldStop
      * @return Generator<string>
      */
-    public function streamChatText(callable $onTextChunk, ?callable $shouldStop = null): Generator
+    public function streamChatText(?callable $onTextChunk = null, ?callable $shouldStop = null): Generator
     {
-        $events = $this->streamChatMessage(null, $shouldStop);
-        $reader = app(StreamReader::class);
-        yield from $reader->onTextChunks($events, $onTextChunk);
+        $events = $this->streamChatMessage(onEvent: null, shouldStop: $shouldStop);
+        return StreamReader::toTextChunks($events, $onTextChunk);
     }
 
     /**
-     * Stream the response for the prepared user message via Responses API.
+     * @deprecated 3.x Use stream() via ChatSession: Ai::chat($msg)->stream()
      */
     public function streamChatMessage(?callable $onEvent = null, ?callable $shouldStop = null): Generator
     {
+        Deprecation::maybeOnce(
+            key: 'AiAssistant.streamChatMessage',
+            message: 'AiAssistant::streamChatMessage() is deprecated. Use Ai::chat($message)->stream()'
+        );
         $this->client = $this->client ?? resolve(AssistantService::class);
         $conversationId = $this->conversationId();
         if ($conversationId === null || $conversationId === '') {
@@ -551,12 +567,14 @@ class AiAssistant implements AiAssistantContract
     }
 
     /**
-     * Continue a turn with tool_result items.
-     *
-     * @deprecated since 2.0.0 Use continueWithToolResultsEnvelope()/continueWithToolResultsDto() or Ai::chat()->continueWithToolResults().
+     * @deprecated 3.x Use continueWithToolResultsDto() or ChatSession::continueWithToolResults()
      */
     public function continueWithToolResults(array $toolResults): array
     {
+        Deprecation::maybeOnce(
+            key: 'AiAssistant.continueWithToolResults.array',
+            message: 'AiAssistant::continueWithToolResults(array) is deprecated. Use DTO variant or ChatSession.'
+        );
         $this->client = $this->client ?? resolve(AssistantService::class);
         $conversationId = $this->conversationId();
         if ($conversationId === null || $conversationId === '') {
@@ -568,7 +586,9 @@ class AiAssistant implements AiAssistantContract
     }
 
     /**
-     * Continue a turn returning a simplified ChatResponseDto.
+     * Canonical typed continue-with-tools.
+     *
+     * @param array<int, array{tool_call_id:string, output:string}> $toolResults
      */
     public function continueWithToolResultsDto(array $toolResults): ChatResponseDto
     {
@@ -798,6 +818,9 @@ class AiAssistant implements AiAssistantContract
 
         return $this->includeFunctionCallTool($safeName ?: 'function', $description, $params, $isStrict);
     }
+    // =========================
+    // Responses/Conversations Fluent API (Migration: Fluent API updates)
+    // =========================
 
     /**
      * Clarified helper name: add an input_image from a local file by uploading it.
@@ -844,9 +867,6 @@ class AiAssistant implements AiAssistantContract
         $this->setTurn('input_images', $imgs);
         return $this;
     }
-    // =========================
-    // Responses/Conversations Fluent API (Migration: Fluent API updates)
-    // =========================
 
     /**
      * Attach a file_id as a file_reference block for this turn.

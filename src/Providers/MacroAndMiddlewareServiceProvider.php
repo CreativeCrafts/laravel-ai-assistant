@@ -7,16 +7,10 @@ namespace CreativeCrafts\LaravelAiAssistant\Providers;
 use CreativeCrafts\LaravelAiAssistant\Http\Controllers\HealthCheckController;
 use CreativeCrafts\LaravelAiAssistant\Http\Controllers\WebhookController;
 use CreativeCrafts\LaravelAiAssistant\Http\Middleware\VerifyAiWebhookSignature;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
-/**
- * Registers:
- * - Middleware alias: verify.ai.webhook
- * - Route macro: Route::aiAssistant([...]) to mount health + webhook endpoints
- *
- * Safe to include alongside any auto-registered routes; the macro is opt-in.
- */
 final class MacroAndMiddlewareServiceProvider extends ServiceProvider
 {
     public function register(): void
@@ -24,14 +18,14 @@ final class MacroAndMiddlewareServiceProvider extends ServiceProvider
         // no-op
     }
 
-    public function boot(): void
+    public function boot(Router $router): void
     {
         // Middleware alias for webhook signature verification
-        $this->app['router']->aliasMiddleware('verify.ai.webhook', VerifyAiWebhookSignature::class);
+        $router->aliasMiddleware(name: 'verify.ai.webhook', class: VerifyAiWebhookSignature::class);
 
         // Route macro to quickly mount helper endpoints (opt-in)
         if (!Route::hasMacro('aiAssistant')) {
-            Route::macro('aiAssistant', function (array $options = []): void {
+            Route::macro('aiAssistant', static function (array $options = []): void {
                 $prefix = $options['prefix'] ?? 'ai';
                 $middleware = $options['middleware'] ?? ['web'];
                 $namePrefix = $options['name'] ?? 'ai.';

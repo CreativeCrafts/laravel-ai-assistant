@@ -25,9 +25,6 @@
     "spatie/laravel-package-tools": "^1.19",
     "symfony/http-client": "^6.3|^7.2"
   },
-  "suggest": {
-    "openai-php/client": "^0.10 to use the official OpenAI PHP SDK. If not installed, the package falls back to internal Compat classes."
-  },
   "require-dev": {
     "fakerphp/faker": "^1.24",
     "larastan/larastan": "^2.11",
@@ -92,7 +89,8 @@
   "extra": {
     "laravel": {
       "providers": [
-        "CreativeCrafts\\LaravelAiAssistant\\LaravelAiAssistantServiceProvider"
+        "CreativeCrafts\\LaravelAiAssistant\\LaravelAiAssistantServiceProvider",
+        "CreativeCrafts\\LaravelAiAssistant\\Providers\\MacroAndMiddlewareServiceProvider"
       ],
       "aliases": {
         "AiAssistant": "CreativeCrafts\\LaravelAiAssistant\\Facades\\AiAssistant",

@@ -17,6 +17,7 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\OpenAiTransportException;
 use CreativeCrafts\LaravelAiAssistant\Support\Retry;
 use Illuminate\Support\Facades\Config;
+use Random\RandomException;
 use Throwable;
 
 /**
@@ -36,6 +37,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param array $parameters Parameters for creating the assistant
      * @return AssistantResponse
+     * @throws RandomException
      */
     public function createAssistant(array $parameters): AssistantResponse
     {
@@ -47,6 +49,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param string $assistantId The assistant ID
      * @return AssistantResponse
+     * @throws RandomException
      */
     public function retrieveAssistant(string $assistantId): AssistantResponse
     {
@@ -58,6 +61,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param array $parameters Parameters for creating the thread
      * @return ThreadResponse
+     * @throws RandomException
      */
     public function createThread(array $parameters): ThreadResponse
     {
@@ -70,6 +74,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @param string $threadId The thread ID
      * @param array $messageData The message data
      * @return ThreadMessageResponse
+     * @throws RandomException
      */
     public function createThreadMessage(string $threadId, array $messageData): ThreadMessageResponse
     {
@@ -85,6 +90,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @param string $threadId The thread ID
      * @param array $parameters Run parameters
      * @return ThreadRunResponse
+     * @throws RandomException
      */
     public function createThreadRun(string $threadId, array $parameters): ThreadRunResponse
     {
@@ -100,6 +106,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @param string $threadId The thread ID
      * @param string $runId The run ID
      * @return ThreadRunResponse
+     * @throws RandomException
      */
     public function retrieveThreadRun(string $threadId, string $runId): ThreadRunResponse
     {
@@ -114,6 +121,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param string $threadId The thread ID
      * @return array
+     * @throws RandomException
      */
     public function listThreadMessages(string $threadId): array
     {
@@ -125,6 +133,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param array $parameters Completion parameters
      * @return CompletionResponse
+     * @throws RandomException
      */
     public function createCompletion(array $parameters): CompletionResponse
     {
@@ -136,6 +145,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param array $parameters Completion parameters
      * @return iterable
+     * @throws RandomException
      */
     public function createStreamedCompletion(array $parameters): iterable
     {
@@ -147,6 +157,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param array $parameters Chat completion parameters
      * @return ChatResponse
+     * @throws RandomException
      */
     public function createChatCompletion(array $parameters): ChatResponse
     {
@@ -158,6 +169,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param array $parameters Chat completion parameters
      * @return iterable
+     * @throws RandomException
      */
     public function createStreamedChatCompletion(array $parameters): iterable
     {
@@ -169,6 +181,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param array $parameters Transcription parameters
      * @return TranscriptionResponse
+     * @throws RandomException
      */
     public function transcribeAudio(array $parameters): TranscriptionResponse
     {
@@ -180,6 +193,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      *
      * @param array $parameters Translation parameters
      * @return TranslationResponse
+     * @throws RandomException
      */
     public function translateAudio(array $parameters): TranslationResponse
     {
@@ -193,6 +207,7 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @param callable():T $callback
      * @return T
      * @throws OpenAiTransportException
+     * @throws RandomException
      */
     private function execute(callable $callback)
     {

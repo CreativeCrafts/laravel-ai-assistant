@@ -4,23 +4,27 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Tests\Feature;
 
-use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
-use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
-use PHPUnit\Framework\TestCase;
-use Generator;
-
-final class AiManagerTest extends TestCase
+function skipIfNoRealKey(): void
 {
-    public function test_quick_returns_chat_response_dto(): void
-    {
-        $dto = Ai::quick('Hello world');
-        $this->assertInstanceOf(ChatResponseDto::class, $dto);
-        $this->assertNotSame('', $dto->text ?? '');
-    }
-
-    public function test_stream_returns_generator(): void
-    {
-        $gen = Ai::stream('Hello');
-        $this->assertInstanceOf(Generator::class, $gen);
+    $key = env('OPENAI_API_KEY') ?? config('ai-assistant.api_key');
+    if (empty($key) || $key === 'test_key_123') {
+        test()->markTestSkipped('Skipping AI integration test without a real OPENAI_API_KEY.');
     }
 }
+
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+use Generator;
+
+test('quick returns chat response dto', function () {
+    skipIfNoRealKey();
+    $dto = Ai::quick('Hello world');
+    expect($dto)->toBeInstanceOf(ChatResponseDto::class)
+        ->and($dto->text ?? '')->not->toBe('');
+});
+
+test('stream returns generator', function () {
+    skipIfNoRealKey();
+    $gen = Ai::stream('Hello');
+    expect($gen)->toBeInstanceOf(Generator::class);
+});

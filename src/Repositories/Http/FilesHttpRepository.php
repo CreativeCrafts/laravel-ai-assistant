@@ -53,7 +53,7 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
             throw new FileOperationException("Failed to open file: {$filePath}");
         }
 
-        // Detect MIME type to help the API infer file type and ensure an image has a proper extension
+        // Detect MIME type to help the API infer a file type and ensure an image has a proper extension
         $mime = null;
         if (function_exists('finfo_open')) {
             $f = finfo_open(FILEINFO_MIME_TYPE);
@@ -117,6 +117,7 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
      * @param string $fileId The unique identifier of the file to retrieve.
      * @return array The decoded JSON response from the OpenAI API containing complete file metadata.
      * @throws ApiResponseValidationException If the API response indicates an error or the response format is invalid.
+     * @throws JsonException
      */
     public function retrieve(string $fileId): array
     {

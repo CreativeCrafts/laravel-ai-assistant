@@ -30,7 +30,6 @@ use Throwable;
 
 class AssistantService implements AssistantManagementContract, AudioProcessingContract, TextCompletionContract, ThreadOperationContract
 {
-    // New Orchestrator helpers for Responses and Conversations migration
     protected OpenAiRepositoryContract $repository;
     protected CacheService $cacheService;
 
@@ -255,7 +254,7 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         }
         $attachments = $this->validateAttachments($attachments);
 
-        // Auto-enable file_search tool if file references/attachments are provided and not already present
+        // Auto-enable the file_search tool if file references/attachments are provided and not already present
         if ($useFileSearch && ($fileIds !== [] || $attachments !== [])) {
             $hasFileSearch = false;
             foreach ($tools as $t) {
@@ -351,7 +350,7 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         $__start = microtime(true);
         $resp = $this->facade()->responses()->createResponse($payload);
         $envelope = $this->normalizeResponseEnvelope($resp);
-        // Emit metrics after normalization
+        // Emit metrics after normalisation
         try {
             $latency = max(0, microtime(true) - $__start);
             $modelName = (string)($payload['model'] ?? '');
@@ -390,7 +389,7 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
                 }
                 try {
                     if (!$this->toolRegistry()->has($name)) {
-                        // Provide graceful error output when tool is missing
+                        // Provide graceful error output when the tool is missing
                         $calls[] = ['name' => $name, 'args' => $args, 'tool_call_id' => $callId, '__missing' => true];
                         continue;
                     }
@@ -612,8 +611,6 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
 
         return true;
     }
-
-    // ===== Helpers =====
 
     /**
      * List messages for a specific thread and return the content of the first message.
@@ -858,6 +855,10 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         // Trim any leading/trailing whitespace from the complete response
         return trim($accumulatedText);
     }
+
+    // =========================
+    // Responses + Conversations Orchestrator methods
+    // =========================
 
     /**
      * Generate a chat text completion using the repository abstraction.
@@ -1410,7 +1411,7 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
             }
         }
 
-        // Validate temperature if provided - use single variable to avoid repeated array access
+        // Validate temperature if provided - use a single variable to avoid repeated array access
         if (isset($parameters['temperature'])) {
             $temperature = $parameters['temperature'];
             if (!is_numeric($temperature) || $temperature < 0 || $temperature > 2) {
@@ -1458,6 +1459,8 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
             throw new InvalidArgumentException('Thread ID must follow the format: thread_[24 alphanumeric characters].');
         }
     }
+
+    // ===== Helpers =====
 
     /**
      * Validate message data for thread operations.
@@ -1529,10 +1532,6 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         }
         return $validated;
     }
-
-    // =========================
-    // Responses + Conversations Orchestrator methods
-    // =========================
 
     private function buildResponsesCreatePayload(
         string $conversationId,
