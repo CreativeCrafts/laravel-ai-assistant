@@ -5,6 +5,29 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.18-beta] - 2025-09-25
+
+refactor: migrate error reporting to log-only; harden PII scrubbing
+
+• Remove external drivers (Sentry/Bugsnag) and route all reports to logs
+• Default driver forced to 'log' in ErrorReportingService
+• Update production configs/presets to default to 'log' (was 'sentry')
+• Expand sensitive field list (tokens, cookies, client_secret, etc.)
+• Redact sensitive query params and sanitize request URLs
+• Improve recursive scrubbing with JSON_THROW_ON_ERROR and better typing
+• Add helpers: sanitizeUrl, parseQueryParams, isSensitiveField
+• Strengthen method signatures (union types), use static closures, tidy internals
+• Simplify configuration validation for log-only mode
+
+Why:
+• Reduce external dependencies and ensure predictable behavior in restricted environments
+• Improve security by aggressively redacting sensitive data in context and URLs
+
+BREAKING CHANGE:
+• External trackers (Sentry/Bugsnag) support removed; the service now always logs.
+• Production default error_reporting.driver changed to 'log' and the service ignores non-log drivers.
+• If you rely on Sentry/Bugsnag, implement a custom driver/adapter.
+
 ## [3.0.17-beta] - 2025-09-12
 
 feat!: expand ChatSession; add ChatOptions/StreamReader; deprecation controls

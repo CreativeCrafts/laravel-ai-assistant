@@ -158,7 +158,7 @@ return [
 
     'error_reporting' => [
         'enabled' => env('AI_ERROR_REPORTING_ENABLED', true),
-        'driver' => env('AI_ERROR_REPORTING_DRIVER', 'sentry'), // External service
+        'driver' => env('AI_ERROR_REPORTING_DRIVER', 'log'), // log only
         'dsn' => env('AI_ERROR_REPORTING_DSN'),
         'environment' => env('AI_ERROR_REPORTING_ENV', env('APP_ENV', 'production')),
         'sample_rate' => env('AI_ERROR_SAMPLE_RATE', 0.1), // Sample errors to reduce noise

@@ -302,12 +302,12 @@ return [
     ],
 
     /**
-     * Error reporting integration configuration.
-     * Integrates with external error tracking services for comprehensive monitoring.
+     * Error reporting configuration (log-only).
+     * Provides structured logging for comprehensive monitoring without external services.
      */
     'error_reporting' => [
         'enabled' => env('AI_ERROR_REPORTING_ENABLED', true),
-        'driver' => env('AI_ERROR_REPORTING_DRIVER', 'log'), // log, sentry, bugsnag
+        'driver' => env('AI_ERROR_REPORTING_DRIVER', 'log'), // log only
         'dsn' => env('AI_ERROR_REPORTING_DSN', null),
         'environment' => env('AI_ERROR_REPORTING_ENV', env('APP_ENV', 'production')),
         'sample_rate' => env('AI_ERROR_SAMPLE_RATE', 1.0),

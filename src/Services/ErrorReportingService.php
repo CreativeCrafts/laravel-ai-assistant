@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Throwable;
 use Exception;
+use Illuminate\Support\Str;
+use JsonException;
+use Random\RandomException;
+use Throwable;
 
 /**
- * Error reporting service for integrating with external error tracking services.
- *
- * This service provides comprehensive error reporting including:
- * - Integration with external services (Sentry, Bugsnag, etc.)
+ * Error reporting service (log-only).
+ * Provides comprehensive error reporting via application logs including
  * - Sensitive data scrubbing
  * - Context enrichment
  * - Error sampling and rate limiting
@@ -25,24 +24,44 @@ class ErrorReportingService
     private LoggingService $loggingService;
     private string $driver;
     private array $sensitiveFields = [
-        'api_key', 'password', 'token', 'secret', 'authorization',
-        'bearer', 'credentials', 'key', 'private', 'session'
+        'api_key',
+        'password',
+        'passwd',
+        'pwd',
+        'token',
+        'id_token',
+        'secret',
+        'client_secret',
+        'authorization',
+        'auth',
+        'bearer',
+        'credentials',
+        'key',
+        'private',
+        'session',
+        'cookie',
+        'set-cookie',
+        'access_token',
+        'refresh_token',
+        'signature'
     ];
 
     public function __construct(LoggingService $loggingService, array $config = [])
     {
         $this->loggingService = $loggingService;
         $this->config = $config;
-        $this->driver = is_string($this->config['driver'] ?? null) ? $this->config['driver'] : 'log';
+        $this->driver = 'log';
     }
 
     /**
      * Report an exception with full context.
      *
-     * @param Throwable $exception The exception to report
+     * @param Throwable $exception The exception to the report
      * @param array $context Additional context data
      * @param array $tags Custom tags for filtering
      * @return string|null Report ID if available
+     * @throws RandomException
+     * @throws JsonException
      */
     public function reportException(Throwable $exception, array $context = [], array $tags = []): ?string
     {
@@ -66,43 +85,11 @@ class ErrorReportingService
             'severity' => $this->determineSeverity($exception),
         ];
 
-        return $this->sendErrorReport($errorData, $exception);
-    }
-
-    /**
-     * Report a custom error event.
-     *
-     * @param string $message Error message
-     * @param array $context Additional context data
-     * @param string $level Error level (debug, info, warning, error, critical)
-     * @param array $tags Custom tags
-     * @return string|null Report ID if available
-     */
-    public function reportError(string $message, array $context = [], string $level = 'error', array $tags = []): ?string
-    {
-        if (!$this->isEnabled()) {
-            return null;
-        }
-
-        $enrichedContext = $this->enrichContext($context);
-        $scrubbedContext = $this->scrubSensitiveData($enrichedContext);
-
-        $errorData = [
-            'type' => 'custom_error',
-            'message' => $message,
-            'level' => $level,
-            'context' => $scrubbedContext,
-            'tags' => array_merge($this->getDefaultTags(), $tags),
-            'environment' => $this->config['environment'] ?? 'production',
-            'timestamp' => now()->toISOString(),
-            'stack_trace' => $this->captureStackTrace(),
-        ];
-
         return $this->sendErrorReport($errorData);
     }
 
     /**
-     * Report API-related errors with specific context.
+     * Report API-related errors with a specific context.
      *
      * @param string $operation API operation that failed
      * @param string $endpoint API endpoint
@@ -143,6 +130,39 @@ class ErrorReportingService
     }
 
     /**
+     * Report a custom error event.
+     *
+     * @param string $message Error message
+     * @param array $context Additional context data
+     * @param string $level Error level (debug, info, warning, error, critical)
+     * @param array $tags Custom tags
+     * @return string|null Report ID if available
+     * @throws JsonException
+     */
+    public function reportError(string $message, array $context = [], string $level = 'error', array $tags = []): ?string
+    {
+        if (!$this->isEnabled()) {
+            return null;
+        }
+
+        $enrichedContext = $this->enrichContext($context);
+        $scrubbedContext = $this->scrubSensitiveData($enrichedContext);
+
+        $errorData = [
+            'type' => 'custom_error',
+            'message' => $message,
+            'level' => $level,
+            'context' => $scrubbedContext,
+            'tags' => array_merge($this->getDefaultTags(), $tags),
+            'environment' => $this->config['environment'] ?? 'production',
+            'timestamp' => now()->toISOString(),
+            'stack_trace' => $this->captureStackTrace(),
+        ];
+
+        return $this->sendErrorReport($errorData);
+    }
+
+    /**
      * Report memory usage issues.
      *
      * @param string $operation Operation that caused memory issues
@@ -150,6 +170,7 @@ class ErrorReportingService
      * @param float $thresholdMB Memory threshold in MB
      * @param array $additionalContext Additional context
      * @return string|null Report ID if available
+     * @throws JsonException
      */
     public function reportMemoryIssue(
         string $operation,
@@ -188,6 +209,7 @@ class ErrorReportingService
      * @param float $threshold Performance threshold in seconds
      * @param array $metrics Additional performance metrics
      * @return string|null Report ID if available
+     * @throws JsonException
      */
     public function reportPerformanceIssue(
         string $operation,
@@ -221,10 +243,11 @@ class ErrorReportingService
     /**
      * Add user context to error reports.
      *
-     * @param string|int $userId User identifier
+     * @param int|string $userId User identifier
      * @param array $userData Additional user data
+     * @throws JsonException
      */
-    public function setUserContext($userId, array $userData = []): void
+    public function setUserContext(int|string $userId, array $userData = []): void
     {
         if (!$this->isEnabled()) {
             return;
@@ -296,30 +319,11 @@ class ErrorReportingService
     }
 
     /**
-     * Check if context should be included in reports.
-     *
-     * @return bool
-     */
-    private function shouldIncludeContext(): bool
-    {
-        return $this->config['include_context'] ?? true;
-    }
-
-    /**
-     * Check if sensitive data should be scrubbed.
-     *
-     * @return bool
-     */
-    private function shouldScrubSensitiveData(): bool
-    {
-        return $this->config['scrub_sensitive_data'] ?? true;
-    }
-
-    /**
      * Determine if an exception should be reported.
      *
      * @param Throwable $exception
      * @return bool
+     * @throws RandomException
      */
     private function shouldReport(Throwable $exception): bool
     {
@@ -345,6 +349,7 @@ class ErrorReportingService
      *
      * @param array $context
      * @return array
+     * @throws JsonException
      */
     private function enrichContext(array $context): array
     {
@@ -367,7 +372,7 @@ class ErrorReportingService
         if (app()->bound('request')) {
             $request = request();
             $enrichedContext['request'] = [
-                'url' => $request->fullUrl(),
+                'url' => $this->sanitizeUrl($request->fullUrl()),
                 'method' => $request->method(),
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -384,52 +389,98 @@ class ErrorReportingService
     }
 
     /**
-     * Scrub sensitive data from context.
+     * Check if context should be included in reports.
      *
-     * @param array $data
-     * @return array
+     * @return bool
      */
-    private function scrubSensitiveData(array $data): array
+    private function shouldIncludeContext(): bool
     {
-        if (!$this->shouldScrubSensitiveData()) {
-            return $data;
-        }
-
-        $result = $this->recursiveScrub($data);
-        return is_array($result) ? $result : [];
+        return $this->config['include_context'] ?? true;
     }
 
     /**
-     * Recursively scrub sensitive fields.
-     *
-     * @param mixed $data
-     * @return mixed
+     * Sanitise a full URL by redacting sensitive query parameters.
      */
-    private function recursiveScrub($data)
+    private function sanitizeUrl(string $url): string
     {
-        if (is_array($data)) {
-            $scrubbed = [];
-            foreach ($data as $key => $value) {
-                if ($this->isSensitiveField($key)) {
-                    $scrubbed[$key] = '[REDACTED]';
-                } else {
-                    $scrubbed[$key] = $this->recursiveScrub($value);
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return $url;
+        }
+
+        $scheme = $parts['scheme'] ?? null;
+        $host = $parts['host'] ?? null;
+        $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+        $path = $parts['path'] ?? '';
+        $query = $parts['query'] ?? '';
+        $fragment = isset($parts['fragment']) ? '#' . $parts['fragment'] : '';
+
+        if ($query !== '') {
+            $params = $this->parseQueryParams($query);
+            if (count($params) > 0) {
+                foreach ($params as $k => $v) {
+                    $kStr = is_string($k) ? $k : (string)$k;
+                    if ($this->isSensitiveField($kStr)) {
+                        $params[$k] = '[REDACTED]';
+                    }
                 }
+                $query = http_build_query($params);
             }
-            return $scrubbed;
         }
 
-        if (is_object($data)) {
-            // For objects, convert to array first
-            $jsonEncoded = json_encode($data);
-            if ($jsonEncoded !== false) {
-                $decoded = json_decode($jsonEncoded, true);
-                return $this->recursiveScrub(is_array($decoded) ? $decoded : []);
-            }
-            return [];
+        $authority = $host ? ($scheme ? ($scheme . '://') : '') . $host . $port : '';
+        $rebuilt = $authority . $path;
+        if ($query !== '') {
+            $rebuilt .= '?' . $query;
         }
+        $rebuilt .= $fragment;
 
-        return $data;
+        return $rebuilt === '' ? $url : $rebuilt;
+    }
+
+    /**
+     * Safely parse a query string into an array without using parse_str.
+     * Handles repeated keys and bracket syntax for arrays.
+     */
+    private function parseQueryParams(string $query): array
+    {
+        $result = [];
+        foreach (explode('&', $query) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+            $parts = explode('=', $pair, 2);
+            $rawKey = urldecode($parts[0]);
+            $value = urldecode($parts[1] ?? '');
+
+            // Handle bracket syntax like a key[] or key[index]
+            if (str_ends_with($rawKey, '[]')) {
+                $key = substr($rawKey, 0, -2);
+                $result[$key] = isset($result[$key]) && is_array($result[$key]) ? $result[$key] : [];
+                $result[$key][] = $value;
+                continue;
+            }
+
+            if (preg_match('/^(.+)\[(.+)]$/', $rawKey, $matches) === 1) {
+                [, $base, $idx] = $matches;
+                if (!isset($result[$base]) || !is_array($result[$base])) {
+                    $result[$base] = [];
+                }
+                $result[$base][$idx] = $value;
+                continue;
+            }
+
+            if (array_key_exists($rawKey, $result)) {
+                // Convert the existing scalar to array for repeated keys
+                if (!is_array($result[$rawKey])) {
+                    $result[$rawKey] = [$result[$rawKey]];
+                }
+                $result[$rawKey][] = $value;
+            } else {
+                $result[$rawKey] = $value;
+            }
+        }
+        return $result;
     }
 
     /**
@@ -452,6 +503,69 @@ class ErrorReportingService
     }
 
     /**
+     * Scrub sensitive data from context.
+     *
+     * @param array $data
+     * @return array
+     * @throws JsonException
+     */
+    private function scrubSensitiveData(array $data): array
+    {
+        if (!$this->shouldScrubSensitiveData()) {
+            return $data;
+        }
+
+        $result = $this->recursiveScrub($data);
+        return is_array($result) ? $result : [];
+    }
+
+    /**
+     * Check if sensitive data should be scrubbed.
+     *
+     * @return bool
+     */
+    private function shouldScrubSensitiveData(): bool
+    {
+        return $this->config['scrub_sensitive_data'] ?? true;
+    }
+
+    /**
+     * Recursively scrub sensitive fields.
+     *
+     * @param mixed $data
+     * @return mixed
+     * @throws JsonException
+     */
+    private function recursiveScrub(mixed $data): mixed
+    {
+        if (is_array($data)) {
+            $scrubbed = [];
+            foreach ($data as $key => $value) {
+                $keyStr = is_string($key) ? $key : (string)$key;
+                if ($this->isSensitiveField($keyStr)) {
+                    $scrubbed[$key] = '[REDACTED]';
+                } else {
+                    $scrubbed[$key] = $this->recursiveScrub($value);
+                }
+            }
+            return $scrubbed;
+        }
+
+        if (is_object($data)) {
+            // For objects, convert to array first
+            try {
+                $jsonEncoded = json_encode($data, JSON_THROW_ON_ERROR);
+                $decoded = json_decode($jsonEncoded, true, 512, JSON_THROW_ON_ERROR);
+                return $this->recursiveScrub(is_array($decoded) ? $decoded : []);
+            } catch (JsonException $e) {
+                return [];
+            }
+        }
+
+        return $data;
+    }
+
+    /**
      * Format stack trace for reporting.
      *
      * @param array $trace
@@ -459,7 +573,7 @@ class ErrorReportingService
      */
     private function formatStackTrace(array $trace): array
     {
-        return array_map(function ($frame) {
+        return array_map(static function ($frame) {
             return [
                 'file' => $frame['file'] ?? '[internal]',
                 'line' => $frame['line'] ?? 0,
@@ -470,18 +584,21 @@ class ErrorReportingService
     }
 
     /**
-     * Capture current stack trace.
+     * Get default tags for error reports.
      *
      * @return array
      */
-    private function captureStackTrace(): array
+    private function getDefaultTags(): array
     {
-        $trace = (new Exception())->getTrace();
-        return $this->formatStackTrace(array_slice($trace, 1)); // Skip this method
+        return array_merge([
+            'component' => 'laravel_ai_assistant',
+            'environment' => config('app.env', 'production'),
+            'php_version' => PHP_VERSION,
+        ], $this->config['custom_tags'] ?? []);
     }
 
     /**
-     * Determine error severity based on exception type.
+     * Determine error severity based on an exception type.
      *
      * @param Throwable $exception
      * @return string
@@ -508,109 +625,19 @@ class ErrorReportingService
     }
 
     /**
-     * Get default tags for error reports.
-     *
-     * @return array
-     */
-    private function getDefaultTags(): array
-    {
-        return array_merge([
-            'component' => 'laravel_ai_assistant',
-            'environment' => config('app.env', 'production'),
-            'php_version' => PHP_VERSION,
-        ], $this->config['custom_tags'] ?? []);
-    }
-
-    /**
-     * Send error report using configured driver.
+     * Send an error report using a configured driver.
      *
      * @param array $errorData
-     * @param Throwable|null $exception
-     * @return string|null Report ID if available
+     * @return string Report ID if available
      */
-    private function sendErrorReport(array $errorData, ?Throwable $exception = null): ?string
+    private function sendErrorReport(array $errorData): string
     {
-        switch ($this->driver) {
-            case 'sentry':
-                return $this->sendToSentry($errorData, $exception);
-            case 'bugsnag':
-                return $this->sendToBugsnag($errorData, $exception);
-            case 'log':
-            default:
-                return $this->sendToLog($errorData);
-        }
-    }
-
-    /**
-     * Send error report to Sentry.
-     *
-     * @param array $errorData
-     * @param Throwable|null $exception
-     * @return string|null
-     */
-    private function sendToSentry(array $errorData, ?Throwable $exception = null): ?string
-    {
-        try {
-            if (function_exists('\Sentry\captureException') && $exception && function_exists('\Sentry\configureScope')) {
-                // Check if Sentry classes exist before using them
-                if (class_exists('\Sentry\State\Scope')) {
-                    try {
-                        \Sentry\configureScope(function ($scope) use ($errorData) {
-                            if (is_object($scope) && method_exists($scope, 'setContext')) {
-                                $scope->setContext('ai_assistant', $errorData['context'] ?? []);
-                            }
-                            if (is_object($scope) && method_exists($scope, 'setTag')) {
-                                foreach ($errorData['tags'] as $key => $value) {
-                                    $scope->setTag($key, $value);
-                                }
-                            }
-                        });
-                    } catch (Exception $e) {
-                        // Silently continue if Sentry configuration fails
-                    }
-                }
-
-                return \Sentry\captureException($exception);
-            } elseif (function_exists('\Sentry\captureMessage')) {
-                return \Sentry\captureMessage($errorData['message']);
-            }
-        } catch (Throwable $e) {
-            Log::warning('Failed to send error to Sentry', ['error' => $e->getMessage()]);
-        }
-
+        // Log-only mode: always log the error data
         return $this->sendToLog($errorData);
     }
 
     /**
-     * Send error report to Bugsnag.
-     *
-     * @param array $errorData
-     * @param Throwable|null $exception
-     * @return string
-     */
-    private function sendToBugsnag(array $errorData, ?Throwable $exception = null): string
-    {
-        try {
-            if (class_exists('\Bugsnag\Client') && $exception) {
-                $client = \Bugsnag\Client::make();
-                if (is_object($client) && method_exists($client, 'notifyException')) {
-                    $client->notifyException($exception, function ($report) use ($errorData) {
-                        if (is_object($report) && method_exists($report, 'setMetaData')) {
-                            $report->setMetaData($errorData['context'] ?? []);
-                        }
-                    });
-                }
-                return 'bugsnag_' . Str::uuid()->toString();
-            }
-        } catch (Throwable $e) {
-            Log::warning('Failed to send error to Bugsnag', ['error' => $e->getMessage()]);
-        }
-
-        return $this->sendToLog($errorData);
-    }
-
-    /**
-     * Send error report to log.
+     * Send an error report to log.
      *
      * @param array $errorData
      * @return string
@@ -632,24 +659,6 @@ class ErrorReportingService
     }
 
     /**
-     * Validate error reporting configuration.
-     *
-     * @return bool
-     */
-    private function validateConfiguration(): bool
-    {
-        if ($this->driver === 'sentry') {
-            return !empty($this->config['dsn']) && function_exists('\Sentry\init');
-        }
-
-        if ($this->driver === 'bugsnag') {
-            return !empty($this->config['dsn']) && class_exists('\Bugsnag\Client');
-        }
-
-        return true; // Log driver is always valid
-    }
-
-    /**
      * Sanitize endpoint for tagging.
      *
      * @param string $endpoint
@@ -665,9 +674,18 @@ class ErrorReportingService
         $endpoint = is_string($result) ? $result : $endpoint;
 
         $result = preg_replace('/\/[a-f0-9-]{36}/', '/{uuid}', $endpoint);
-        $endpoint = is_string($result) ? $result : $endpoint;
+        return is_string($result) ? $result : $endpoint;
+    }
 
-        return $endpoint;
+    /**
+     * Capture current stack trace.
+     *
+     * @return array
+     */
+    private function captureStackTrace(): array
+    {
+        $trace = (new Exception())->getTrace();
+        return $this->formatStackTrace(array_slice($trace, 1)); // Skip this method
     }
 
     /**
@@ -697,17 +715,23 @@ class ErrorReportingService
     private function convertToBytes(string $size): int
     {
         $unit = strtolower(substr($size, -1));
-        $value = (int) substr($size, 0, -1);
+        $value = (int)substr($size, 0, -1);
 
-        switch ($unit) {
-            case 'g':
-                return $value * 1024 * 1024 * 1024;
-            case 'm':
-                return $value * 1024 * 1024;
-            case 'k':
-                return $value * 1024;
-            default:
-                return (int) $size;
-        }
+        return match ($unit) {
+            'g' => $value * 1024 * 1024 * 1024,
+            'm' => $value * 1024 * 1024,
+            'k' => $value * 1024,
+            default => (int)$size,
+        };
+    }
+
+    /**
+     * Validate error reporting configuration.
+     *
+     * @return bool
+     */
+    private function validateConfiguration(): bool
+    {
+        return true; // Log driver is always valid
     }
 }
