@@ -95,7 +95,8 @@
       "aliases": {
         "AiAssistant": "CreativeCrafts\\LaravelAiAssistant\\Facades\\AiAssistant",
         "Assistant": "CreativeCrafts\\LaravelAiAssistant\\Facades\\Assistant",
-        "Ai": "CreativeCrafts\\LaravelAiAssistant\\Facades\\Ai"
+        "Ai": "CreativeCrafts\\LaravelAiAssistant\\Facades\\Ai",
+        "AiAssistantCache": "CreativeCrafts\\LaravelAiAssistant\\Facades\\AiAssistantCache"
       }
     }
   },

@@ -40,6 +40,8 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
                 HealthCheckCommand::class,
                 ConfigValidateCommand::class,
                 TestConnectionCommand::class,
+                Console\Commands\AiCacheClearCommand::class,
+                Console\Commands\AiCacheStatsCommand::class,
             ]);
     }
 

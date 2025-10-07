@@ -5,6 +5,37 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.19-beta] - 2025-10-07
+
+Added
+• A Production-ready AI cache system:
+◦ New Facade AiAssistantCache with typed methods for config, responses, and completions (cache/remember/get/clear/purge; stats).
+◦ New PrefixedKeyIndexer to maintain per-prefix key indexes for stores without tag support (enables safe prefix purges).
+◦ New Artisan commands:
+▪ ai-cache:clear with options --area=config|response|completion, --key=..., and --prefix=config:|response:|completion: for safe, targeted clears.
+▪ ai-cache:stats to output JSON cache statistics.
+• New cache configuration (config/ai-assistant.php):
+◦ Store override, global_prefix, hash_algo.
+◦ TTLs for default/config/response/completion/lock/grace and max_ttl guardrail.
+◦ Safety: prevent_flush, prefix_clear_batch.
+◦ Performance: optional compression/encryption.
+◦ Stampede protection (lock_ttl, retry/backoff, max wait).
+◦ Tagging controls with logical groups (auto-disabled when unsupported).
+• Tests:
+◦ Console command coverage for cache clear/stats.
+◦ CacheService tests including encoding and core behaviors.
+
+Changed
+• CacheService: majorly refactor/expansion to support namespacing, hashed completion keys, targeted clears (config/response/completion), prefix-based purges, and stats reporting; improved safety and
+performance.
+• Service provider: registers cache bindings and new console commands.
+• README: updated docs to cover the cache system and new commands.
+• composer.json: small adjustments (metadata/autoload tweaks).
+
+Notes
+• Use ai-cache:clear for targeted deletion; avoid using Cache::flush() with this package.
+• Consider publishing the config to tune store, TTLs, prefixing, and safety features.
+
 ## [3.0.18-beta] - 2025-09-25
 
 refactor: migrate error reporting to log-only; harden PII scrubbing

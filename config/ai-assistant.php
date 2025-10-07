@@ -409,6 +409,69 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AI Assistant Cache
+    |--------------------------------------------------------------------------
+    |
+    | Production-ready cache configuration for this package. Do not use
+    | Cache::flush() anywhere. These settings control store selection,
+    | key namespacing, TTLs, tags, stampede protection, and safety.
+    */
+    'cache' => [
+        // Which cache store to use for the assistant specifically.
+        // null => use cache.default
+        'store' => env('AI_ASSISTANT_CACHE_STORE', null),
+
+        // Global prefix used by this package (override the built-in default)
+        'global_prefix' => env('AI_ASSISTANT_CACHE_PREFIX', 'laravel_ai_assistant:'),
+
+        // Hash algorithm used to build completion keys from payloads
+        'hash_algo' => env('AI_ASSISTANT_CACHE_HASH_ALGO', 'sha256'),
+
+        // TTLs (seconds)
+        'ttl' => [
+            'default' => env('AI_ASSISTANT_CACHE_TTL_DEFAULT', 300),
+            'config' => env('AI_ASSISTANT_CACHE_TTL_CONFIG', 3600),
+            'response' => env('AI_ASSISTANT_CACHE_TTL_RESPONSE', 300),
+            'completion' => env('AI_ASSISTANT_CACHE_TTL_COMPLETION', 300),
+            'lock' => env('AI_ASSISTANT_CACHE_TTL_LOCK', 10),
+            'grace' => env('AI_ASSISTANT_CACHE_TTL_GRACE', 30),
+        ],
+
+        // Safety & behavior
+        'prevent_flush' => env('AI_ASSISTANT_CACHE_PREVENT_FLUSH', true),
+        'prefix_clear_batch' => env('AI_ASSISTANT_CACHE_CLEAR_BATCH', 500),
+        'max_ttl' => env('AI_ASSISTANT_CACHE_MAX_TTL', 86400),
+
+        // Performance
+        'compression' => [
+            'enabled' => env('AI_ASSISTANT_CACHE_COMPRESSION', false),
+            'threshold' => env('AI_ASSISTANT_CACHE_COMPRESSION_THRESHOLD', 1024),
+        ],
+        'encryption' => [
+            'enabled' => env('AI_ASSISTANT_CACHE_ENCRYPTION', false),
+        ],
+
+        // Stampede protection
+        'stampede' => [
+            'enabled' => env('AI_ASSISTANT_CACHE_STAMPEDE', true),
+            'lock_ttl' => env('AI_ASSISTANT_CACHE_LOCK_TTL', 10),
+            'retry_ms' => env('AI_ASSISTANT_CACHE_RETRY_MS', 150),
+            'max_wait_ms' => env('AI_ASSISTANT_CACHE_MAX_WAIT_MS', 1000),
+        ],
+
+        // Tagging (auto-disabled when unsupported by the store)
+        'tags' => [
+            'enabled' => env('AI_ASSISTANT_CACHE_TAGS', true),
+            'groups' => [
+                'config' => ['ai:config'],
+                'response' => ['ai:response'],
+                'completion' => ['ai:completion'],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Deprecation warnings
     |--------------------------------------------------------------------------
     |

@@ -1020,20 +1020,30 @@ $memoryService->setMemoryAlert(200, function($usage) {
 ```php
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
 
-$cacheService = app(CacheService::class);
+$cache = app(CacheService::class);
 
-// Cache API responses
-$cacheKey = 'ai_response_' . md5($prompt);
-$response = $cacheService->remember($cacheKey, 3600, function() use ($prompt) {
-    return AiAssistant::init()->setUserMessage($prompt)->sendChatMessage();
-});
+// Response caching (array payloads)
+$data = $cache->rememberResponse('users:list', function () {
+    // compute and return an array
+    return ['items' => [1, 2, 3]];
+}, 300);
 
-// Smart caching with tags
-$cacheService->tags(['ai_responses', 'user_123'])->put($cacheKey, $response, 3600);
+// Completion caching (string payloads)
+$text = $cache->rememberCompletion(
+    'Explain queues in one sentence.',
+    'gpt-5',
+    ['tone' => 'concise'],
+    fn () => 'Queues let you defer time-consuming tasks.',
+    300
+);
 
-// Clear related caches
-$cacheService->tags(['user_123'])->flush();
+// Clearing safely (never use Cache::flush())
+$cache->deleteResponse('users:list');
+$cache->clearResponses();
+$cache->clearCompletions();
 ```
+
+For a complete guide, see docs/cache.md.
 
 ##### Advanced Caching Configuration
 
