@@ -31,6 +31,7 @@ beforeEach(function () {
             $fakeConversations,
             $fakeFiles,
             $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract::class),
+            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract::class),
         );
     });
 });

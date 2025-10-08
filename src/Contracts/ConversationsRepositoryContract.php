@@ -23,6 +23,23 @@ interface ConversationsRepositoryContract
     public function getConversation(string $conversationId): array;
 
     /**
+     * Update a conversation.
+     *
+     * @param string $conversationId
+     * @param array $payload
+     * @return array
+     */
+    public function updateConversation(string $conversationId, array $payload): array;
+
+    /**
+     * Delete a conversation.
+     *
+     * @param string $conversationId
+     * @return bool
+     */
+    public function deleteConversation(string $conversationId): bool;
+
+    /**
      * List items in a conversation.
      *
      * @param string $conversationId

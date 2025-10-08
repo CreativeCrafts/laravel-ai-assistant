@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
 
 /**
  * High-level facade that unifies access to Responses, Conversations, Files,
@@ -19,7 +20,8 @@ final readonly class OpenAIClientFacade
         private ResponsesRepositoryContract $responses,
         private ConversationsRepositoryContract $conversations,
         private FilesRepositoryContract $files,
-        private OpenAiRepositoryContract $legacyChat
+        private OpenAiRepositoryContract $legacyChat,
+        private ?ResponsesInputItemsRepositoryContract $responsesInputItems = null,
     ) {
     }
 
@@ -45,6 +47,14 @@ final readonly class OpenAIClientFacade
     public function files(): FilesRepositoryContract
     {
         return $this->files;
+    }
+
+    /**
+     * Access the Responses Input Items repository.
+     */
+    public function responsesInputItems(): ResponsesInputItemsRepositoryContract
+    {
+        return $this->responsesInputItems ?? app(ResponsesInputItemsRepositoryContract::class);
     }
 
     /**

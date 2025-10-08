@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Response as Psr7Response;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 
 afterEach(function () {
     Mockery::close();
@@ -13,7 +13,7 @@ afterEach(function () {
 
 it('createResponse sends idempotency key, preserves across retries, and applies timeout', function () {
     // Configure retry to avoid sleeping
-    config()->set('ai-assistant.responses.retry', [
+    config()?->set('ai-assistant.responses.retry', [
         'enabled' => true,
         'max_attempts' => 2,
         'initial_delay' => 0.0,
@@ -21,7 +21,7 @@ it('createResponse sends idempotency key, preserves across retries, and applies 
         'max_delay' => 0.0,
         'jitter' => false,
     ]);
-    config()->set('ai-assistant.responses.timeout', 5);
+    config()?->set('ai-assistant.responses.timeout', 5);
 
     $client = Mockery::mock(GuzzleClient::class);
 
@@ -61,12 +61,12 @@ it('createResponse sends idempotency key, preserves across retries, and applies 
     $repo = new ResponsesHttpRepository($client);
     $result = $repo->createResponse(['model' => 'gpt-test', 'input' => 'hi']);
 
-    expect($result)->toBe(['ok' => true]);
-    expect($firstKey)->not->toBeNull();
-    expect($secondKey)->not->toBeNull();
-    expect($firstKey)->toBe($secondKey);
-    expect((float)$firstTimeout)->toBe(5.0);
-    expect((float)$secondTimeout)->toBe(5.0);
+    expect($result)->toBe(['ok' => true])
+        ->and($firstKey)->not->toBeNull()
+        ->and($secondKey)->not->toBeNull()
+        ->and($firstKey)->toBe($secondKey)
+        ->and((float)$firstTimeout)->toBe(5.0)
+        ->and((float)$secondTimeout)->toBe(5.0);
 });
 
 it('streamResponse uses sse timeout and preserves idempotency on retry', function () {
@@ -91,10 +91,10 @@ it('streamResponse uses sse timeout and preserves idempotency on retry', functio
         ->withArgs(function (string $method, string $uri, array $options) use (&$keys, &$timeouts) {
             $keys[] = $options['headers']['Idempotency-Key'] ?? null;
             $timeouts[] = $options['timeout'] ?? null;
-            expect($method)->toBe('POST');
-            expect($uri)->toBe('/v1/responses');
-            expect((bool)($options['stream'] ?? false))->toBeTrue();
-            expect((bool)($options['json']['stream'] ?? false))->toBeTrue();
+            expect($method)->toBe('POST')
+                ->and($uri)->toBe('/v1/responses')
+                ->and((bool)($options['stream'] ?? false))->toBeTrue()
+                ->and((bool)($options['json']['stream'] ?? false))->toBeTrue();
             return true;
         })
         ->andReturnUsing(function () use (&$i) {
@@ -116,12 +116,12 @@ it('streamResponse uses sse timeout and preserves idempotency on retry', functio
         break;
     }
 
-    expect($keys)->toHaveCount(2);
-    expect($keys[0])->not->toBeNull();
-    expect($keys[0])->toBe($keys[1]);
-    expect($timeouts)->toHaveCount(2);
-    expect((float)$timeouts[0])->toBe(15.0);
-    expect((float)$timeouts[1])->toBe(15.0);
+    expect($keys)->toHaveCount(2)
+        ->and($keys[0])->not->toBeNull()
+        ->and($keys[0])->toBe($keys[1])
+        ->and($timeouts)->toHaveCount(2)
+        ->and((float)$timeouts[0])->toBe(15.0)
+        ->and((float)$timeouts[1])->toBe(15.0);
 });
 
 it('getResponse applies responses timeout', function () {
@@ -131,8 +131,8 @@ it('getResponse applies responses timeout', function () {
     $client->shouldReceive('get')
         ->once()
         ->withArgs(function (string $uri, array $options) {
-            expect($uri)->toBe('/v1/responses/resp_123');
-            expect((float)($options['timeout'] ?? null))->toBe(12.0);
+            expect($uri)->toBe('/v1/responses/resp_123')
+                ->and((float)($options['timeout'] ?? null))->toBe(12.0);
             return true;
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['id' => 'resp_123'])));

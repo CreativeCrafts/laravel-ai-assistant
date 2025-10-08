@@ -24,6 +24,15 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
         $this->transport = new GuzzleOpenAITransport($this->http, $this->basePath);
     }
 
+    public function listResponses(array $params = []): array
+    {
+        $query = '';
+        if (!empty($params)) {
+            $query = '?' . http_build_query($params);
+        }
+        return $this->transport->getJson($this->endpoint('responses') . $query);
+    }
+
     /**
      * Creates a new AI response by sending a request to the API with automatic retry logic.
      * This method sends a POST request to the AI API to generate a new response based on the

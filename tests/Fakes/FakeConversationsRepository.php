@@ -13,6 +13,20 @@ final class FakeConversationsRepository implements ConversationsRepositoryContra
     /** @var array<string,array<int,array>> */
     private array $items = [];
 
+    public function updateConversation(string $conversationId, array $payload): array
+    {
+        $current = $this->conversations[$conversationId] ?? ['id' => $conversationId];
+        $updated = array_replace($current, $payload);
+        $this->conversations[$conversationId] = $updated;
+        return $updated;
+    }
+
+    public function deleteConversation(string $conversationId): bool
+    {
+        unset($this->conversations[$conversationId], $this->items[$conversationId]);
+        return true;
+    }
+
     public function createConversation(array $payload = []): array
     {
         $id = $payload['id'] ?? ('conv_' . str_pad(bin2hex(random_bytes(12)), 24, '0'));

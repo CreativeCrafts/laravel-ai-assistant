@@ -8,12 +8,14 @@ use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
 use CreativeCrafts\LaravelAiAssistant\Jobs\ExecuteToolCallJob;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ConversationsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\FilesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesInputItemsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\NullOpenAiRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\OpenAiRepository;
 use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
@@ -239,6 +241,33 @@ class CoreServiceProvider extends ServiceProvider
                 'connect_timeout' => 10,
             ]);
             return new FilesHttpRepository($client);
+        });
+
+        $this->app->bind(ResponsesInputItemsRepositoryContract::class, function ($app) {
+            $apiKey = config('ai-assistant.api_key', '');
+            if (!is_string($apiKey)) {
+                $apiKey = '';
+            }
+            $org = config('ai-assistant.organization');
+            $headers = [
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Accept' => 'application/json',
+            ];
+            if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
+                $headers['OpenAI-Organization'] = $org;
+            }
+            $timeout = config('ai-assistant.responses.timeout', 120);
+            if (!is_numeric($timeout)) {
+                $timeout = 120;
+            }
+            $client = new GuzzleClient([
+                'base_uri' => 'https://api.openai.com',
+                'headers' => $headers,
+                'http_errors' => false,
+                'timeout' => (float)$timeout,
+                'connect_timeout' => 10,
+            ]);
+            return new ResponsesInputItemsHttpRepository($client);
         });
     }
 }

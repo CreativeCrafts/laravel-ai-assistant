@@ -13,6 +13,7 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
 use CreativeCrafts\LaravelAiAssistant\Providers\CoreServiceProvider;
 use CreativeCrafts\LaravelAiAssistant\Providers\HealthCheckServiceProvider;
@@ -60,7 +61,8 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
                 $app->make(ResponsesRepositoryContract::class),
                 $app->make(ConversationsRepositoryContract::class),
                 $app->make(FilesRepositoryContract::class),
-                $app->make(OpenAiRepositoryContract::class)
+                $app->make(OpenAiRepositoryContract::class),
+                $app->make(ResponsesInputItemsRepositoryContract::class)
             );
         });
 

@@ -32,6 +32,14 @@ interface ResponsesRepositoryContract
     public function getResponse(string $responseId): array;
 
     /**
+     * List responses.
+     *
+     * @param array $params Optional query params for pagination/filtering
+     * @return array
+     */
+    public function listResponses(array $params = []): array;
+
+    /**
      * Cancel a response by id.
      *
      * @param string $responseId

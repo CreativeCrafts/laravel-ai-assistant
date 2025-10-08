@@ -17,6 +17,11 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
     public array $deleted = [];
     public ?array $lastResponse = null;
 
+    public function listResponses(array $params = []): array
+    {
+        return ['data' => $this->queue];
+    }
+
     public function pushResponse(array $response): void
     {
         $this->queue[] = $response;

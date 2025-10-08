@@ -49,6 +49,16 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
         return $this->transport->getJson($this->endpoint("conversations/{$conversationId}"));
     }
 
+    public function updateConversation(string $conversationId, array $payload): array
+    {
+        return $this->transport->postJson($this->endpoint("conversations/{$conversationId}"), $payload, idempotent: true);
+    }
+
+    public function deleteConversation(string $conversationId): bool
+    {
+        return $this->transport->delete($this->endpoint("conversations/{$conversationId}"));
+    }
+
     /**
      * Retrieves a list of items from a specific conversation via HTTP API request.
      *
