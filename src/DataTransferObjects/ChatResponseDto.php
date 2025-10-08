@@ -13,6 +13,8 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
         public string $status,
         public ?string $content,
         public array $raw,
+        public ?string $text = null,
+        public ?string $conversationId = null,
     ) {
     }
 
@@ -28,11 +30,19 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
      */
     public static function fromArray(array $data): self
     {
+        $text = self::extractText($data);
+        $content = self::extractContent($data) ?? $text;
+        $conversationId = isset($data['conversationId'])
+            ? (string)$data['conversationId']
+            : (isset($data['conversation']['id']) ? (string)$data['conversation']['id'] : null);
+
         return new self(
             id: (string)($data['id'] ?? ''),
             status: (string)($data['status'] ?? ($data['response']['status'] ?? 'unknown')),
-            content: self::extractContent($data),
+            content: $content,
             raw: $data,
+            text: $text,
+            conversationId: $conversationId,
         );
     }
 
@@ -50,6 +60,8 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
             'id' => $this->id,
             'status' => $this->status,
             'content' => $this->content,
+            'text' => $this->text,
+            'conversation_id' => $this->conversationId,
             'raw' => $this->raw ?? null,
         ];
     }
@@ -72,6 +84,23 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
             return (string)$data['content'];
         }
 
+        return null;
+    }
+
+    /**
+     * Extracts a unified text value from the normalized envelope.
+     */
+    private static function extractText(array $data): ?string
+    {
+        if (isset($data['messages']) && is_string($data['messages'])) {
+            return $data['messages'];
+        }
+        if (isset($data['output_text'])) {
+            return (string)$data['output_text'];
+        }
+        if (isset($data['content'])) {
+            return (string)$data['content'];
+        }
         return null;
     }
 }

@@ -306,7 +306,11 @@ use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 $response = Ai::chat('Explain Laravel in one sentence')->send();
 echo $response->getContent();
 
-// Or use the fluent builder
+// Or use the fluent builder (DEPRECATED)
+// Ai::assistant() is deprecated. Prefer Ai::responses() or Ai::conversations().
+// New API example:
+// $dto = Ai::responses()->input()->appendUserText('Write a haiku about coding')->send();
+// echo $dto->text ?? $dto->content;
 $response = Ai::assistant()
     ->usingModel('gpt-4o')
     ->withTemperature(0.7)
@@ -393,7 +397,7 @@ Pick the entrypoint that best matches your use case:
 
 - Facade Ai
     - Ai::chat() provides a discoverable, typed ChatSession over AiAssistant.
-    - Ai::assistant() gives you the Assistant builder when you prefer that flow.
+    - Ai::assistant() gives you the Assistant builder when you prefer that flow. [DEPRECATED] Use Ai::responses() or Ai::conversations() instead.
 
 Quick examples
 
@@ -2578,3 +2582,60 @@ Notes
 - All deprecated methods remain functional in 2.x for BC but will be removed in a future major release. Update at your convenience.
 - The new API follows Laravel conventions (facades + fluent builders) and improves discoverability (tools(), files()).
 - Tests and fakes continue to work. For unit tests, prefer asserting on DTOs.
+
+
+---
+
+## New: Responses & Conversations Facades
+
+This release introduces two new, fluent entrypoints designed around OpenAI's modern APIs:
+
+- Ai::responses() – Send a turn (response) with minimal setup
+- Ai::conversations() – Manage conversations and send turns within a specific conversation
+
+Example: one-off response
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$builder = Ai::responses()->model('gpt-4o-mini');
+$builder->input()->appendUserText('Give me two fun facts about Laravel.');
+$dto = $builder->send();
+
+echo $dto->text ?? $dto->content;
+```
+
+Example: conversation lifecycle
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$conv = Ai::conversations();
+$conversationId = $conv->start();
+$conv->input()->appendUserText('Remember me as Alex.');
+$first = $conv->send();
+
+// Send a follow-up in the same conversation
+$secondBuilder = $conv->responses()->model('gpt-4o-mini');
+$secondBuilder->input()->appendUserText('What did I ask you to remember?');
+$second = $secondBuilder->send();
+
+echo $second->text ?? $second->content;
+```
+
+Deprecation notice
+
+- Ai::assistant() and the legacy Assistant builder are now deprecated and will be removed in a future major version. Prefer Ai::chat(), Ai::responses(), or Ai::conversations().
+- You can enable one-time deprecation warnings by setting `AI_ASSISTANT_EMIT_DEPRECATIONS=true` or `config(['ai-assistant.deprecations.emit' => true])` in your environment.
+
+Demo controller
+
+You can copy the stub controller to your app for a quick try:
+
+```php
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DemoAiController; // see stubs/examples/DemoAiController.php
+
+Route::get('/ai/demo/responses', [DemoAiController::class, 'responsesExample']);
+Route::get('/ai/demo/conversations', [DemoAiController::class, 'conversationsExample']);
+```
