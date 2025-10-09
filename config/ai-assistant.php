@@ -190,6 +190,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Conversations API Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Controls for using the Conversations API. Includes timeouts and retry
+    | configuration for conversation management operations.
+    */
+    'conversations' => [
+        'timeout' => env('AI_CONVERSATIONS_TIMEOUT', 60),
+        'retry' => [
+            'enabled' => env('AI_CONVERSATIONS_RETRY_ENABLED', true),
+            'max_attempts' => env('AI_CONVERSATIONS_RETRY_MAX_ATTEMPTS', 3),
+            'initial_delay' => env('AI_CONVERSATIONS_RETRY_INITIAL_DELAY', 0.5), // seconds
+            'backoff_multiplier' => env('AI_CONVERSATIONS_RETRY_BACKOFF_MULTIPLIER', 2.0),
+            'max_delay' => env('AI_CONVERSATIONS_RETRY_MAX_DELAY', 8.0),
+            'jitter' => env('AI_CONVERSATIONS_RETRY_JITTER', true),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Role Configuration
     |--------------------------------------------------------------------------
     |
@@ -390,6 +410,13 @@ return [
                 // Can be an array or string separated by comma/pipe
                 'middleware' => env('AI_WEBHOOKS_GROUP_MIDDLEWARE', []),
             ],
+        ],
+        // Response-specific webhook configuration
+        'responses' => [
+            'enabled' => env('AI_WEBHOOKS_RESPONSES_ENABLED', true),
+            'events' => env('AI_WEBHOOKS_RESPONSES_EVENTS', ['response.created', 'response.completed', 'response.failed']),
+            'queue' => env('AI_WEBHOOKS_RESPONSES_QUEUE', false),
+            'retry_failed' => env('AI_WEBHOOKS_RESPONSES_RETRY_FAILED', true),
         ],
     ],
 

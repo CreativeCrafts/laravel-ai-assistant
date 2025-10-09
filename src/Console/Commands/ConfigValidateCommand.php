@@ -94,6 +94,7 @@ class ConfigValidateCommand extends Command
             'Persistence Configuration' => 'validatePersistenceConfiguration',
             'Streaming Configuration' => 'validateStreamingConfiguration',
             'Response Configuration' => 'validateResponseConfiguration',
+            'Conversation Configuration' => 'validateConversationConfiguration',
             'Tool Calling Configuration' => 'validateToolCallingConfiguration',
             'Queue Configuration' => 'validateQueueConfiguration',
             'Metrics Configuration' => 'validateMetricsConfiguration',
@@ -517,6 +518,42 @@ class ConfigValidateCommand extends Command
     }
 
     /**
+     * Validate conversation configuration
+     */
+    private function validateConversationConfiguration(): void
+    {
+        $timeout = config('ai-assistant.conversations.timeout');
+
+        if (!is_numeric($timeout) || $timeout <= 0) {
+            throw new RuntimeException('Invalid conversation timeout value');
+        }
+
+        if ($timeout > 300) {
+            $this->addValidationResult(
+                'Conversation Configuration',
+                'warning',
+                'Conversation timeout is very high (>300s)'
+            );
+            $this->hasWarnings = true;
+        }
+
+        // Validate retry configuration
+        $retryEnabled = config('ai-assistant.conversations.retry.enabled');
+        if ($retryEnabled) {
+            $maxAttempts = config('ai-assistant.conversations.retry.max_attempts');
+            if (!is_numeric($maxAttempts) || $maxAttempts < 1) {
+                throw new RuntimeException('Invalid conversation retry max attempts value');
+            }
+        }
+
+        $this->addValidationResult(
+            'Conversation Configuration',
+            'success',
+            'Conversation configuration valid'
+        );
+    }
+
+    /**
      * Validate tool calling configuration
      */
     private function validateToolCallingConfiguration(): void
@@ -630,6 +667,27 @@ class ConfigValidateCommand extends Command
                     'Webhook Configuration',
                     'warning',
                     'Webhook signing secret not configured'
+                );
+                $this->hasWarnings = true;
+            }
+
+            // Validate webhooks.responses configuration
+            $responsesEnabled = config('ai-assistant.webhooks.responses.enabled');
+            if ($responsesEnabled !== null && !is_bool($responsesEnabled)) {
+                $this->addValidationResult(
+                    'Webhook Configuration',
+                    'warning',
+                    'Webhook responses.enabled should be boolean'
+                );
+                $this->hasWarnings = true;
+            }
+
+            $responsesEvents = config('ai-assistant.webhooks.responses.events');
+            if ($responsesEvents !== null && !is_array($responsesEvents)) {
+                $this->addValidationResult(
+                    'Webhook Configuration',
+                    'warning',
+                    'Webhook responses.events should be an array'
                 );
                 $this->hasWarnings = true;
             }

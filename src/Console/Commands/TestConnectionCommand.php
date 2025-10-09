@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Console\Commands;
 
-use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use Illuminate\Console\Command;
 use RuntimeException;
 use Throwable;
@@ -30,7 +30,7 @@ class TestConnectionCommand extends Command
 
     private array $testResults = [];
     private bool $hasFailures = false;
-    private OpenAiRepositoryContract $repository;
+    private ResponsesRepositoryContract $repository;
     private int $timeout;
 
     /**
@@ -42,7 +42,7 @@ class TestConnectionCommand extends Command
         $this->newLine();
 
         $this->timeout = (int)$this->option('timeout');
-        $this->repository = app(OpenAiRepositoryContract::class);
+        $this->repository = app(ResponsesRepositoryContract::class);
 
         $this->runConnectionTests();
 
@@ -63,8 +63,8 @@ class TestConnectionCommand extends Command
         $tests = [
             'Basic Configuration' => 'testBasicConfiguration',
             'API Authentication' => 'testApiAuthentication',
-            'Models Endpoint' => 'testModelsEndpoint',
-            'Chat Completion' => 'testChatCompletion',
+            'Response Create' => 'testResponseCreate',
+            'Response Get' => 'testResponseGet',
             'Network Connectivity' => 'testNetworkConnectivity',
             'Rate Limiting' => 'testRateLimiting',
             'Error Handling' => 'testErrorHandling',
@@ -255,11 +255,10 @@ class TestConnectionCommand extends Command
     private function testApiAuthentication(): void
     {
         try {
-            // Test authentication by making a simple chat completion API call
-            $response = $this->repository->createChatCompletion([
-                'model' => config('ai-assistant.models.chat', 'gpt-5-nano'),
+            // Test authentication by making a simple response API call
+            $response = $this->repository->createResponse([
+                'model' => config('ai-assistant.default_model', 'gpt-5'),
                 'messages' => [['role' => 'user', 'content' => 'test']],
-                'max_tokens' => 1,
             ]);
 
             // API call completed successfully if we reach here
@@ -275,64 +274,70 @@ class TestConnectionCommand extends Command
     }
 
     /**
-     * Test models endpoint
+     * Test response creation
      */
-    private function testModelsEndpoint(): void
-    {
-        // Since models() method doesn't exist in the contract, test model availability
-        // by trying to use configured models in a chat completion
-        $configuredModel = config('ai-assistant.models.chat', 'gpt-5-nano');
-
-        try {
-            $response = $this->repository->createChatCompletion([
-                'model' => $configuredModel,
-                'messages' => [['role' => 'user', 'content' => 'test']],
-                'max_tokens' => 1,
-            ]);
-
-            // API call completed successfully if we reach here
-            $modelName = is_string($configuredModel) ? $configuredModel : 'unknown';
-            $this->addTestResult(
-                'Models Endpoint',
-                'info',
-                "Configured model '{$modelName}' is accessible"
-            );
-        } catch (Throwable $e) {
-            if (str_contains($e->getMessage(), 'model') && str_contains($e->getMessage(), 'does not exist')) {
-                $modelName = is_string($configuredModel) ? $configuredModel : 'unknown';
-                throw new RuntimeException("Configured model '{$modelName}' is not available");
-            }
-            throw $e;
-        }
-    }
-
-    /**
-     * Test chat completion
-     */
-    private function testChatCompletion(): void
+    private function testResponseCreate(): void
     {
         if ($this->option('skip-expensive')) {
-            $this->addTestResult('Chat Completion', 'skipped', 'Skipped to avoid API costs');
+            $this->addTestResult('Response Create', 'skipped', 'Skipped to avoid API costs');
             return;
         }
 
         $testMessage = 'Hello, this is a connection test. Please respond with "Connection successful".';
 
-        $response = $this->repository->createChatCompletion([
-            'model' => config('ai-assistant.models.chat', 'gpt-5-nano'),
+        $response = $this->repository->createResponse([
+            'model' => config('ai-assistant.default_model', 'gpt-5'),
             'messages' => [
                 [
                     'role' => 'user',
                     'content' => $testMessage,
                 ]
             ],
-            'max_tokens' => 50,
-            'temperature' => 0,
         ]);
 
         // API call completed successfully if we reach here
+        if (!is_array($response) || !isset($response['id'])) {
+            throw new RuntimeException('Response creation succeeded but response format is invalid');
+        }
 
-        $this->addTestResult('Chat Completion', 'info', 'Chat completion successful');
+        $this->addTestResult('Response Create', 'info', 'Response creation successful');
+    }
+
+    /**
+     * Test response retrieval
+     */
+    private function testResponseGet(): void
+    {
+        if ($this->option('skip-expensive')) {
+            $this->addTestResult('Response Get', 'skipped', 'Skipped to avoid API costs');
+            return;
+        }
+
+        // First create a response
+        $createResponse = $this->repository->createResponse([
+            'model' => config('ai-assistant.default_model', 'gpt-5'),
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => 'test',
+                ]
+            ],
+        ]);
+
+        if (!is_array($createResponse) || !isset($createResponse['id'])) {
+            throw new RuntimeException('Failed to create response for get test');
+        }
+
+        $responseId = $createResponse['id'];
+
+        // Now retrieve it
+        $getResponse = $this->repository->getResponse($responseId);
+
+        if (!is_array($getResponse) || !isset($getResponse['id']) || $getResponse['id'] !== $responseId) {
+            throw new RuntimeException('Response retrieval failed or returned invalid data');
+        }
+
+        $this->addTestResult('Response Get', 'info', 'Response retrieval successful');
     }
 
 
@@ -385,11 +390,10 @@ class TestConnectionCommand extends Command
 
         for ($i = 0; $i < $requests; $i++) {
             try {
-                // Test with a simple chat completion instead of models() which doesn't exist
-                $this->repository->createChatCompletion([
-                    'model' => config('ai-assistant.models.chat', 'gpt-5-nano'),
+                // Test with a simple response creation
+                $this->repository->createResponse([
+                    'model' => config('ai-assistant.default_model', 'gpt-5'),
                     'messages' => [['role' => 'user', 'content' => 'test']],
-                    'max_tokens' => 1,
                 ]);
                 $successes++;
 
@@ -433,7 +437,7 @@ class TestConnectionCommand extends Command
     {
         // Test error handling with an invalid request
         try {
-            $this->repository->createChatCompletion([
+            $this->repository->createResponse([
                 'model' => 'invalid-model-name-for-testing',
                 'messages' => [
                     [
