@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Services\Storage;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\Storage\AssistantsStoreContract;
-use CreativeCrafts\LaravelAiAssistant\Models\AssistantProfile;
+use CreativeCrafts\LaravelAiAssistant\Models\ConversationPreset;
 use InvalidArgumentException;
 
 final class EloquentAssistantsStore implements AssistantsStoreContract
@@ -41,7 +41,7 @@ final class EloquentAssistantsStore implements AssistantsStoreContract
             'tools' => $assistant['tools'] ?? null,
             'metadata' => $assistant['metadata'] ?? null,
         ];
-        AssistantProfile::query()->updateOrCreate(['id' => $id], $data);
+        ConversationPreset::query()->updateOrCreate(['id' => $id], $data);
     }
 
         /**
@@ -64,7 +64,7 @@ final class EloquentAssistantsStore implements AssistantsStoreContract
      */
     public function get(string $id): ?array
     {
-        $assistantProfile = AssistantProfile::query()->find($id);
+        $assistantProfile = ConversationPreset::query()->find($id);
         if (!$assistantProfile) {
             return null;
         }
@@ -106,7 +106,7 @@ final class EloquentAssistantsStore implements AssistantsStoreContract
      */
     public function all(): array
     {
-        return AssistantProfile::query()->get()->map(function ($assistantProfile) {
+        return ConversationPreset::query()->get()->map(function ($assistantProfile) {
             $modelId = $assistantProfile->getAttribute('id');
             $stringId = '';
             if (is_string($modelId)) {
@@ -139,7 +139,7 @@ final class EloquentAssistantsStore implements AssistantsStoreContract
      */
     public function delete(string $id): bool
     {
-        $assistantProfile = AssistantProfile::query()->find($id);
+        $assistantProfile = ConversationPreset::query()->find($id);
         if (!$assistantProfile) {
             return false;
         }

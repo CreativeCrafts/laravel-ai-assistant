@@ -3,23 +3,14 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\AssistantsResource;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\AudioResource;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\ChatResource;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\CompletionsResource;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\ThreadMessagesResource;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\ThreadRunsResource;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\ThreadsResource;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Audio\TranscriptionResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Audio\TranslationResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Chat\CreateResponse as ChatResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Completions\CreateResponse as CompletionResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\StreamResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageListResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Runs\ThreadRunResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Repositories\OpenAiRepository;
 
@@ -32,152 +23,6 @@ beforeEach(function () {
 
 it('implements OpenAiRepositoryContract', function () {
     expect($this->repository)->toBeInstanceOf(OpenAiRepositoryContract::class);
-});
-
-it('creates an assistant through the client', function () {
-    $parameters = ['model' => 'gpt-4', 'name' => 'Test Assistant'];
-    $responseMock = Mockery::mock(AssistantResponse::class);
-
-    $assistantsMock = Mockery::mock(AssistantsResource::class);
-    $assistantsMock->shouldReceive('create')
-        ->with($parameters)
-        ->andReturn($responseMock);
-
-    $this->clientMock->shouldReceive('assistants')
-        ->andReturn($assistantsMock);
-
-    $result = $this->repository->createAssistant($parameters);
-
-    expect($result)->toBe($responseMock);
-});
-
-it('retrieves an assistant through the client', function () {
-    $assistantId = 'asst_1234567890abcdef12345678';
-    $responseMock = Mockery::mock(AssistantResponse::class);
-
-    $assistantsMock = Mockery::mock(AssistantsResource::class);
-    $assistantsMock->shouldReceive('retrieve')
-        ->with($assistantId)
-        ->andReturn($responseMock);
-
-    $this->clientMock->shouldReceive('assistants')
-        ->andReturn($assistantsMock);
-
-    $result = $this->repository->retrieveAssistant($assistantId);
-
-    expect($result)->toBe($responseMock);
-});
-
-it('creates a thread through the client', function () {
-    $parameters = ['title' => 'Test Thread'];
-    $responseMock = Mockery::mock(ThreadResponse::class);
-
-    $threadsMock = Mockery::mock(ThreadsResource::class);
-    $threadsMock->shouldReceive('create')
-        ->with($parameters)
-        ->andReturn($responseMock);
-
-    $this->clientMock->shouldReceive('threads')
-        ->andReturn($threadsMock);
-
-    $result = $this->repository->createThread($parameters);
-
-    expect($result)->toBe($responseMock);
-});
-
-it('creates a thread message through the client', function () {
-    $threadId = 'thread_1234567890abcdef12345678';
-    $messageData = ['role' => 'user', 'content' => 'Test message'];
-    $responseMock = Mockery::mock(ThreadMessageResponse::class);
-
-    $messagesMock = Mockery::mock(ThreadMessagesResource::class);
-    $messagesMock->shouldReceive('create')
-        ->with($threadId, $messageData)
-        ->andReturn($responseMock);
-
-    $threadsMock = Mockery::mock(ThreadsResource::class);
-    $threadsMock->shouldReceive('messages')
-        ->andReturn($messagesMock);
-
-    $this->clientMock->shouldReceive('threads')
-        ->andReturn($threadsMock);
-
-    $result = $this->repository->createThreadMessage($threadId, $messageData);
-
-    expect($result)->toBe($responseMock);
-});
-
-it('creates a thread run through the client', function () {
-    $threadId = 'thread_1234567890abcdef12345678';
-    $parameters = ['assistant_id' => 'asst_1234567890abcdef12345678'];
-    $responseMock = Mockery::mock(ThreadRunResponse::class);
-
-    $runsMock = Mockery::mock(ThreadRunsResource::class);
-    $runsMock->shouldReceive('create')
-        ->with($threadId, $parameters)
-        ->andReturn($responseMock);
-
-    $threadsMock = Mockery::mock(ThreadsResource::class);
-    $threadsMock->shouldReceive('runs')
-        ->andReturn($runsMock);
-
-    $this->clientMock->shouldReceive('threads')
-        ->andReturn($threadsMock);
-
-    $result = $this->repository->createThreadRun($threadId, $parameters);
-
-    expect($result)->toBe($responseMock);
-});
-
-it('retrieves a thread run through the client', function () {
-    $threadId = 'thread_1234567890abcdef12345678';
-    $runId = 'run_1234567890abcdef12345678';
-    $responseMock = Mockery::mock(ThreadRunResponse::class);
-
-    $runsMock = Mockery::mock(ThreadRunsResource::class);
-    $runsMock->shouldReceive('retrieve')
-        ->with($threadId, $runId)
-        ->andReturn($responseMock);
-
-    $threadsMock = Mockery::mock(ThreadsResource::class);
-    $threadsMock->shouldReceive('runs')
-        ->andReturn($runsMock);
-
-    $this->clientMock->shouldReceive('threads')
-        ->andReturn($threadsMock);
-
-    $result = $this->repository->retrieveThreadRun($threadId, $runId);
-
-    expect($result)->toBe($responseMock);
-});
-
-it('lists thread messages through the client', function () {
-    $threadId = 'thread_1234567890abcdef12345678';
-    $expectedArray = [
-        'data' => [
-            ['content' => [['text' => ['value' => 'Test message']]]]
-        ]
-    ];
-
-    $messageListMock = Mockery::mock(ThreadMessageListResponse::class);
-    $messageListMock->shouldReceive('toArray')
-        ->andReturn($expectedArray);
-
-    $messagesMock = Mockery::mock(ThreadMessagesResource::class);
-    $messagesMock->shouldReceive('list')
-        ->with($threadId)
-        ->andReturn($messageListMock);
-
-    $threadsMock = Mockery::mock(ThreadsResource::class);
-    $threadsMock->shouldReceive('messages')
-        ->andReturn($messagesMock);
-
-    $this->clientMock->shouldReceive('threads')
-        ->andReturn($threadsMock);
-
-    $result = $this->repository->listThreadMessages($threadId);
-
-    expect($result)->toBe($expectedArray);
 });
 
 it('creates a completion through the client', function () {

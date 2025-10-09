@@ -45,15 +45,6 @@ class Client
         $this->transport = new GuzzleOpenAITransport($guzzle);
     }
 
-    public function assistants(): AssistantsResource
-    {
-        return new AssistantsResource();
-    }
-
-    public function threads(): ThreadsResource
-    {
-        return new ThreadsResource();
-    }
 
     public function completions(): CompletionsResource
     {

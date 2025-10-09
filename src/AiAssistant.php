@@ -11,8 +11,6 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseEnvelope;
 use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
-use CreativeCrafts\LaravelAiAssistant\Support\Deprecation;
-use CreativeCrafts\LaravelAiAssistant\Support\LegacyCompletionsShim;
 use CreativeCrafts\LaravelAiAssistant\Support\StreamReader;
 use CreativeCrafts\LaravelAiAssistant\ValueObjects\TurnOptions;
 use Generator;
@@ -47,8 +45,6 @@ use stdClass;
  */
 class AiAssistant implements AiAssistantContract
 {
-    use LegacyCompletionsShim;
-
     protected AssistantService $client;
     /**
      * Configuration array for OpenAI Text Completions API.
@@ -416,20 +412,6 @@ class AiAssistant implements AiAssistantContract
      */
     public function sendChatMessageEnvelope(): ResponseEnvelope
     {
-        $arr = $this->sendChatMessage();
-        return ResponseEnvelope::fromArray($arr);
-    }
-
-    /**
-     * @deprecated 3.x Use sendChatMessageDto() or Facade Ai::chat()->send() which returns a ChatResponseDto.
-     * Array-returning responses will be removed in a future major version.
-     */
-    public function sendChatMessage(): array
-    {
-        Deprecation::maybeOnce(
-            key: 'AiAssistant.sendChatMessage.array',
-            message: 'AiAssistant::sendChatMessage() returning array is deprecated. Use sendChatMessageDto() or Ai::chat()->send()'
-        );
         $this->client = $this->client ?? resolve(AssistantService::class);
         $conversationId = $this->conversationId();
         if ($conversationId === null || $conversationId === '') {
@@ -446,8 +428,9 @@ class AiAssistant implements AiAssistantContract
         if ($shouldReset) {
             $this->resetTurn();
         }
-        return $resp;
+        return ResponseEnvelope::fromArray($resp);
     }
+
 
     /**
      * Get the current conversation id (if any).
@@ -489,25 +472,25 @@ class AiAssistant implements AiAssistantContract
      */
     public function sendChatMessageDto(): ChatResponseDto
     {
-        $arr = $this->sendChatMessage();
-        return ChatResponseDto::fromArray($arr);
+        $this->client = $this->client ?? resolve(AssistantService::class);
+        $conversationId = $this->conversationId();
+        if ($conversationId === null || $conversationId === '') {
+            $this->startConversation();
+            $conversationId = (string)$this->conversationId();
+        }
+        $message = (string)($this->chatTextGeneratorConfig['user_message'] ?? $this->prompt ?? '');
+        if ($message === '') {
+            throw new InvalidArgumentException('User message cannot be empty. Tip: call setUserMessage() or pass a prompt to AiAssistant::acceptPrompt().');
+        }
+        $options = ($this->options ?? TurnOptions::fromArray($this->chatTextGeneratorConfig))->toArray();
+        $resp = $this->client->sendChatMessage($conversationId, $message, $options);
+        $shouldReset = $this->autoReset ?? (bool)config('ai-assistant.reset_after_turn', true);
+        if ($shouldReset) {
+            $this->resetTurn();
+        }
+        return ChatResponseDto::fromArray($resp);
     }
 
-    /**
-     * Minimal happy-path chain: optionally set the user message and send.
-     * Example usages:
-     * - AiAssistant::acceptPrompt('How?')->reply();
-     * - AiAssistant::acceptPrompt('')->reply('How do I paginate?');
-     *
-     * @deprecated since 2.0.0 Use Ai::chat($message)->send() or Ai::chat()->setUserMessage($message)->send().
-     */
-    public function reply(?string $message = null): array
-    {
-        if ($message !== null) {
-            $this->setUserMessage($message);
-        }
-        return $this->sendChatMessage();
-    }
 
     /**
      * Set the user message (text) for the next turn.
@@ -525,19 +508,16 @@ class AiAssistant implements AiAssistantContract
      */
     public function streamChatText(?callable $onTextChunk = null, ?callable $shouldStop = null): Generator
     {
-        $events = $this->streamChatMessage(onEvent: null, shouldStop: $shouldStop);
+        $events = $this->streamEvents(onEvent: null, shouldStop: $shouldStop);
         return StreamReader::toTextChunks($events, $onTextChunk);
     }
 
     /**
-     * @deprecated 3.x Use stream() via ChatSession: Ai::chat($msg)->stream()
+     * Stream the prepared user message as a series of events.
+     * Returns a Generator yielding associative arrays describing stream events.
      */
-    public function streamChatMessage(?callable $onEvent = null, ?callable $shouldStop = null): Generator
+    public function streamEvents(?callable $onEvent = null, ?callable $shouldStop = null): Generator
     {
-        Deprecation::maybeOnce(
-            key: 'AiAssistant.streamChatMessage',
-            message: 'AiAssistant::streamChatMessage() is deprecated. Use Ai::chat($message)->stream()'
-        );
         $this->client = $this->client ?? resolve(AssistantService::class);
         $conversationId = $this->conversationId();
         if ($conversationId === null || $conversationId === '') {
@@ -562,19 +542,6 @@ class AiAssistant implements AiAssistantContract
      */
     public function continueWithToolResultsEnvelope(array $toolResults): ResponseEnvelope
     {
-        $arr = $this->continueWithToolResults($toolResults);
-        return ResponseEnvelope::fromArray($arr);
-    }
-
-    /**
-     * @deprecated 3.x Use continueWithToolResultsDto() or ChatSession::continueWithToolResults()
-     */
-    public function continueWithToolResults(array $toolResults): array
-    {
-        Deprecation::maybeOnce(
-            key: 'AiAssistant.continueWithToolResults.array',
-            message: 'AiAssistant::continueWithToolResults(array) is deprecated. Use DTO variant or ChatSession.'
-        );
         $this->client = $this->client ?? resolve(AssistantService::class);
         $conversationId = $this->conversationId();
         if ($conversationId === null || $conversationId === '') {
@@ -582,8 +549,10 @@ class AiAssistant implements AiAssistantContract
         }
         $model = $this->chatTextGeneratorConfig['model'] ?? null;
         $instructions = $this->chatTextGeneratorConfig['instructions'] ?? null;
-        return $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions);
+        $arr = $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions);
+        return ResponseEnvelope::fromArray($arr);
     }
+
 
     /**
      * Canonical typed continue-with-tools.
@@ -592,7 +561,14 @@ class AiAssistant implements AiAssistantContract
      */
     public function continueWithToolResultsDto(array $toolResults): ChatResponseDto
     {
-        $arr = $this->continueWithToolResults($toolResults);
+        $this->client = $this->client ?? resolve(AssistantService::class);
+        $conversationId = $this->conversationId();
+        if ($conversationId === null || $conversationId === '') {
+            throw new InvalidArgumentException('No conversation in progress. Call startConversation() or useConversation().');
+        }
+        $model = $this->chatTextGeneratorConfig['model'] ?? null;
+        $instructions = $this->chatTextGeneratorConfig['instructions'] ?? null;
+        $arr = $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions);
         return ChatResponseDto::fromArray($arr);
     }
 

@@ -17,15 +17,12 @@ use Illuminate\Support\Facades\Facade;
  *  - conversations(): Support\\ConversationsBuilder (Conversations API)
  * Convenience:
  *  - quick(string|array $input): ChatSession (one-shot sugar; internally calls chat())
- * Legacy (deprecated):
- *  - assistant(): Assistant (backward compatibility)
  *
  * @method static ChatSession chat(?string $prompt = '')
  * @method static ChatResponseDto quick(string $prompt)
  * @method static Generator stream(string $prompt, ?callable $onEvent = null, ?callable $shouldStop = null)
  * @method static \CreativeCrafts\LaravelAiAssistant\Support\ResponsesBuilder responses()
  * @method static \CreativeCrafts\LaravelAiAssistant\Support\ConversationsBuilder conversations()
- * @method static \CreativeCrafts\LaravelAiAssistant\Assistant assistant() @deprecated
  *
  * @see AiManager
  */

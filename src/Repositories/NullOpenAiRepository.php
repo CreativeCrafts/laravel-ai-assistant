@@ -4,15 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Repositories;
 
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Audio\TranscriptionResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Audio\TranslationResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Chat\CreateResponse as ChatResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Completions\CreateResponse as CompletionResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Meta\MetaInformation;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Runs\ThreadRunResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 
 /**
@@ -21,63 +16,6 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
  */
 final class NullOpenAiRepository implements OpenAiRepositoryContract
 {
-    public function createAssistant(array $parameters): AssistantResponse
-    {
-        $res = new AssistantResponse();
-        $res->id = $parameters['id'] ?? 'asst_null';
-        return $res;
-    }
-
-    public function retrieveAssistant(string $assistantId): AssistantResponse
-    {
-        $res = new AssistantResponse();
-        $res->id = $assistantId !== '' ? $assistantId : 'asst_null';
-        return $res;
-    }
-
-    public function createThread(array $parameters): ThreadResponse
-    {
-        return ThreadResponse::from([
-            'id' => $parameters['id'] ?? 'thread_null',
-            'object' => 'thread',
-            'created_at' => time(),
-            'tool_resources' => $parameters['tool_resources'] ?? null,
-            'metadata' => $parameters['metadata'] ?? null,
-        ], MetaInformation::from([]));
-    }
-
-    public function createThreadMessage(string $threadId, array $messageData): ThreadMessageResponse
-    {
-        return ThreadMessageResponse::from([
-            'id' => $messageData['id'] ?? 'msg_null',
-            'object' => 'thread.message',
-            'created_at' => time(),
-            'thread_id' => $threadId,
-            'role' => $messageData['role'] ?? 'user',
-            'content' => $messageData['content'] ?? [],
-            'assistant_id' => $messageData['assistant_id'] ?? null,
-            'run_id' => $messageData['run_id'] ?? null,
-            'attachments' => $messageData['attachments'] ?? [],
-            'metadata' => $messageData['metadata'] ?? [],
-        ], MetaInformation::from([]));
-    }
-
-    public function createThreadRun(string $threadId, array $parameters): ThreadRunResponse
-    {
-        $res = new ThreadRunResponse();
-        $res->id = $parameters['id'] ?? 'run_null';
-        $res->status = $parameters['status'] ?? 'completed';
-        return $res;
-    }
-
-    public function retrieveThreadRun(string $threadId, string $runId): ThreadRunResponse
-    {
-        $res = new ThreadRunResponse();
-        $res->id = $runId !== '' ? $runId : 'run_null';
-        $res->status = 'completed';
-        return $res;
-    }
-
     public function listThreadMessages(string $threadId): array
     {
         return [];

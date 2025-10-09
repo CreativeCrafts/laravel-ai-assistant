@@ -29,11 +29,6 @@ final class FakeOpenAiRepository implements OpenAiRepositoryContract
     $this->calls[] = __FUNCTION__;
     return true;
     }
-    public function createThread(array $parameters = []): object
-    {
-    $this->calls[] = __FUNCTION__;
-    return (object)['id' => 'thread_fake'];
-    }
     public function getThread(string $threadId): object
     {
     $this->calls[] = __FUNCTION__;
@@ -53,11 +48,6 @@ final class FakeOpenAiRepository implements OpenAiRepositoryContract
     {
     $this->calls[] = __FUNCTION__;
     return (object)['id' => 'msg_fake'];
-    }
-    public function listMessages(string $threadId, array $parameters = []): object
-    {
-    $this->calls[] = __FUNCTION__;
-    return (object)['data' => []];
     }
     public function createRun(string $threadId, array $parameters): object
     {

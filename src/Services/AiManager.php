@@ -4,28 +4,14 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
-use CreativeCrafts\LaravelAiAssistant\Assistant;
 use CreativeCrafts\LaravelAiAssistant\Chat\ChatSession;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Support\ConversationsBuilder;
-use CreativeCrafts\LaravelAiAssistant\Support\Deprecation;
 use CreativeCrafts\LaravelAiAssistant\Support\ResponsesBuilder;
 use Generator;
-use Illuminate\Support\Facades\Log;
 
 final class AiManager
 {
-    /**
-     * @deprecated Use Ai::responses() and Ai::conversations() instead.
-     */
-    public function assistant(): Assistant
-    {
-        Deprecation::maybeOnce('facade.assistant', 'Ai::assistant() is deprecated. Use Ai::chat(), Ai::responses(), or Ai::conversations() instead.');
-        Log::warning('[DEPRECATION] Ai::assistant() is deprecated. Use Ai::chat(), Ai::responses(), or Ai::conversations().');
-        // Ensure Assistant is wired with the resolved AssistantService
-        return Assistant::new()->client(resolve(AssistantService::class));
-    }
-
     /**
      * Access the Responses API via a fluent builder.
      */

@@ -5,14 +5,10 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Repositories;
 
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Audio\TranscriptionResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Audio\TranslationResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Chat\CreateResponse as ChatResponse;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Completions\CreateResponse as CompletionResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Runs\ThreadRunResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\OpenAiTransportException;
 use CreativeCrafts\LaravelAiAssistant\Support\Retry;
@@ -39,10 +35,6 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @return AssistantResponse
      * @throws RandomException
      */
-    public function createAssistant(array $parameters): AssistantResponse
-    {
-        return $this->execute(fn () => $this->client->assistants()->create($parameters));
-    }
 
     /**
      * Retrieve an assistant by ID.
@@ -51,10 +43,6 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @return AssistantResponse
      * @throws RandomException
      */
-    public function retrieveAssistant(string $assistantId): AssistantResponse
-    {
-        return $this->execute(fn () => $this->client->assistants()->retrieve($assistantId));
-    }
 
     /**
      * Create a new thread.
@@ -63,10 +51,6 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @return ThreadResponse
      * @throws RandomException
      */
-    public function createThread(array $parameters): ThreadResponse
-    {
-        return $this->execute(fn () => $this->client->threads()->create($parameters));
-    }
 
     /**
      * Create a message in a thread.
@@ -76,13 +60,6 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @return ThreadMessageResponse
      * @throws RandomException
      */
-    public function createThreadMessage(string $threadId, array $messageData): ThreadMessageResponse
-    {
-        return $this->execute(fn () => $this->client->threads()->messages()->create(
-            $threadId,
-            $messageData
-        ));
-    }
 
     /**
      * Create a run for a thread.
@@ -92,13 +69,6 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @return ThreadRunResponse
      * @throws RandomException
      */
-    public function createThreadRun(string $threadId, array $parameters): ThreadRunResponse
-    {
-        return $this->execute(fn () => $this->client->threads()->runs()->create(
-            $threadId,
-            $parameters
-        ));
-    }
 
     /**
      * Retrieve a thread run.
@@ -108,13 +78,6 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @return ThreadRunResponse
      * @throws RandomException
      */
-    public function retrieveThreadRun(string $threadId, string $runId): ThreadRunResponse
-    {
-        return $this->execute(fn () => $this->client->threads()->runs()->retrieve(
-            $threadId,
-            $runId
-        ));
-    }
 
     /**
      * List messages in a thread.
@@ -123,10 +86,6 @@ class OpenAiRepository implements OpenAiRepositoryContract
      * @return array
      * @throws RandomException
      */
-    public function listThreadMessages(string $threadId): array
-    {
-        return $this->execute(fn () => $this->client->threads()->messages()->list($threadId)->toArray());
-    }
 
     /**
      * Create a text completion.

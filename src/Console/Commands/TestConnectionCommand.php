@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Console\Commands;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
-use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use Illuminate\Console\Command;
 use RuntimeException;
 use Throwable;
@@ -32,7 +31,6 @@ class TestConnectionCommand extends Command
     private array $testResults = [];
     private bool $hasFailures = false;
     private OpenAiRepositoryContract $repository;
-    private AssistantService $assistantService;
     private int $timeout;
 
     /**
@@ -45,7 +43,6 @@ class TestConnectionCommand extends Command
 
         $this->timeout = (int)$this->option('timeout');
         $this->repository = app(OpenAiRepositoryContract::class);
-        $this->assistantService = resolve(AssistantService::class);
 
         $this->runConnectionTests();
 
@@ -68,7 +65,6 @@ class TestConnectionCommand extends Command
             'API Authentication' => 'testApiAuthentication',
             'Models Endpoint' => 'testModelsEndpoint',
             'Chat Completion' => 'testChatCompletion',
-            'Assistant Creation' => 'testAssistantCreation',
             'Network Connectivity' => 'testNetworkConnectivity',
             'Rate Limiting' => 'testRateLimiting',
             'Error Handling' => 'testErrorHandling',
@@ -322,7 +318,7 @@ class TestConnectionCommand extends Command
 
         $testMessage = 'Hello, this is a connection test. Please respond with "Connection successful".';
 
-        $response = $this->assistantService->chatTextCompletion([
+        $response = $this->repository->createChatCompletion([
             'model' => config('ai-assistant.models.chat', 'gpt-5-nano'),
             'messages' => [
                 [
@@ -339,26 +335,6 @@ class TestConnectionCommand extends Command
         $this->addTestResult('Chat Completion', 'info', 'Chat completion successful');
     }
 
-    /**
-     * Test assistant creation
-     */
-    private function testAssistantCreation(): void
-    {
-        if ($this->option('skip-expensive')) {
-            $this->addTestResult('Assistant Creation', 'skipped', 'Skipped to avoid API costs');
-            return;
-        }
-
-        $assistant = $this->assistantService->createAssistant([
-            'model' => config('ai-assistant.models.chat', 'gpt-4'),
-            'name' => 'Connection Test Assistant',
-            'instructions' => 'You are a test assistant created for connection testing purposes.',
-        ]);
-
-        // API call completed successfully if we reach here
-        // Note: Assistant cleanup would require direct OpenAI API call since deleteAssistant() method doesn't exist
-        $this->addTestResult('Assistant Creation', 'info', 'Assistant creation successful');
-    }
 
     /**
      * Test network connectivity
@@ -457,7 +433,7 @@ class TestConnectionCommand extends Command
     {
         // Test error handling with an invalid request
         try {
-            $this->assistantService->chatTextCompletion([
+            $this->repository->createChatCompletion([
                 'model' => 'invalid-model-name-for-testing',
                 'messages' => [
                     [

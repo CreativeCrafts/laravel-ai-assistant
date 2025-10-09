@@ -21,45 +21,7 @@ if (!class_exists('OpenAI\\Client')) {
     );
 }
 
-// Assistants
-if (!class_exists('OpenAI\\Responses\\Assistants\\AssistantResponse')) {
-    class_alias(
-        CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse::class,
-        'OpenAI\\Responses\\Assistants\\AssistantResponse'
-    );
-}
 
-// Threads
-if (!class_exists('OpenAI\\Responses\\Threads\\ThreadResponse')) {
-    class_alias(
-        CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse::class,
-        'OpenAI\\Responses\\Threads\\ThreadResponse'
-    );
-}
-
-// Thread Messages
-if (!class_exists('OpenAI\\Responses\\Threads\\Messages\\ThreadMessageResponse')) {
-    class_alias(
-        CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageResponse::class,
-        'OpenAI\\Responses\\Threads\\Messages\\ThreadMessageResponse'
-    );
-}
-
-// Thread Messages List
-if (!class_exists('OpenAI\\Responses\\Threads\\Messages\\ThreadMessageListResponse')) {
-    class_alias(
-        CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageListResponse::class,
-        'OpenAI\\Responses\\Threads\\Messages\\ThreadMessageListResponse'
-    );
-}
-
-// Thread Runs
-if (!class_exists('OpenAI\\Responses\\Threads\\Runs\\ThreadRunResponse')) {
-    class_alias(
-        CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Runs\ThreadRunResponse::class,
-        'OpenAI\\Responses\\Threads\\Runs\\ThreadRunResponse'
-    );
-}
 
 // Chat
 if (!class_exists('OpenAI\\Responses\\Chat\\CreateResponse')) {

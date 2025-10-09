@@ -4,61 +4,61 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Support;
 
-use CreativeCrafts\LaravelAiAssistant\AiAssistant;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CustomFunctionData;
+use InvalidArgumentException;
 
 /**
  * Backwards-compat shim object exposing legacy Chat/Text/Edits helpers.
- * Internally delegates to AiAssistant's LegacyCompletionsShim methods.
+ * All methods are deprecated and will be removed in a future version.
  */
 final readonly class LegacyCompletions
 {
-    public function __construct(private AiAssistant $core)
+    public function __construct()
     {
     }
 
     public static function make(?string $prompt = ''): self
     {
-        return new self(new AiAssistant($prompt ?? ''));
+        return new self();
     }
 
     public function draft(): string
     {
-        return $this->core->draft();
+        throw new InvalidArgumentException('LegacyCompletions::draft is deprecated. Use AiAssistant modern chat/text APIs.');
     }
 
     public function translateTo(string $language): string
     {
-        return $this->core->translateTo($language);
+        throw new InvalidArgumentException('LegacyCompletions::translateTo is deprecated. Use AiAssistant modern chat/text APIs.');
     }
 
     public function andRespond(): array
     {
-        return $this->core->andRespond();
+        throw new InvalidArgumentException('LegacyCompletions::andRespond is deprecated. Use AiAssistant::reply() or sendChatMessageDto().');
     }
 
     public function withCustomFunction(CustomFunctionData $customFunctionData): array
     {
-        return $this->core->withCustomFunction($customFunctionData);
+        throw new InvalidArgumentException('LegacyCompletions::withCustomFunction is deprecated. Register tools and use AiAssistant::reply().');
     }
 
     public function spellingAndGrammarCorrection(): string
     {
-        return $this->core->spellingAndGrammarCorrection();
+        throw new InvalidArgumentException('LegacyCompletions::spellingAndGrammarCorrection is deprecated. Use Responses API with instructions.');
     }
 
     public function improveWriting(): string
     {
-        return $this->core->improveWriting();
+        throw new InvalidArgumentException('LegacyCompletions::improveWriting is deprecated. Use Responses API with instructions.');
     }
 
     public function transcribeTo(string $language, ?string $optionalText = ''): string
     {
-        return $this->core->transcribeTo($language, $optionalText);
+        throw new InvalidArgumentException('LegacyCompletions::transcribeTo is deprecated. Use AssistantService::transcribeTo().');
     }
 
     public function translateAudioTo(): string
     {
-        return $this->core->translateAudioTo();
+        throw new InvalidArgumentException('LegacyCompletions::translateAudioTo is deprecated. Use AssistantService::translateTo().');
     }
 }

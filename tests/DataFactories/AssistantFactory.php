@@ -120,16 +120,16 @@ class AssistantFactory
     }
 
     /**
-     * Generate run parameters for thread execution.
+     * Generate parameters for a conversation turn execution (modern API).
      *
-     * @param string $assistantId Assistant ID to use
+     * @param string $conversationId Conversation ID to use
      * @param array $overrides Override default values
-     * @return array Run parameters
+     * @return array Turn parameters
      */
-    public static function runParams(string $assistantId, array $overrides = []): array
+    public static function turnParams(string $conversationId, array $overrides = []): array
     {
         return array_merge([
-            'assistant_id' => $assistantId,
+            'conversation_id' => $conversationId,
             'instructions' => 'Please provide helpful and accurate responses.',
             'additional_instructions' => 'Be concise and clear.',
             'tools' => [
@@ -264,9 +264,8 @@ class AssistantFactory
             $messages = [
                 [
                     'id' => self::messageId(),
-                    'object' => 'thread.message',
+                    'object' => 'conversation.item',
                     'created_at' => time(),
-                    'thread_id' => self::threadId(),
                     'role' => 'assistant',
                     'content' => [
                         [
@@ -278,8 +277,6 @@ class AssistantFactory
                         ],
                     ],
                     'file_ids' => [],
-                    'assistant_id' => self::assistantId(),
-                    'run_id' => self::runId(),
                     'metadata' => [],
                 ],
             ];

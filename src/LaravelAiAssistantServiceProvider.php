@@ -8,7 +8,6 @@ use CreativeCrafts\LaravelAiAssistant\Console\Commands\ConfigValidateCommand;
 use CreativeCrafts\LaravelAiAssistant\Console\Commands\HealthCheckCommand;
 use CreativeCrafts\LaravelAiAssistant\Console\Commands\TestConnectionCommand;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AiAssistantContract;
-use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantResourceContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
@@ -67,7 +66,6 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
         });
 
         // Register the AssistantService with repository and cache dependency injection
-        $this->app->bind(AssistantResourceContract::class, AssistantService::class);
         $this->app->bind(AssistantService::class, function ($app) {
             return new AssistantService(
                 $app->make(OpenAiRepositoryContract::class),
@@ -83,16 +81,9 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
             return $assistant;
         });
 
-        // Register the Assistant class
-        $this->app->bind(Assistant::class, function ($app) {
-            $assistant = new Assistant();
-            $assistant->client($app->make(AssistantService::class));
-            return $assistant;
-        });
 
         // Register convenient aliases for the main classes
         $this->app->alias(AiAssistant::class, 'ai-assistant');
-        $this->app->alias(Assistant::class, 'assistant');
     }
 
     /**
@@ -121,6 +112,7 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
         $timestamp = date('Y_m_d_His');
         $this->publishes([
             __DIR__ . '/../database/migrations/create_ai_assistant_tables.php' => database_path("migrations/{$timestamp}_create_ai_assistant_tables.php"),
+            __DIR__ . '/../database/migrations/2025_10_08_000001_rename_legacy_columns.php' => database_path("migrations/{$timestamp}_rename_legacy_ai_assistant_columns.php"),
         ], 'ai-assistant-migrations');
     }
 

@@ -4,31 +4,19 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Assistants\AssistantResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Meta\MetaInformation;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\Messages\ThreadMessageResponse;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Threads\ThreadResponse;
-use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantManagementContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AudioProcessingContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\TextCompletionContract;
-use CreativeCrafts\LaravelAiAssistant\Contracts\ThreadOperationContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\MaxRetryAttemptsExceededException;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\ThreadExecutionTimeoutException;
 use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 use Exception;
 use Generator;
-use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
-use JsonException;
-use Mockery\MockInterface;
-use Random\RandomException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
-class AssistantService implements AssistantManagementContract, AudioProcessingContract, TextCompletionContract, ThreadOperationContract
+class AssistantService implements AudioProcessingContract, TextCompletionContract
 {
     protected OpenAiRepositoryContract $repository;
     protected CacheService $cacheService;
@@ -40,83 +28,13 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
     }
 
     /**
-     * Expose current correlation id used in LoggingService for this request flow.
+     * Expose the current correlation id used in LoggingService for this request flow.
      */
     public function getCorrelationId(): ?string
     {
         return app(LoggingService::class)->getCorrelationId();
     }
 
-    /**
-     * Create a new assistant with the specified parameters.
-     * This function creates a new assistant using the repository abstraction.
-     *
-     * @param array $parameters An array of parameters for creating the assistant.
-     *                          This may include properties such as name, instructions,
-     *                          tools, and model.
-     * @return AssistantResponse The response object containing details of the created assistant.
-     * @throws InvalidArgumentException When required parameters are missing or invalid.
-     * @deprecated Assistants API is deprecated. Prefer using Conversations + Responses and pass instructions/model per turn. See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md
-     */
-    public function createAssistant(array $parameters): AssistantResponse
-    {
-        $this->validateAssistantParameters($parameters);
-        return $this->repository->createAssistant($parameters);
-    }
-
-    /**
-     * Retrieve an assistant by its ID.
-     * This function fetches the details of a specific assistant using the repository abstraction.
-     *
-     * @param string $assistantId The unique identifier of the assistant to retrieve.
-     * @return AssistantResponse The response object containing details of the retrieved assistant.
-     * @throws InvalidArgumentException When assistant ID is invalid.
-     * @deprecated Assistants API is deprecated. Prefer getting conversation state via listConversationItems(). See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md
-     */
-    public function getAssistantViaId(string $assistantId): AssistantResponse
-    {
-        $this->validateAssistantId($assistantId);
-        return $this->repository->retrieveAssistant($assistantId);
-    }
-
-    /**
-     * Create a new thread with the specified parameters.
-     *
-     * @param array $parameters An array of parameters for creating the thread (metadata, etc.).
-     * @return ThreadResponse Synthetic ThreadResponse mapped to a new conversation.
-     * @throws RandomException
-     * @deprecated Use createConversation() instead and track conversationId. This shim maps a legacy thread to a conversation.
-     * See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md for details.
-     */
-    public function createThread(array $parameters): ThreadResponse
-    {
-        // When a repository mock is injected (unit/integration tests), use legacy repository behavior
-        if (interface_exists('\Mockery\MockInterface') && $this->repository instanceof MockInterface) {
-            return $this->repository->createThread($parameters);
-        }
-
-        // Default shim path: map to Conversations API and return a synthetic ThreadResponse
-        Log::warning('[DEPRECATION] AssistantService::createThread is deprecated. Use Conversations API (createConversation) instead. Mapping to conversation...');
-
-        $metadata = is_array($parameters['metadata'] ?? null) ? (array)$parameters['metadata'] : [];
-
-        // 1) Create a new conversation
-        $conversationId = $this->createConversation($metadata);
-
-        // 2) Generate a legacy-like thread id and store mapping
-        $threadId = 'thread_' . substr(bin2hex(random_bytes(24)), 0, 24);
-        app(ThreadsToConversationsMapper::class)->map($threadId, $conversationId);
-
-        // 3) Build a synthetic ThreadResponse
-        $attributes = [
-            'id' => $threadId,
-            'object' => 'thread',
-            'created_at' => time(),
-            'tool_resources' => null,
-            'metadata' => $metadata,
-        ];
-        return ThreadResponse::from($attributes, MetaInformation::from([]));
-    }
 
     /**
      * Create a new conversation and return its id.
@@ -129,101 +47,6 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         }
         $conv = $this->facade()->conversations()->createConversation($payload);
         return (string)($conv['id'] ?? $conv['conversation']['id'] ?? '');
-    }
-
-    /**
-     * Write a new message to a specific thread.
-     *
-     * @param string $threadId The legacy thread id to write to
-     * @param array $messageData ['role'=>'user','content'=>string|array, ...]
-     * @return ThreadMessageResponse Synthetic response reflecting the posted user message
-     * @throws JsonException
-     * @throws RandomException
-     * @deprecated Use sendChatMessage(conversationId, message, options) instead. This shim maps thread -> conversation and posts via Responses API.
-     * See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md for details.
-     */
-    public function writeMessage(string $threadId, array $messageData): ThreadMessageResponse
-    {
-        // When a repository mock is injected (unit/integration tests), use legacy repository behavior
-        if (interface_exists('\Mockery\MockInterface') && $this->repository instanceof MockInterface) {
-            $this->validateThreadId($threadId);
-            $this->validateMessageData($messageData);
-            return $this->repository->createThreadMessage($threadId, $messageData);
-        }
-
-        Log::warning('[DEPRECATION] AssistantService::writeMessage is deprecated. Use sendChatMessage with Conversations API. Mapping to conversation...');
-        $this->validateThreadId($threadId);
-        $this->validateMessageData($messageData);
-
-        // Map or create conversation
-        $conversationId = app(ThreadsToConversationsMapper::class)->getOrMap($threadId, fn () => $this->createConversation([]));
-
-        // Extract plain message text from legacy content
-        $content = $messageData['content'] ?? '';
-        $text = '';
-        if (is_string($content)) {
-            $text = $content;
-        } elseif (is_array($content)) {
-            // Try finding text content shapes from legacy array
-            if (isset($content[0]['text']['value'])) {
-                $text = (string)$content[0]['text']['value'];
-            } elseif (isset($content['text'])) {
-                $text = is_array($content['text']) ? (string)($content['text']['value'] ?? '') : (string)$content['text'];
-            } else {
-                $text = json_encode($content, JSON_THROW_ON_ERROR) ?: '';
-            }
-        }
-
-        // Build options passthrough if provided
-        $options = [];
-        foreach (
-            [
-                'model',
-                'instructions',
-                'tools',
-                'metadata',
-                'response_format',
-                'modalities',
-                'idempotency_key',
-                'tool_choice',
-                'attachments',
-                'file_ids',
-                'input_images',
-                'use_file_search'
-            ] as $k
-        ) {
-            if (array_key_exists($k, $messageData)) {
-                $options[$k] = $messageData[$k];
-            }
-        }
-
-        // Post message via Responses API
-        $this->sendChatMessage($conversationId, (string)$text, $options);
-
-        // Build synthetic ThreadMessageResponse
-        $role = (string)($messageData['role'] ?? 'user');
-        $attributes = [
-            'id' => 'msg_' . substr(bin2hex(random_bytes(24)), 0, 24),
-            'object' => 'thread.message',
-            'created_at' => time(),
-            'thread_id' => $threadId,
-            'role' => $role,
-            'content' => [
-                [
-                    'type' => 'text',
-                    'text' => [
-                        'value' => (string)$text,
-                        'annotations' => [],
-                    ],
-                ],
-            ],
-            'assistant_id' => null,
-            'run_id' => null,
-            'attachments' => is_array($messageData['attachments'] ?? null) ? (array)$messageData['attachments'] : [],
-            'metadata' => is_array($messageData['metadata'] ?? null) ? (array)$messageData['metadata'] : [],
-        ];
-
-        return ThreadMessageResponse::from($attributes, MetaInformation::from([]));
     }
 
     /**
@@ -449,6 +272,8 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         return $envelope;
     }
 
+    // ===== Helpers =====
+
     /**
      * Post tool_result items to the conversation and ask the model to continue the turn.
      */
@@ -520,161 +345,6 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
             // ignore metrics errors
         }
         return $envelope;
-    }
-
-    /**
-     * Run a message thread and wait for its completion.
-     *
-     * @param string $threadId The legacy thread id
-     * @param array $runThreadParameter ['assistant_id'|'model'|'instructions'|'tools'|...]
-     * @param int $timeoutSeconds Unused in shim (kept for signature compatibility)
-     * @param int $maxRetryAttempts Unused in shim
-     * @param float $initialDelay Unused in shim
-     * @param float $backoffMultiplier Unused in shim
-     * @param float $maxDelay Unused in shim
-     * @return bool Always true when the Responses turn is created successfully.
-     * @deprecated Use sendTurn(conversationId, ...) instead. This shim maps thread -> conversation and triggers a Responses turn.
-     * See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md for details.
-     */
-    public function runMessageThread(
-        string $threadId,
-        array $runThreadParameter,
-        int $timeoutSeconds = 300,
-        int $maxRetryAttempts = 60,
-        float $initialDelay = 1.0,
-        float $backoffMultiplier = 1.5,
-        float $maxDelay = 30.0
-    ): bool {
-        // When a repository mock is injected (unit/integration tests), use legacy repository behavior with polling
-        if (interface_exists('\Mockery\MockInterface') && $this->repository instanceof MockInterface) {
-            $this->validateThreadId($threadId);
-            $start = microtime(true);
-            $delay = max(0.0, $initialDelay);
-            $attempts = 0;
-
-            $run = $this->repository->createThreadRun($threadId, $runThreadParameter);
-            $runId = $run->id;
-
-            while (true) {
-                // Timeout check first
-                if ((microtime(true) - $start) >= $timeoutSeconds) {
-                    throw new ThreadExecutionTimeoutException("Thread execution timed out after {$timeoutSeconds} seconds. Thread ID: {$threadId}, Run ID: {$runId}");
-                }
-                if ($attempts >= $maxRetryAttempts) {
-                    throw new MaxRetryAttemptsExceededException("Maximum retry attempts ({$maxRetryAttempts}) exceeded for thread execution. Thread ID: {$threadId}, Run ID: {$runId}");
-                }
-
-                $current = $this->repository->retrieveThreadRun($threadId, $runId);
-                $status = $current->status;
-                if ($status === 'completed') {
-                    return true;
-                }
-                if ($status === 'failed') {
-                    throw new ThreadExecutionTimeoutException("Thread execution failed with status 'failed'. Thread ID: {$threadId}, Run ID: {$runId}");
-                }
-
-                $attempts++;
-                if ($delay > 0) {
-                    usleep((int)($delay * 1_000_000));
-                    $delay = min($maxDelay, $delay * max(1.0, $backoffMultiplier));
-                }
-            }
-        }
-
-        // Default shim path: map to Conversations/Responses API
-        Log::warning('[DEPRECATION] AssistantService::runMessageThread is deprecated. Use sendTurn with Conversations API. Mapping to conversation...');
-
-        $this->validateThreadId($threadId);
-        // Map or create conversation
-        $conversationId = app(ThreadsToConversationsMapper::class)->getOrMap($threadId, fn () => $this->createConversation([]));
-
-        // Extract parameters
-        $model = isset($runThreadParameter['model']) && is_string($runThreadParameter['model']) ? $runThreadParameter['model'] : null;
-        $instructions = isset($runThreadParameter['instructions']) && is_string($runThreadParameter['instructions']) ? $runThreadParameter['instructions'] : null;
-        $tools = is_array($runThreadParameter['tools'] ?? null) ? (array)$runThreadParameter['tools'] : [];
-        $metadata = is_array($runThreadParameter['metadata'] ?? null) ? (array)$runThreadParameter['metadata'] : [];
-        $idempotencyKey = isset($runThreadParameter['idempotency_key']) && is_string($runThreadParameter['idempotency_key']) ? $runThreadParameter['idempotency_key'] : null;
-
-        // Trigger a turn with no new user input to let the assistant response based on existing context
-        $this->sendTurn(
-            $conversationId,
-            $instructions,
-            $model,
-            $tools,
-            inputItems: [],
-            responseFormat: $runThreadParameter['response_format'] ?? null,
-            modalities: $runThreadParameter['modalities'] ?? null,
-            metadata: $metadata,
-            idempotencyKey: $idempotencyKey,
-            toolChoice: $runThreadParameter['tool_choice'] ?? null
-        );
-
-        return true;
-    }
-
-    /**
-     * List messages for a specific thread and return the content of the first message.
-     *
-     * @deprecated Use listConversationItems(conversationId) instead. This shim maps thread -> conversation and reads from Conversations API.
-     * See docs/Migrate_from_AssistantAPI_to_ResponseAPI.md for details.
-     */
-    public function listMessages(string $threadId): string
-    {
-        Log::warning('[DEPRECATION] AssistantService::listMessages is deprecated. Use listConversationItems with Conversations API. Mapping to conversation...');
-        $this->validateThreadId($threadId);
-
-        // When a repository mock is injected (unit/integration tests), use legacy repository behavior
-        if (interface_exists('\Mockery\MockInterface') && $this->repository instanceof MockInterface) {
-            $resp = $this->repository->listThreadMessages($threadId);
-
-            if (!is_array($resp) || !isset($resp['data']) || !is_array($resp['data'])) {
-                throw new ApiResponseValidationException('Invalid API response structure: missing or invalid data array.');
-            }
-            if ($resp['data'] === []) {
-                return '';
-            }
-            $first = $resp['data'][0] ?? null;
-            if (!is_array($first) || !isset($first['content']) || !is_array($first['content'])) {
-                throw new ApiResponseValidationException('Invalid message structure: missing or invalid content array.');
-            }
-            if ($first['content'] === []) {
-                return '';
-            }
-            $firstBlock = $first['content'][0];
-            if (!is_array($firstBlock) || !isset($firstBlock['text']) || !is_array($firstBlock['text'])) {
-                throw new ApiResponseValidationException('Invalid content structure: missing or invalid text array.');
-            }
-            $text = $firstBlock['text'];
-            $value = $text['value'] ?? ($text['text'] ?? null);
-            return is_string($value) ? $value : '';
-        }
-
-        $conversationId = app(ThreadsToConversationsMapper::class)->get($threadId);
-        if ($conversationId === null) {
-            // No mapping found – create one to allow legacy callers to proceed
-            $conversationId = app(ThreadsToConversationsMapper::class)->getOrMap($threadId, fn () => $this->createConversation([]));
-        }
-
-        $items = $this->listConversationItems($conversationId);
-        if (!isset($items['data']) || !is_array($items['data']) || $items['data'] === []) {
-            return '';
-        }
-        $first = $items['data'][0] ?? null;
-        if (!is_array($first) || !isset($first['content']) || !is_array($first['content']) || $first['content'] === []) {
-            return '';
-        }
-        $firstBlock = $first['content'][0];
-        if (is_array($firstBlock)) {
-            if (($firstBlock['type'] ?? null) === 'text') {
-                $text = $firstBlock['text'] ?? '';
-                return is_array($text) ? (string)($text['value'] ?? '') : (string)$text;
-            }
-            if (($firstBlock['type'] ?? null) === 'output_text') {
-                $text = $firstBlock['text'] ?? '';
-                return is_array($text) ? (string)($text['value'] ?? '') : (string)$text;
-            }
-        }
-        return '';
     }
 
     /**
@@ -855,10 +525,6 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         // Trim any leading/trailing whitespace from the complete response
         return trim($accumulatedText);
     }
-
-    // =========================
-    // Responses + Conversations Orchestrator methods
-    // =========================
 
     /**
      * Generate a chat text completion using the repository abstraction.
@@ -1366,141 +1032,15 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         }
     }
 
-    /**
-     * Validate parameters for assistant creation.
-     *
-     * @param array $parameters Parameters to validate
-     * @throws InvalidArgumentException When required parameters are missing or invalid
-     */
-    private function validateAssistantParameters(array $parameters): void
-    {
-        if (empty($parameters)) {
-            throw new InvalidArgumentException('Assistant parameters cannot be empty.');
-        }
-
-        // Validate model parameter - avoid redundant trim() call
-        $model = $parameters['model'] ?? null;
-        if (!is_string($model) || $model === '' || trim($model) === '') {
-            throw new InvalidArgumentException('Model parameter is required and must be a non-empty string.');
-        }
-
-        // Validate name if provided - early type check to avoid strlen on non-strings
-        if (isset($parameters['name'])) {
-            $name = $parameters['name'];
-            if (!is_string($name) || strlen($name) > 256) {
-                throw new InvalidArgumentException('Assistant name must be a string with maximum 256 characters.');
-            }
-        }
-
-        // Validate instructions if provided - early type check to avoid strlen on non-strings
-        if (isset($parameters['instructions'])) {
-            $instructions = $parameters['instructions'];
-            if (!is_string($instructions) || strlen($instructions) > 256000) {
-                throw new InvalidArgumentException('Instructions must be a string with maximum 256,000 characters.');
-            }
-        }
-
-        // Validate tools if provided - early type check and single count operation
-        if (isset($parameters['tools'])) {
-            $tools = $parameters['tools'];
-            if (!is_array($tools)) {
-                throw new InvalidArgumentException('Tools must be an array.');
-            }
-            if (count($tools) > 128) {
-                throw new InvalidArgumentException('Maximum 128 tools are allowed per assistant.');
-            }
-        }
-
-        // Validate temperature if provided - use a single variable to avoid repeated array access
-        if (isset($parameters['temperature'])) {
-            $temperature = $parameters['temperature'];
-            if (!is_numeric($temperature) || $temperature < 0 || $temperature > 2) {
-                throw new InvalidArgumentException('Temperature must be a number between 0 and 2.');
-            }
-        }
-    }
-
-    /**
-     * Validate assistant ID parameter.
-     *
-     * @param string $assistantId Assistant ID to validate
-     * @throws InvalidArgumentException When assistant ID is invalid
-     */
-    private function validateAssistantId(string $assistantId): void
-    {
-        if (trim($assistantId) === '') {
-            throw new InvalidArgumentException('Assistant ID cannot be empty.');
-        }
-
-        if (!preg_match('/^asst_[a-zA-Z0-9]{24}$/', $assistantId)) {
-            throw new InvalidArgumentException('Assistant ID must follow the format: asst_[24 alphanumeric characters].');
-        }
-    }
-
     private function facade(): OpenAIClientFacade
     {
         // Resolve lazily to avoid constructor signature changes
         return app(OpenAIClientFacade::class);
     }
 
-    /**
-     * Validate thread ID parameter.
-     *
-     * @param string $threadId Thread ID to validate
-     * @throws InvalidArgumentException When thread ID is invalid
-     */
-    private function validateThreadId(string $threadId): void
-    {
-        if (trim($threadId) === '') {
-            throw new InvalidArgumentException('Thread ID cannot be empty.');
-        }
-
-        if (!preg_match('/^thread_[a-zA-Z0-9]{24}$/', $threadId)) {
-            throw new InvalidArgumentException('Thread ID must follow the format: thread_[24 alphanumeric characters].');
-        }
-    }
-
-    // ===== Helpers =====
-
-    /**
-     * Validate message data for thread operations.
-     *
-     * @param array $messageData Message data to validate
-     * @throws InvalidArgumentException When message data is invalid
-     */
-    private function validateMessageData(array $messageData): void
-    {
-        if (empty($messageData)) {
-            throw new InvalidArgumentException('Message data cannot be empty.');
-        }
-
-        // Validate role parameter
-        if (!isset($messageData['role']) || !is_string($messageData['role']) || trim($messageData['role']) === '') {
-            throw new InvalidArgumentException('Message role is required and must be a non-empty string.');
-        }
-
-        $validRoles = ['user', 'assistant', 'system'];
-        if (!in_array($messageData['role'], $validRoles, true)) {
-            throw new InvalidArgumentException('Message role must be one of: ' . implode(', ', $validRoles));
-        }
-
-        // Validate content parameter
-        if (!isset($messageData['content'])) {
-            throw new InvalidArgumentException('Message content is required.');
-        }
-
-        if (!is_string($messageData['content']) && !is_array($messageData['content'])) {
-            throw new InvalidArgumentException('Message content must be a string or array.');
-        }
-
-        if (is_string($messageData['content']) && trim($messageData['content']) === '') {
-            throw new InvalidArgumentException('Message content cannot be empty when provided as a string.');
-        }
-
-        if (is_array($messageData['content']) && empty($messageData['content'])) {
-            throw new InvalidArgumentException('Message content cannot be empty when provided as an array.');
-        }
-    }
+    // =========================
+    // Responses + Conversations Orchestrator methods
+    // =========================
 
     private function validateAttachments(array $attachments): array
     {
@@ -1933,4 +1473,6 @@ class AssistantService implements AssistantManagementContract, AudioProcessingCo
         }
         return null;
     }
+
+
 }

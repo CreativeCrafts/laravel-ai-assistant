@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Represents a saved conversation preset (previously called an "assistant profile").
+ * Conversation preset for starting conversations with default settings.
  *
  * @property string $id
  * @property string|null $name
@@ -17,14 +17,14 @@ use Illuminate\Database\Eloquent\Model;
  * @property array|null $tools
  * @property array|null $metadata
  */
-class AssistantProfile extends Model
+class ConversationPreset extends Model
 {
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<static>> */
     use HasFactory;
 
     public $incrementing = false;
 
-    protected $table = 'ai_assistant_profiles';
+    protected $table = 'ai_conversation_presets';
 
     protected $keyType = 'string';
 

@@ -175,8 +175,7 @@ final class ChatSession
      */
     public function send(): ChatResponseDto
     {
-        $arr = $this->core->sendChatMessage();
-        return ChatResponseDto::fromArray($arr);
+        return $this->core->sendChatMessageDto();
     }
 
     /**
@@ -215,7 +214,7 @@ final class ChatSession
      */
     public function stream(?callable $onEvent = null, ?callable $shouldStop = null): Generator
     {
-        $events = $this->core->streamChatMessage($onEvent, $shouldStop);
+        $events = $this->core->streamEvents($onEvent, $shouldStop);
         foreach ($events as $evt) {
             yield StreamingEventDto::fromArray((array)$evt);
         }
@@ -235,8 +234,7 @@ final class ChatSession
      */
     public function continueWithToolResults(array $toolResults): ChatResponseDto
     {
-        $arr = $this->core->continueWithToolResults($toolResults);
-        return ChatResponseDto::fromArray($arr);
+        return $this->core->continueWithToolResultsDto($toolResults);
     }
 
     /**
