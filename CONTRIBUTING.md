@@ -27,6 +27,13 @@ Thank you for your interest in contributing! This guide explains how to set up y
 - Keep public APIs stable; document changes in README or docs/ and update tests.
 - Favor small, focused PRs with clear rationale.
 
+### Public API Contract
+- **AiManager is the sole public facade** for AI operations (`quick`, `chat`, `stream`, `complete`).
+- **Do not add new public methods to AssistantService**. It is an internal implementation detail marked with `@internal`.
+- All user-facing functionality should be exposed through `AiManager` to ensure a consistent, discoverable API.
+- Legacy methods on `AssistantService` are deprecated. New code should use `AiManager::complete()`.
+- When adding features, extend `AiManager` or its related builders, not `AssistantService`.
+
 ## Static Analysis & QA
 - Run static analysis: `composer analyse`
 - Validate composer metadata: `composer validate-composer`

@@ -19,6 +19,20 @@ use InvalidArgumentException;
 use JsonException;
 use Throwable;
 
+/**
+ * Internal AI operations service.
+ *
+ * @internal This class is an internal implementation detail. Use AiManager as the public API facade instead.
+ *
+ * DO NOT add new public methods to this class. All public-facing AI operations should be exposed
+ * through AiManager (quick, chat, stream, complete). This ensures a consistent, discoverable API
+ * for end users and prevents API surface area sprawl.
+ *
+ * Legacy methods (textCompletion, chatTextCompletion, streamedCompletion, streamedChat) are
+ * deprecated and will be removed in a future version. New code should use AiManager::complete().
+ *
+ * @see AiManager
+ */
 class AssistantService implements AudioProcessingContract, TextCompletionContract
 {
     protected OpenAiRepositoryContract $repository;
@@ -795,6 +809,7 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
     /**
      * NEW: Unified streaming completion (accumulates to a final result).
      *
+     * @internal Use AiManager::complete() instead. This method is called internally by AiManager.
      * @throws Exception
      */
     public function completeStream(Mode $mode, CompletionRequest $request): CompletionResult
@@ -811,6 +826,7 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
     /**
      * NEW: Unified sync completion for Text or Chat.
      *
+     * @internal Use AiManager::complete() instead. This method is called internally by AiManager.
      * @throws JsonException
      * @throws \Psr\SimpleCache\InvalidArgumentException
      */
