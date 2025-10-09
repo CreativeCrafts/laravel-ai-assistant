@@ -26,7 +26,7 @@ class ResponseStatusStore
             'updated_at' => time(),
         ];
         $key = self::STATUS_PREFIX . $responseId;
-        $this->cache->cacheResponse($key, $record, $ttl);
+        $this->cache->setStatus($key, $record, $ttl);
 
         // Also index by conversation id if available
         $conversationId = (string)(
@@ -39,7 +39,7 @@ class ResponseStatusStore
             $convRecord = $record;
             $convRecord['last_response_id'] = $responseId;
             $convKey = self::CONVERSATION_PREFIX . $conversationId;
-            $this->cache->cacheResponse($convKey, $convRecord, $ttl);
+            $this->cache->setStatus($convKey, $convRecord, $ttl);
         }
     }
 
@@ -49,7 +49,31 @@ class ResponseStatusStore
             throw new InvalidArgumentException('responseId cannot be empty');
         }
         $key = self::STATUS_PREFIX . $responseId;
-        return $this->cache->getResponse($key);
+        $result = $this->cache->getStatus($key);
+        return is_array($result) ? $result : null;
+    }
+
+    public function hasStatus(string $responseId): bool
+    {
+        if ($responseId === '') {
+            throw new InvalidArgumentException('responseId cannot be empty');
+        }
+        $key = self::STATUS_PREFIX . $responseId;
+        return $this->cache->hasStatus($key);
+    }
+
+    public function deleteStatus(string $responseId): bool
+    {
+        if ($responseId === '') {
+            throw new InvalidArgumentException('responseId cannot be empty');
+        }
+        $key = self::STATUS_PREFIX . $responseId;
+        return $this->cache->deleteStatus($key);
+    }
+
+    public function clearAll(): bool
+    {
+        return $this->cache->clearStatus();
     }
 
     public function getLastStatus(string $responseId): ?string
@@ -64,7 +88,8 @@ class ResponseStatusStore
             throw new InvalidArgumentException('conversationId cannot be empty');
         }
         $convKey = self::CONVERSATION_PREFIX . $conversationId;
-        return $this->cache->getResponse($convKey);
+        $result = $this->cache->getStatus($convKey);
+        return is_array($result) ? $result : null;
     }
 
     public function getLastStatusByConversation(string $conversationId): ?string

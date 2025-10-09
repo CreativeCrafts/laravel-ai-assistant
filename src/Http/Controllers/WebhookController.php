@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Http\Controllers;
 
+use CreativeCrafts\LaravelAiAssistant\Enums\ResponseStatus;
 use CreativeCrafts\LaravelAiAssistant\Events\ResponseCompleted;
 use CreativeCrafts\LaravelAiAssistant\Events\ResponseFailed;
 use CreativeCrafts\LaravelAiAssistant\Events\ToolCallRequested;
@@ -124,13 +125,13 @@ readonly class WebhookController
 
         switch ($eventType) {
             case 'response.completed':
-                $this->statusStore->setStatus($responseId, 'completed', $data);
+                $this->statusStore->setStatus($responseId, ResponseStatus::Completed->value, $data);
                 Event::dispatch(new ResponseCompleted($responseId, $data));
                 break;
 
             case 'response.failed':
                 $error = $data['error']['message'] ?? ($data['response']['error']['message'] ?? null);
-                $this->statusStore->setStatus($responseId, 'failed', $data);
+                $this->statusStore->setStatus($responseId, ResponseStatus::Failed->value, $data);
                 Event::dispatch(new ResponseFailed($responseId, $error, $data));
                 break;
 
@@ -138,13 +139,13 @@ readonly class WebhookController
             case 'response.tool_call.created':
             case 'response.tool_call.required':
                 $toolCalls = $this->extractToolCalls($data);
-                $this->statusStore->setStatus($responseId, 'requires_action', $data);
+                $this->statusStore->setStatus($responseId, ResponseStatus::RequiresAction->value, $data);
                 Event::dispatch(new ToolCallRequested($responseId, $toolCalls, $data));
                 break;
 
             default:
                 // Store unknown types for observability but do not error
-                $this->statusStore->setStatus($responseId, $eventType ?? 'unknown', $data);
+                $this->statusStore->setStatus($responseId, $eventType ?? ResponseStatus::Unknown->value, $data);
                 break;
         }
 

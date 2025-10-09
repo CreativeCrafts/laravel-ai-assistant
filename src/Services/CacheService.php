@@ -30,6 +30,7 @@ class CacheService
     private const CONFIG_PREFIX = 'config:';
     private const RESPONSE_PREFIX = 'response:';
     private const COMPLETION_PREFIX = 'completion:';
+    private const STATUS_PREFIX = 'status:';
 
     private ?string $runtimeStore = null;
     private ?PrefixedKeyIndexer $indexer = null;
@@ -125,13 +126,14 @@ class CacheService
             self::CONFIG_PREFIX => 'config',
             self::RESPONSE_PREFIX => 'response',
             self::COMPLETION_PREFIX => 'completion',
+            self::STATUS_PREFIX => 'status',
             default => null,
         };
 
         if ($this->supportsTags()) {
             if ($area === null) {
                 // Purge all areas
-                foreach (['config', 'response', 'completion'] as $a) {
+                foreach (['config', 'response', 'completion', 'status'] as $a) {
                     $this->store()->tags($this->tagsFor($a))->flush();
                 }
                 return 0; // unknown count
@@ -153,7 +155,7 @@ class CacheService
 
         // Indexer-based purge
         if ($area === null) {
-            foreach ([self::CONFIG_PREFIX, self::RESPONSE_PREFIX, self::COMPLETION_PREFIX] as $p) {
+            foreach ([self::CONFIG_PREFIX, self::RESPONSE_PREFIX, self::COMPLETION_PREFIX, self::STATUS_PREFIX] as $p) {
                 $keys = $this->indexer()->list($p);
                 foreach ($keys as $k) {
                     if ($this->store()->forget($k)) {
@@ -542,6 +544,108 @@ class CacheService
     }
 
     /**
+     * Store a status value in cache.
+     *
+     * @param string $key Status key
+     * @param mixed $value Value to store
+     * @param int $ttl Time to live in seconds (default: 24 hours)
+     * @return bool True if stored successfully
+     * @throws InvalidArgumentException When key or TTL is invalid
+     */
+    public function setStatus(string $key, mixed $value, int $ttl = 86400): bool
+    {
+        $this->validateKey($key);
+        $this->validateTtl($ttl);
+
+        $cacheKey = $this->buildCacheKey(self::STATUS_PREFIX . $key);
+        $repo = $this->repoForArea('status');
+        $stored = $repo->put($cacheKey, $value, $ttl);
+        if ($stored) {
+            $this->metric('ai.cache.write', ['area' => 'status']);
+        }
+        if (!$this->supportsTags()) {
+            $this->indexer()->add(self::STATUS_PREFIX, $cacheKey);
+        }
+        return $stored;
+    }
+
+    /**
+     * Retrieve a status value from cache.
+     *
+     * @param string $key Status key
+     * @param mixed $default Default value if not found
+     * @return mixed Cached value or default
+     * @throws InvalidArgumentException When key is invalid
+     */
+    public function getStatus(string $key, mixed $default = null): mixed
+    {
+        $this->validateKey($key);
+
+        $cacheKey = $this->buildCacheKey(self::STATUS_PREFIX . $key);
+        $value = $this->repoForArea('status')->get($cacheKey, $default);
+
+        if ($value !== $default) {
+            $this->metric('ai.cache.hit', ['area' => 'status']);
+        } else {
+            $this->metric('ai.cache.miss', ['area' => 'status']);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Check if a status key exists in cache.
+     *
+     * @param string $key Status key
+     * @return bool True if the key exists
+     * @throws InvalidArgumentException When key is invalid
+     */
+    public function hasStatus(string $key): bool
+    {
+        $this->validateKey($key);
+
+        $cacheKey = $this->buildCacheKey(self::STATUS_PREFIX . $key);
+        return $this->repoForArea('status')->has($cacheKey);
+    }
+
+    /**
+     * Delete a specific status from cache.
+     *
+     * @param string $key Status key
+     * @return bool True if deleted successfully
+     * @throws InvalidArgumentException When key is invalid
+     */
+    public function deleteStatus(string $key): bool
+    {
+        $this->validateKey($key);
+
+        $cacheKey = $this->buildCacheKey(self::STATUS_PREFIX . $key);
+        $forgot = $this->repoForArea('status')->forget($cacheKey);
+        if ($forgot) {
+            $this->metric('ai.cache.delete', ['area' => 'status']);
+        }
+        if (!$this->supportsTags()) {
+            $this->indexer()->remove(self::STATUS_PREFIX, $cacheKey);
+        }
+        return $forgot;
+    }
+
+    /**
+     * Clear all status cache or a specific status key.
+     *
+     * @param string|null $key Specific key to clear or null to clear all status cache
+     * @return bool True if cleared successfully
+     */
+    public function clearStatus(?string $key = null): bool
+    {
+        if ($key === null) {
+            return $this->clearCacheByPrefix(self::STATUS_PREFIX);
+        }
+
+        return $this->deleteStatus($key);
+    }
+
+    /**
      * Clear all cache related to the AI Assistant.
      *
      * @return bool True if cleared successfully
@@ -581,6 +685,7 @@ class CacheService
             'config' => $this->cfgInt('ai-assistant.cache.ttl.config', 3600),
             'response' => $this->cfgInt('ai-assistant.cache.ttl.response', self::DEFAULT_TTL),
             'completion' => $this->cfgInt('ai-assistant.cache.ttl.completion', self::DEFAULT_TTL),
+            'status' => $this->cfgInt('ai-assistant.cache.ttl.status', 86400),
             'lock' => $this->cfgInt('ai-assistant.cache.ttl.lock', 10),
             'grace' => $this->cfgInt('ai-assistant.cache.ttl.grace', 30),
         ];
@@ -611,6 +716,7 @@ class CacheService
             'config' => null,
             'response' => null,
             'completion' => null,
+            'status' => null,
             'total' => null,
         ];
 
@@ -618,12 +724,14 @@ class CacheService
             $configCount = count($this->indexer()->list(self::CONFIG_PREFIX));
             $responseCount = count($this->indexer()->list(self::RESPONSE_PREFIX));
             $completionCount = count($this->indexer()->list(self::COMPLETION_PREFIX));
+            $statusCount = count($this->indexer()->list(self::STATUS_PREFIX));
 
             $counts = [
                 'config' => $configCount,
                 'response' => $responseCount,
                 'completion' => $completionCount,
-                'total' => $configCount + $responseCount + $completionCount,
+                'status' => $statusCount,
+                'total' => $configCount + $responseCount + $completionCount + $statusCount,
             ];
         }
 
@@ -637,6 +745,7 @@ class CacheService
                     'config' => $this->tagsFor('config'),
                     'response' => $this->tagsFor('response'),
                     'completion' => $this->tagsFor('completion'),
+                    'status' => $this->tagsFor('status'),
                 ],
             ],
             'namespace' => [
