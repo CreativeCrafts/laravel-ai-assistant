@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelAiAssistant\Services\ErrorReportingService;
 use CreativeCrafts\LaravelAiAssistant\Services\LoggingService;
 use CreativeCrafts\LaravelAiAssistant\Services\MemoryMonitoringService;
 use CreativeCrafts\LaravelAiAssistant\Services\MetricsCollectionService;
+use CreativeCrafts\LaravelAiAssistant\Services\ObservabilityService;
 use Illuminate\Support\ServiceProvider;
 
 class MonitoringServiceProvider extends ServiceProvider
@@ -36,6 +37,16 @@ class MonitoringServiceProvider extends ServiceProvider
             return new ErrorReportingService(
                 $app->make(LoggingService::class),
                 (array)(config('ai-assistant.error_reporting') ?? [])
+            );
+        });
+
+        // Register the unified Observability Service as a singleton
+        $this->app->singleton(ObservabilityService::class, function ($app) {
+            return new ObservabilityService(
+                $app->make(LoggingService::class),
+                $app->make(MetricsCollectionService::class),
+                $app->make(ErrorReportingService::class),
+                $app->make(MemoryMonitoringService::class)
             );
         });
     }

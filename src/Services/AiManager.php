@@ -12,6 +12,7 @@ use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
 use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
 use CreativeCrafts\LaravelAiAssistant\Support\ConversationsBuilder;
 use CreativeCrafts\LaravelAiAssistant\Support\ResponsesBuilder;
+use Exception;
 use Generator;
 use JsonException;
 use Psr\SimpleCache\InvalidArgumentException;
@@ -109,6 +110,7 @@ final class AiManager
      *
      * @throws JsonException
      * @throws InvalidArgumentException
+     * @throws Exception
      */
     public function complete(Mode $mode, Transport $transport, CompletionRequest $request): CompletionResult
     {
