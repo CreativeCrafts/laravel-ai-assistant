@@ -2,6 +2,208 @@
 
 This document provides comprehensive upgrade instructions for major version changes of the Laravel AI Assistant package.
 
+## Migrating from Assistant API to Responses/Conversations API (Recommended)
+
+The Assistant API is **deprecated in 1.x** and will be removed in a future major version. We strongly recommend migrating to the modern **Responses API** and **Conversations API**.
+
+### Why Migrate to Responses API?
+
+The Responses API aligns with OpenAI's direction — see the official migration guide: https://platform.openai.com/docs/guides/migrating-from-chat-completions-to-responses and provides:
+
+- **Better structure**: Clean separation between responses (single turns) and conversations (multi-turn threads)
+- **Enhanced features**: Native support for tool calls, streaming, and multimodal inputs
+- **Improved ergonomics**: Fluent builder pattern with IDE autocompletion
+- **Future-proof**: Follows OpenAI's direction for chat completions
+
+### Migration Mapping
+
+#### Quick One-Off Requests
+
+**Before (Assistant API - DEPRECATED):**
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Assistant;
+
+$assistant = app(Assistant::class)
+    ->setModelName('gpt-4')
+    ->createTask()
+    ->askQuestion('Explain Laravel queues')
+    ->process();
+    
+$text = $assistant->response();
+```
+
+**After (Responses API):**
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Simple approach
+$response = Ai::quick('Explain Laravel queues');
+echo $response->text;
+
+// Or with full control
+$response = Ai::responses()
+    ->model('gpt-4')
+    ->input()->message('Explain Laravel queues')
+    ->send();
+echo $response->text;
+```
+
+#### Stateful Conversations
+
+**Before (Assistant API - DEPRECATED):**
+
+```php
+$assistant = app(Assistant::class);
+$thread = $assistant->createThread(['title' => 'My Conversation']);
+$assistant->writeMessage($thread->id, ['content' => 'Hello']);
+$response = $assistant->process();
+```
+
+**After (Conversations API):**
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Create and use a conversation
+$conversationId = Ai::conversations()->start();
+
+$response = Ai::conversations()
+    ->use($conversationId)
+    ->input()->message('Hello')
+    ->send();
+    
+echo $response->text;
+
+// Continue the conversation
+$response = Ai::conversations()
+    ->use($conversationId)
+    ->input()->message('Tell me more')
+    ->send();
+```
+
+#### Streaming Responses
+
+**Before (Assistant API - DEPRECATED):**
+
+```php
+$assistant = Assistant::new()
+    ->setModelName('gpt-4')
+    ->enableStreaming();
+    
+foreach ($assistant->stream() as $chunk) {
+    echo $chunk;
+}
+```
+
+**After (Responses API):**
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Quick streaming
+foreach (Ai::stream('Tell me a story') as $chunk) {
+    echo $chunk;
+}
+
+// Or with full control
+$stream = Ai::responses()
+    ->model('gpt-4')
+    ->input()->message('Tell me a story')
+    ->stream();
+    
+foreach ($stream as $chunk) {
+    echo $chunk;
+}
+```
+
+#### Tool/Function Calls
+
+**Before (Assistant API - DEPRECATED):**
+
+```php
+$assistant = Assistant::new()
+    ->includeFunctionCallTool([
+        'type' => 'function',
+        'function' => [
+            'name' => 'get_weather',
+            'description' => 'Get weather information',
+            'parameters' => [
+                'type' => 'object',
+                'properties' => [
+                    'location' => ['type' => 'string']
+                ]
+            ]
+        ]
+    ]);
+```
+
+**After (Responses API):**
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$response = Ai::responses()
+    ->model('gpt-4')
+    ->tools([
+        [
+            'type' => 'function',
+            'function' => [
+                'name' => 'get_weather',
+                'description' => 'Get weather information',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'location' => ['type' => 'string']
+                    ]
+                ]
+            ]
+        ]
+    ])
+    ->input()->message('What is the weather in London?')
+    ->send();
+
+if ($response->requiresAction) {
+    // Handle tool calls
+    foreach ($response->toolCalls as $toolCall) {
+        // Execute tool and submit results
+    }
+}
+```
+
+#### Setting Instructions (System Prompts)
+
+**Before (Assistant API - DEPRECATED):**
+
+```php
+$assistant = Assistant::new()
+    ->setInstructions('You are a helpful coding assistant');
+```
+
+**After (Responses API):**
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$response = Ai::responses()
+    ->instructions('You are a helpful coding assistant')
+    ->input()->message('Help me with Laravel')
+    ->send();
+```
+
+### Quick Migration Checklist
+
+- [ ] Replace `app(Assistant::class)` with `Ai::responses()` or `Ai::conversations()`
+- [ ] Replace `Assistant::new()` with `Ai::responses()` or `Ai::conversations()`
+- [ ] Replace `->createTask()->askQuestion()` with `->input()->message()`
+- [ ] Replace `->process()` with `->send()`
+- [ ] Replace `->createThread()` with `Ai::conversations()->start()`
+- [ ] Replace `->writeMessage()` with `->input()->message()`
+- [ ] Update streaming from `$assistant->stream()` to `Ai::stream()` or `->stream()`
+- [ ] Update tool definitions to use `->tools()` method
+- [ ] Test all AI interactions thoroughly
+
 ## Upgrading from 1.x to 2.0
 
 Version 2.0 represents a significant architectural overhaul of the Laravel AI Assistant package. This upgrade introduces breaking changes that require code modifications.
