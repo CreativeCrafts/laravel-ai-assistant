@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ProgressTrackerContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
@@ -21,6 +22,7 @@ use CreativeCrafts\LaravelAiAssistant\Repositories\OpenAiRepository;
 use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
 use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Services\BackgroundJobService;
+use CreativeCrafts\LaravelAiAssistant\Services\CacheBackedProgressTracker;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
 use CreativeCrafts\LaravelAiAssistant\Services\IdempotencyService;
 use CreativeCrafts\LaravelAiAssistant\Services\LazyLoadingService;
@@ -108,11 +110,22 @@ class CoreServiceProvider extends ServiceProvider
             return $registry;
         });
 
+        // Register ProgressTrackerContract
+        $this->app->singleton(ProgressTrackerContract::class, function ($app) {
+            return new CacheBackedProgressTracker(
+                $app->make(LoggingService::class),
+                $app->make(MetricsCollectionService::class)
+            );
+        });
+
         // Register a streaming service with dependencies
         $this->app->singleton(StreamingService::class, function ($app) {
             return new StreamingService(
+                $app->make(ResponsesRepositoryContract::class),
+                $app->make(OpenAiRepositoryContract::class),
                 $app->make(LoggingService::class),
                 $app->make(MemoryMonitoringService::class),
+                $app->make(ProgressTrackerContract::class),
                 (array)(config('ai-assistant.streaming') ?? [])
             );
         });
@@ -122,6 +135,7 @@ class CoreServiceProvider extends ServiceProvider
             return new BackgroundJobService(
                 $app->make(LoggingService::class),
                 $app->make(MetricsCollectionService::class),
+                $app->make(ProgressTrackerContract::class),
                 (array)(config('ai-assistant.background_jobs') ?? [])
             );
         });
@@ -135,7 +149,9 @@ class CoreServiceProvider extends ServiceProvider
 
         // Unified entrypoint service: AiManager
         $this->app->singleton(AiManager::class, function ($app) {
-            return new AiManager();
+            return new AiManager(
+                $app->make(\CreativeCrafts\LaravelAiAssistant\Services\AssistantService::class)
+            );
         });
 
         // Register the OpenAI Repository with dependency injection honoring config overrides

@@ -73,7 +73,7 @@ it('returns correct text generator config', function () {
         'n' => 1,
         'suffix' => 'suffix',
         'top_p' => 0.9,
-        'presence_penalty' => 0,
+        'presence_penalty' => 0.0,
         'frequency_penalty' => 0.5,
         'best_of' => 1,
         'stop' => ['stop1', 'stop2'],

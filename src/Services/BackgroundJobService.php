@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
+use CreativeCrafts\LaravelAiAssistant\Contracts\ProgressTrackerContract;
 use CreativeCrafts\LaravelAiAssistant\Jobs\ProcessLongRunningAiOperation;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 /**
@@ -24,14 +24,17 @@ class BackgroundJobService
     private array $config;
     private LoggingService $loggingService;
     private MetricsCollectionService $metricsService;
+    private ProgressTrackerContract $progressTracker;
 
     public function __construct(
         LoggingService $loggingService,
         MetricsCollectionService $metricsService,
+        ProgressTrackerContract $progressTracker,
         array $config = []
     ) {
         $this->loggingService = $loggingService;
         $this->metricsService = $metricsService;
+        $this->progressTracker = $progressTracker;
         $this->config = $config;
     }
 
@@ -62,8 +65,14 @@ class BackgroundJobService
             'options' => $options,
         ];
 
-        // Store job tracking data
-        $this->storeJobData($jobId, $jobData);
+        $metadata = [
+            'operation' => $operation,
+            'parameters' => $parameters,
+            'options' => $options,
+        ];
+
+        // Start tracking the job
+        $this->progressTracker->start($jobId, 'job', $metadata);
 
         // Configure job options
         $queue = $options['queue'] ?? $this->getDefaultQueue();
@@ -148,24 +157,24 @@ class BackgroundJobService
      */
     public function getJobStatus(string $jobId): ?array
     {
-        $jobData = $this->getJobData($jobId);
+        $status = $this->progressTracker->getStatus($jobId);
 
-        if (!$jobData) {
+        if (!$status) {
             return null;
         }
 
         return [
             'job_id' => $jobId,
-            'operation' => $jobData['operation'],
-            'status' => $jobData['status'],
-            'progress' => $jobData['progress'] ?? 0,
-            'created_at' => $jobData['created_at'],
-            'started_at' => $jobData['started_at'] ?? null,
-            'completed_at' => $jobData['completed_at'] ?? null,
-            'duration_seconds' => $this->calculateDuration($jobData),
-            'result' => $jobData['result'] ?? null,
-            'error' => $jobData['error'] ?? null,
-            'retry_count' => $jobData['retry_count'] ?? 0,
+            'operation' => $status['metadata']['operation'] ?? 'unknown',
+            'status' => $status['status'],
+            'progress' => $status['progress'],
+            'created_at' => $status['created_at'],
+            'started_at' => $status['started_at'],
+            'completed_at' => $status['completed_at'],
+            'duration_seconds' => $status['duration_seconds'],
+            'result' => $status['result'],
+            'error' => $status['error'],
+            'correlation_id' => $status['correlation_id'],
         ];
     }
 
@@ -178,17 +187,9 @@ class BackgroundJobService
      */
     public function updateJobProgress(string $jobId, int $progress, array $metadata = []): void
     {
-        $jobData = $this->getJobData($jobId);
+        $progress = max(0, min(100, $progress));
 
-        if (!$jobData) {
-            return;
-        }
-
-        $jobData['progress'] = max(0, min(100, $progress));
-        $jobData['last_updated'] = now()->toISOString();
-        $jobData['progress_metadata'] = $metadata;
-
-        $this->storeJobData($jobId, $jobData);
+        $this->progressTracker->update($jobId, $progress, $metadata);
 
         $this->logJobEvent($jobId, 'progress_updated', [
             'progress' => $progress,
@@ -203,23 +204,23 @@ class BackgroundJobService
      */
     public function markJobStarted(string $jobId): void
     {
-        $jobData = $this->getJobData($jobId);
+        $status = $this->progressTracker->getStatus($jobId);
 
-        if (!$jobData) {
+        if (!$status) {
             return;
         }
 
-        $jobData['status'] = 'processing';
-        $jobData['started_at'] = now()->toISOString();
+        $operation = $status['metadata']['operation'] ?? 'unknown';
 
-        $this->storeJobData($jobId, $jobData);
+        // Update with progress 0 to transition from Queued to Running
+        $this->progressTracker->update($jobId, 0, []);
 
         $this->logJobEvent($jobId, 'job_started', [
-            'operation' => $jobData['operation'],
+            'operation' => $operation,
         ]);
 
         $this->metricsService->recordCustomMetric('background_jobs_started', 1, [
-            'operation' => $jobData['operation'],
+            'operation' => $operation,
         ]);
     }
 
@@ -231,37 +232,34 @@ class BackgroundJobService
      */
     public function markJobCompleted(string $jobId, $result = null): void
     {
-        $jobData = $this->getJobData($jobId);
+        $status = $this->progressTracker->getStatus($jobId);
 
-        if (!$jobData) {
+        if (!$status) {
             return;
         }
 
-        $jobData['status'] = 'completed';
-        $jobData['completed_at'] = now()->toISOString();
-        $jobData['progress'] = 100;
-        $jobData['result'] = $result;
+        $operation = $status['metadata']['operation'] ?? 'unknown';
 
-        $duration = $this->calculateDuration($jobData);
+        $this->progressTracker->complete($jobId, $result);
 
-        $this->storeJobData($jobId, $jobData);
+        $duration = $status['duration_seconds'];
 
         $serializedResult = $result ? json_encode($result) : '';
         $resultSize = $serializedResult !== false ? strlen($serializedResult) : 0;
 
         $this->logJobEvent($jobId, 'job_completed', [
-            'operation' => $jobData['operation'],
+            'operation' => $operation,
             'duration_seconds' => $duration,
             'result_size' => $resultSize,
         ]);
 
         $this->metricsService->recordCustomMetric('background_jobs_completed', 1, [
-            'operation' => $jobData['operation'],
+            'operation' => $operation,
         ]);
 
         if ($duration > 0) {
             $this->metricsService->recordCustomMetric('background_job_duration', $duration, [
-                'operation' => $jobData['operation'],
+                'operation' => $operation,
                 'unit' => 'seconds',
             ]);
         }
@@ -276,36 +274,31 @@ class BackgroundJobService
      */
     public function markJobFailed(string $jobId, string $error, array $context = []): void
     {
-        $jobData = $this->getJobData($jobId);
+        $status = $this->progressTracker->getStatus($jobId);
 
-        if (!$jobData) {
+        if (!$status) {
             return;
         }
 
-        $jobData['status'] = 'failed';
-        $jobData['failed_at'] = now()->toISOString();
-        $jobData['error'] = $error;
-        $jobData['error_context'] = $context;
-        $jobData['retry_count'] = ($jobData['retry_count'] ?? 0) + 1;
+        $operation = $status['metadata']['operation'] ?? 'unknown';
 
-        $this->storeJobData($jobId, $jobData);
+        $this->progressTracker->fail($jobId, $error, $context);
 
         $this->logJobEvent($jobId, 'job_failed', [
-            'operation' => $jobData['operation'],
+            'operation' => $operation,
             'error' => $error,
-            'retry_count' => $jobData['retry_count'],
             'context' => $context,
         ]);
 
         $this->metricsService->recordError(
-            $jobData['operation'],
+            $operation,
             'job_failure',
             $error,
             $context
         );
 
         $this->metricsService->recordCustomMetric('background_jobs_failed', 1, [
-            'operation' => $jobData['operation'],
+            'operation' => $operation,
             'error_type' => $this->categorizeError($error),
         ]);
     }
@@ -318,26 +311,27 @@ class BackgroundJobService
      */
     public function cancelJob(string $jobId): bool
     {
-        $jobData = $this->getJobData($jobId);
+        $status = $this->progressTracker->getStatus($jobId);
 
-        if (!$jobData || in_array($jobData['status'], ['completed', 'failed', 'cancelled'])) {
+        if (!$status) {
             return false;
         }
 
-        $jobData['status'] = 'cancelled';
-        $jobData['cancelled_at'] = now()->toISOString();
+        $operation = $status['metadata']['operation'] ?? 'unknown';
 
-        $this->storeJobData($jobId, $jobData);
+        $success = $this->progressTracker->cancel($jobId, 'Job cancelled by user');
 
-        $this->logJobEvent($jobId, 'job_cancelled', [
-            'operation' => $jobData['operation'],
-        ]);
+        if ($success) {
+            $this->logJobEvent($jobId, 'job_cancelled', [
+                'operation' => $operation,
+            ]);
 
-        $this->metricsService->recordCustomMetric('background_jobs_cancelled', 1, [
-            'operation' => $jobData['operation'],
-        ]);
+            $this->metricsService->recordCustomMetric('background_jobs_cancelled', 1, [
+                'operation' => $operation,
+            ]);
+        }
 
-        return true;
+        return $success;
     }
 
     /**
@@ -443,30 +437,6 @@ class BackgroundJobService
     }
 
     /**
-     * Store job data in cache.
-     *
-     * @param string $jobId Job identifier
-     * @param array $data Job data
-     */
-    private function storeJobData(string $jobId, array $data): void
-    {
-        $ttl = now()->addDays(7); // Keep job data for 7 days
-        Cache::put("ai_job_{$jobId}", $data, $ttl);
-    }
-
-    /**
-     * Retrieve job data from cache.
-     *
-     * @param string $jobId Job identifier
-     * @return array|null
-     */
-    private function getJobData(string $jobId): ?array
-    {
-        $data = Cache::get("ai_job_{$jobId}");
-        return is_array($data) ? $data : null;
-    }
-
-    /**
      * Execute operation synchronously.
      *
      * @param string $operation Operation name
@@ -486,26 +456,6 @@ class BackgroundJobService
         // For now, we'll just log it and return the job ID
 
         return $jobId;
-    }
-
-    /**
-     * Calculate job duration.
-     *
-     * @param array $jobData Job data
-     * @return float Duration in seconds
-     */
-    private function calculateDuration(array $jobData): float
-    {
-        if (!isset($jobData['started_at'])) {
-            return 0;
-        }
-
-        $startTime = strtotime($jobData['started_at']);
-        $endTime = isset($jobData['completed_at'])
-            ? strtotime($jobData['completed_at'])
-            : time();
-
-        return max(0, $endTime - $startTime);
     }
 
     /**

@@ -8,6 +8,10 @@ use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Responses\Completions\Create
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
+use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
+use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
+use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
 use CreativeCrafts\LaravelAiAssistant\Tests\DataFactories\ApiPayloadFactory;
 
 /**
@@ -30,6 +34,7 @@ beforeEach(function () use (&$performanceMetrics) {
     $this->cacheServiceMock->shouldReceive('cacheResponse')->andReturn(true)->byDefault();
 
     $this->assistantService = new AssistantService($this->repositoryMock, $this->cacheServiceMock);
+    $this->aiManager = new AiManager($this->assistantService);
     $performanceMetrics = [];
 });
 
@@ -202,7 +207,7 @@ test('text completion performance', function () use (&$performanceMetrics) {
         ->andReturn($mockResponse);
 
     $times = measurePerformance('Text Completion', $iterations, function () use ($payload) {
-        return $this->assistantService->textCompletion($payload);
+        return (string) $this->aiManager->complete(Mode::TEXT, Transport::SYNC, CompletionRequest::fromArray($payload));
     }, $performanceMetrics);
 
     // Use environment-based thresholds
@@ -237,7 +242,7 @@ test('chat completion performance', function () use (&$performanceMetrics) {
         ->andReturn($mockResponse);
 
     $times = measurePerformance('Chat Completion', $iterations, function () use ($payload) {
-        return $this->assistantService->chatTextCompletion($payload);
+        return $this->aiManager->complete(Mode::CHAT, Transport::SYNC, CompletionRequest::fromArray($payload))->toArray();
     }, $performanceMetrics);
 
     // Use environment-based thresholds
@@ -298,7 +303,7 @@ test('caching performance', function () use (&$performanceMetrics) {
         ->andReturn($cachedResult);
 
     $times = measurePerformance('Cached Completion', $iterations, function () use ($payload) {
-        return $this->assistantService->textCompletion($payload);
+        return (string) $this->aiManager->complete(Mode::TEXT, Transport::SYNC, CompletionRequest::fromArray($payload));
     }, $performanceMetrics);
 
     // Use environment-based thresholds - cached operations should be fast
@@ -338,7 +343,7 @@ test('large payload performance', function () use (&$performanceMetrics) {
         ->andReturn($mockResponse);
 
     $times = measurePerformance('Large Payload Processing', $iterations, function () use ($payload) {
-        return $this->assistantService->chatTextCompletion($payload);
+        return $this->aiManager->complete(Mode::CHAT, Transport::SYNC, CompletionRequest::fromArray($payload))->toArray();
     }, $performanceMetrics);
 
     // Use environment-based threshold for large payloads

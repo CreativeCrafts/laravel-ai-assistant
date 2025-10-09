@@ -123,7 +123,16 @@ it('streams responses and yields accumulated deltas', function () {
     // Configure streaming SSE
     $responses->setStream(ResponsesFactory::streamingTextSse(['Hel', 'lo']));
 
-    $events = iterator_to_array($assistant->getStreamingResponse($convId, 'hi'));
+    $events = iterator_to_array($assistant->streamTurn(
+        $convId,
+        instructions: null,
+        model: null,
+        tools: [],
+        inputItems: [[
+                'role' => 'user',
+                'content' => [['type' => 'input_text', 'text' => 'hi']],
+            ]]
+    ));
 
     // Find last delta and final event
     $deltaEvents = array_values(array_filter($events, fn ($e) => ($e['type'] ?? '') === 'response.output_text.delta'));

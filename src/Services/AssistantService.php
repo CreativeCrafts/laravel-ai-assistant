@@ -7,24 +7,220 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AudioProcessingContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\TextCompletionContract;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionResult;
+use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
 use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 use Exception;
 use Generator;
 use InvalidArgumentException;
-use Symfony\Component\HttpFoundation\Response;
+use JsonException;
 use Throwable;
 
 class AssistantService implements AudioProcessingContract, TextCompletionContract
 {
     protected OpenAiRepositoryContract $repository;
     protected CacheService $cacheService;
+    protected LoggingService $loggingService;
+    /** @var array<string,bool> */
+    private static array $deprecationOnce = [];
 
     public function __construct(OpenAiRepositoryContract $repository, CacheService $cacheService)
     {
         $this->repository = $repository;
         $this->cacheService = $cacheService;
+    }
+
+    /**
+     * Legacy: textCompletion(array $payload): string
+     *
+     * @param array $payload An array containing the necessary parameters for text completion.
+     *                       This typically includes:
+     *                       - 'model': The ID of the model to use for completion
+     *                       - 'prompt': The prompt to generate completions for
+     *                       - 'max_tokens': The maximum number of tokens to generate
+     *                       - 'temperature': Controls randomness in the output
+     *                       - Other optional parameters as per OpenAI API documentation
+     * @return string The generated text completion. Returns an empty string if no choices are returned.
+     * @throws JsonException
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     * @deprecated Use AiManager::complete(Mode::Text, Transport::Sync, CompletionRequest) instead.
+     */
+    public function textCompletion(array $payload): string
+    {
+        $this->deprecateOnce(__METHOD__, 'AiManager::complete(Mode::Text, Transport::Sync, CompletionRequest)');
+
+        $this->validateTextCompletionPayload($payload);
+
+        // Check for a cached result if a prompt is provided and the temperature is deterministic
+        if (isset($payload['prompt'], $payload['model'])) {
+            $isDeterministic = !isset($payload['temperature']) || $payload['temperature'] <= 0.1;
+
+            if ($isDeterministic) {
+                $cachedResult = $this->cacheService->getCompletion(
+                    (string)$payload['prompt'],
+                    $payload['model'],
+                    $this->filterCacheableParameters($payload)
+                );
+
+                if ($cachedResult !== null) {
+                    return $cachedResult;
+                }
+            }
+        }
+
+        $choices = $this->repository->createCompletion($payload)->choices;
+
+        if ($choices === []) {
+            return '';
+        }
+
+        $lastChoice = $choices[count($choices) - 1];
+        $result = is_object($lastChoice) && property_exists($lastChoice, 'text') ? trim((string)$lastChoice->text) : '';
+
+        // Cache the result if conditions are met
+        if (isset($payload['prompt'], $payload['model']) && $result !== '') {
+            $isDeterministic = !isset($payload['temperature']) || $payload['temperature'] <= 0.1;
+
+            if ($isDeterministic) {
+                $this->cacheService->cacheCompletion(
+                    (string)$payload['prompt'],
+                    $payload['model'],
+                    $this->filterCacheableParameters($payload),
+                    $result
+                );
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Legacy: chatTextCompletion(array $payload): array
+     *
+     * @param array $payload An array containing the necessary parameters for chat completion.
+     *                       This typically includes:
+     *                       - 'model': The ID of the model to use for chat completion
+     *                       - 'messages': An array of message objects representing the conversation history
+     *                       - Other optional parameters as per OpenAI API documentation
+     * @return array<string, mixed> An array representing the message from the first choice in the API response.
+     *                              Contains keys like 'role', 'content', and optionally 'function_call' or 'tool_calls'.
+     *                              Returns an empty array if no choices are returned.
+     * @throws InvalidArgumentException When required parameters are missing or invalid.
+     * @throws \Psr\SimpleCache\InvalidArgumentException|JsonException
+     * @deprecated Use AiManager::complete(Mode::Chat, Transport::Sync, CompletionRequest) instead.
+     */
+    public function chatTextCompletion(array $payload): array
+    {
+        $this->deprecateOnce(__METHOD__, 'AiManager::complete(Mode::Chat, Transport::Sync, CompletionRequest)');
+
+        $this->validateTextCompletionPayload($payload);
+
+        // Check for a cached result if messages are provided and temperature is deterministic
+        if (isset($payload['messages'], $payload['model']) && is_array($payload['messages'])) {
+            $isDeterministic = !isset($payload['temperature']) || $payload['temperature'] <= 0.1;
+
+            if ($isDeterministic) {
+                $cacheKey = $this->buildChatCacheKey($payload);
+                $cachedResult = $this->cacheService->getResponse($cacheKey);
+
+                if ($cachedResult !== null) {
+                    return $cachedResult;
+                }
+            }
+        }
+
+        $choices = $this->repository->createChatCompletion($payload)->choices;
+        if ($choices === []) {
+            return [];
+        }
+
+        $firstChoice = $choices[0];
+        $result = [];
+        if (is_object($firstChoice) && property_exists($firstChoice, 'message') && is_object($firstChoice->message)) {
+            try {
+                // Attempt to call toArray even if provided via magic __call (e.g., Mockery)
+                $resultCandidate = method_exists($firstChoice->message, 'toArray')
+                    ? $firstChoice->message->toArray()
+                    : (array)$firstChoice->message;
+                if (is_array($resultCandidate)) {
+                    $result = $resultCandidate;
+                } elseif (property_exists($firstChoice->message, 'content')) {
+                    $result = ['content' => $firstChoice->message->content];
+                } else {
+                    $result = (array)$firstChoice->message;
+                }
+            } catch (Throwable $e) {
+                // Fallback: try to extract content or cast to array
+                if (property_exists($firstChoice->message, 'content')) {
+                    $result = ['content' => $firstChoice->message->content];
+                } else {
+                    $result = (array)$firstChoice->message;
+                }
+            }
+        }
+
+        // Cache the result if conditions are met
+        if (isset($payload['messages'], $payload['model'])) {
+            $isDeterministic = !isset($payload['temperature']) || $payload['temperature'] <= 0.1;
+
+            if ($isDeterministic) {
+                $cacheKey = $this->buildChatCacheKey($payload);
+                $this->cacheService->cacheResponse($cacheKey, $result);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Legacy: streamedCompletion(array $payload): string
+     *
+     * @param array $payload An array containing the necessary parameters for text completion.
+     *                       This typically includes:
+     *                       - 'model': The ID of the model to use for completion
+     *                       - 'prompt': The prompt to generate completions for
+     *                       - 'max_tokens': The maximum number of tokens to generate
+     *                       - 'temperature': Controls randomness in the output
+     *                       - Other optional parameters as per OpenAI API documentation
+     * @return string The complete generated text from all stream chunks. Returns an empty string if no content is generated.
+     * @throws InvalidArgumentException When required parameters are missing or invalid.
+     * @deprecated Use AiManager::complete(Mode::Text, Transport::Stream, CompletionRequest) instead.
+     */
+    public function streamedCompletion(array $payload): string
+    {
+        $this->deprecateOnce(__METHOD__, 'AiManager::complete(Mode::Text, Transport::Stream, CompletionRequest)');
+
+        $this->validateTextCompletionPayload($payload);
+
+        $request = CompletionRequest::fromArray($payload);
+        return $this->streaming()->accumulateText($request);
+    }
+
+    /**
+     * Legacy: streamedChat(array $payload): array
+     *
+     * @param array $payload An array containing the necessary parameters for chat completion.
+     *                       This typically includes:
+     *                       - 'model': The ID of the model to use for chat completion
+     *                       - 'messages': An array of message objects representing the conversation history
+     *                       - Other optional parameters as per OpenAI API documentation
+     * @return array<string, mixed> An array representing the complete accumulated response from all stream chunks.
+     *                              Contains keys like 'role', 'content', 'finish_reason', and optionally 'function_call' or 'tool_calls'.
+     *                              Returns an empty array if no content is generated.
+     * @throws InvalidArgumentException When required parameters are missing or invalid.
+     * @deprecated Use AiManager::complete(Mode::Chat, Transport::Stream, CompletionRequest) instead.
+     */
+    public function streamedChat(array $payload): array
+    {
+        $this->deprecateOnce(__METHOD__, 'AiManager::complete(Mode::Chat, Transport::Stream, CompletionRequest)');
+
+        $this->validateTextCompletionPayload($payload);
+
+        $request = CompletionRequest::fromArray($payload);
+        return $this->streaming()->accumulateChat($request);
     }
 
     /**
@@ -34,7 +230,6 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
     {
         return app(LoggingService::class)->getCorrelationId();
     }
-
 
     /**
      * Create a new conversation and return its id.
@@ -272,8 +467,6 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
         return $envelope;
     }
 
-    // ===== Helpers =====
-
     /**
      * Post tool_result items to the conversation and ask the model to continue the turn.
      */
@@ -347,6 +540,10 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
         return $envelope;
     }
 
+    // =========================
+    // Responses + Conversations Orchestrator methods
+    // =========================
+
     /**
      * List conversation items.
      */
@@ -403,355 +600,6 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
     }
 
     /**
-     * Generate text completion using the repository abstraction.
-     * This function sends a request through the repository for text completion
-     * and returns the generated text. It uses caching to avoid redundant API calls
-     * for identical requests.
-     *
-     * @param array $payload An array containing the necessary parameters for text completion.
-     *                       This typically includes:
-     *                       - 'model': The ID of the model to use for completion
-     *                       - 'prompt': The prompt to generate completions for
-     *                       - 'max_tokens': The maximum number of tokens to generate
-     *                       - 'temperature': Controls randomness in the output
-     *                       - Other optional parameters as per OpenAI API documentation
-     * @return string The generated text completion. Returns an empty string if no choices are returned.
-     * @throws InvalidArgumentException When required parameters are missing or invalid.
-     */
-    public function textCompletion(array $payload): string
-    {
-        $this->validateTextCompletionPayload($payload);
-
-        // Check for a cached result if prompt is provided and temperature is deterministic
-        if (isset($payload['prompt'], $payload['model'])) {
-            $isDeterministic = !isset($payload['temperature']) || $payload['temperature'] <= 0.1;
-
-            if ($isDeterministic) {
-                $cachedResult = $this->cacheService->getCompletion(
-                    (string)$payload['prompt'],
-                    $payload['model'],
-                    $this->filterCacheableParameters($payload)
-                );
-
-                if ($cachedResult !== null) {
-                    return $cachedResult;
-                }
-            }
-        }
-
-        $choices = $this->repository->createCompletion($payload)->choices;
-
-        if ($choices === []) {
-            return '';
-        }
-
-        $lastChoice = $choices[count($choices) - 1];
-        $result = is_object($lastChoice) && property_exists($lastChoice, 'text') ? trim((string)$lastChoice->text) : '';
-
-        // Cache the result if conditions are met
-        if (isset($payload['prompt'], $payload['model']) && $result !== '') {
-            $isDeterministic = !isset($payload['temperature']) || $payload['temperature'] <= 0.1;
-
-            if ($isDeterministic) {
-                $this->cacheService->cacheCompletion(
-                    (string)$payload['prompt'],
-                    $payload['model'],
-                    $this->filterCacheableParameters($payload),
-                    $result
-                );
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Generate a streamed text completion using the repository abstraction.
-     * This function sends a request through the repository for streamed text completion
-     * and accumulates all chunks to return the complete generated text.
-     *
-     * @param array $payload An array containing the necessary parameters for text completion.
-     *                       This typically includes:
-     *                       - 'model': The ID of the model to use for completion
-     *                       - 'prompt': The prompt to generate completions for
-     *                       - 'max_tokens': The maximum number of tokens to generate
-     *                       - 'temperature': Controls randomness in the output
-     *                       - Other optional parameters as per OpenAI API documentation
-     * @return string The complete generated text from all stream chunks. Returns an empty string if no content is generated.
-     * @throws InvalidArgumentException When required parameters are missing or invalid.
-     */
-    public function streamedCompletion(array $payload): string
-    {
-        $this->validateTextCompletionPayload($payload);
-        $streamResponses = $this->repository->createStreamedCompletion($payload);
-
-        $accumulatedText = '';
-        $chunkCount = 0;
-
-        foreach ($streamResponses as $response) {
-            /** @var Response $response */
-            if (isset($response->choices[0]->text)) {
-                $chunkText = $response->choices[0]->text;
-                $accumulatedText .= $chunkText;
-                $chunkCount++;
-
-                // Optional: Add logging for stream processing
-                if ($chunkCount % 10 === 0 && class_exists('\CreativeCrafts\LaravelAiAssistant\Services\LoggingService')) {
-                    // Log every 10 chunks to monitor streaming performance
-                    try {
-                        $loggingService = app(LoggingService::class);
-                        $loggingService->logPerformanceMetrics(
-                            'streamed_completion_progress',
-                            0, // Duration not available per chunk
-                            [
-                                'chunks_processed' => $chunkCount,
-                                'accumulated_length' => strlen($accumulatedText),
-                                'current_chunk_length' => strlen($chunkText)
-                            ]
-                        );
-                    } catch (Exception $e) {
-                        // Silently continue if logging fails
-                    }
-                }
-            }
-
-            // Check for completion indicators
-            if (isset($response->choices[0]->finish_reason) && $response->choices[0]->finish_reason !== null) {
-                // Stream completed with a finish reason
-                break;
-            }
-        }
-
-        // Trim any leading/trailing whitespace from the complete response
-        return trim($accumulatedText);
-    }
-
-    /**
-     * Generate a chat text completion using the repository abstraction.
-     * This function sends a request through the repository for chat text completion
-     * and returns the message from the first choice in the response. It uses caching
-     * to avoid redundant API calls for identical chat requests.
-     *
-     * @param array $payload An array containing the necessary parameters for chat completion.
-     *                       This typically includes:
-     *                       - 'model': The ID of the model to use for chat completion
-     *                       - 'messages': An array of message objects representing the conversation history
-     *                       - Other optional parameters as per OpenAI API documentation
-     * @return array<string, mixed> An array representing the message from the first choice in the API response.
-     *                              Contains keys like 'role', 'content', and optionally 'function_call' or 'tool_calls'.
-     *                              Returns an empty array if no choices are returned.
-     * @throws InvalidArgumentException When required parameters are missing or invalid.
-     */
-    public function chatTextCompletion(array $payload): array
-    {
-        $this->validateTextCompletionPayload($payload);
-
-        // Check for a cached result if messages are provided and temperature is deterministic
-        if (isset($payload['messages'], $payload['model']) && is_array($payload['messages'])) {
-            $isDeterministic = !isset($payload['temperature']) || $payload['temperature'] <= 0.1;
-
-            if ($isDeterministic) {
-                $cacheKey = $this->buildChatCacheKey($payload);
-                $cachedResult = $this->cacheService->getResponse($cacheKey);
-
-                if ($cachedResult !== null) {
-                    return $cachedResult;
-                }
-            }
-        }
-
-        $choices = $this->repository->createChatCompletion($payload)->choices;
-        if ($choices === []) {
-            return [];
-        }
-
-        $firstChoice = $choices[0];
-        $result = [];
-        if (is_object($firstChoice) && property_exists($firstChoice, 'message') && is_object($firstChoice->message)) {
-            try {
-                // Attempt to call toArray even if provided via magic __call (e.g., Mockery)
-                $resultCandidate = method_exists($firstChoice->message, 'toArray')
-                    ? $firstChoice->message->toArray()
-                    : (array)$firstChoice->message;
-                if (is_array($resultCandidate)) {
-                    $result = $resultCandidate;
-                } elseif (property_exists($firstChoice->message, 'content')) {
-                    $result = ['content' => $firstChoice->message->content];
-                } else {
-                    $result = (array)$firstChoice->message;
-                }
-            } catch (Throwable $e) {
-                // Fallback: try to extract content or cast to array
-                if (property_exists($firstChoice->message, 'content')) {
-                    $result = ['content' => $firstChoice->message->content];
-                } else {
-                    $result = (array)$firstChoice->message;
-                }
-            }
-        }
-
-        // Cache the result if conditions are met
-        if (isset($payload['messages'], $payload['model'])) {
-            $isDeterministic = !isset($payload['temperature']) || $payload['temperature'] <= 0.1;
-
-            if ($isDeterministic) {
-                $cacheKey = $this->buildChatCacheKey($payload);
-                $this->cacheService->cacheResponse($cacheKey, $result);
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Generate a streamed chat completion using the repository abstraction.
-     * This function sends a request through the repository for streamed chat completion
-     * and accumulates all chunks to return the complete generated response.
-     *
-     * @param array $payload An array containing the necessary parameters for chat completion.
-     *                       This typically includes:
-     *                       - 'model': The ID of the model to use for chat completion
-     *                       - 'messages': An array of message objects representing the conversation history
-     *                       - Other optional parameters as per OpenAI API documentation
-     * @return array<string, mixed> An array representing the complete accumulated response from all stream chunks.
-     *                              Contains keys like 'role', 'content', 'finish_reason', and optionally 'function_call' or 'tool_calls'.
-     *                              Returns an empty array if no content is generated.
-     * @throws InvalidArgumentException When required parameters are missing or invalid.
-     */
-    public function streamedChat(array $payload): array
-    {
-        $this->validateTextCompletionPayload($payload);
-        $streamResponses = $this->repository->createStreamedChatCompletion($payload);
-
-        $accumulatedContent = '';
-        $chunkCount = 0;
-        $finalResponse = [];
-        $role = 'assistant'; // Default role for assistant responses
-
-        foreach ($streamResponses as $response) {
-            /** @var Response $response */
-            if (isset($response->choices[0])) {
-                $choice = $response->choices[0];
-                $chunkCount++;
-
-                // Handle delta content (typical for streaming)
-                if (isset($choice->delta->content)) {
-                    $accumulatedContent .= $choice->delta->content;
-                }
-
-                // Handle role information if present
-                if (isset($choice->delta->role)) {
-                    $role = $choice->delta->role;
-                }
-
-                // Handle function calls if present
-                if (isset($choice->delta->function_call)) {
-                    if (!isset($finalResponse['function_call'])) {
-                        $finalResponse['function_call'] = [
-                            'name' => '',
-                            'arguments' => ''
-                        ];
-                    }
-
-                    if (isset($choice->delta->function_call->name)) {
-                        $finalResponse['function_call']['name'] .= $choice->delta->function_call->name;
-                    }
-
-                    if (isset($choice->delta->function_call->arguments)) {
-                        $finalResponse['function_call']['arguments'] .= $choice->delta->function_call->arguments;
-                    }
-                }
-
-                // Handle tool calls if present
-                if (isset($choice->delta->tool_calls)) {
-                    if (!isset($finalResponse['tool_calls'])) {
-                        $finalResponse['tool_calls'] = [];
-                    }
-
-                    foreach ($choice->delta->tool_calls as $toolCall) {
-                        if (isset($toolCall->index)) {
-                            $index = $toolCall->index;
-                            if (!isset($finalResponse['tool_calls'][$index])) {
-                                $finalResponse['tool_calls'][$index] = [];
-                            }
-
-                            if (isset($toolCall->function)) {
-                                if (!isset($finalResponse['tool_calls'][$index]['function'])) {
-                                    $finalResponse['tool_calls'][$index]['function'] = [
-                                        'name' => '',
-                                        'arguments' => ''
-                                    ];
-                                }
-
-                                if (isset($toolCall->function->name) && isset($finalResponse['tool_calls'][$index]['function'])) {
-                                    $finalResponse['tool_calls'][$index]['function']['name'] .= $toolCall->function->name;
-                                }
-
-                                if (isset($toolCall->function->arguments) && isset($finalResponse['tool_calls'][$index]['function'])) {
-                                    $finalResponse['tool_calls'][$index]['function']['arguments'] .= $toolCall->function->arguments;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Optional: Add logging for stream processing
-                if ($chunkCount % 10 === 0 && class_exists('\CreativeCrafts\LaravelAiAssistant\Services\LoggingService')) {
-                    try {
-                        $loggingService = app(LoggingService::class);
-                        $loggingService->logPerformanceMetrics(
-                            'streamed_chat_progress',
-                            0, // Duration not available per chunk
-                            [
-                                'chunks_processed' => $chunkCount,
-                                'accumulated_content_length' => strlen($accumulatedContent),
-                                'has_function_calls' => isset($finalResponse['function_call']),
-                                'has_tool_calls' => isset($finalResponse['tool_calls'])
-                            ]
-                        );
-                    } catch (Exception $e) {
-                        // Silently continue if logging fails
-                    }
-                }
-
-                // Check for completion indicators
-                if (isset($choice->finish_reason) && $choice->finish_reason !== null) {
-                    // Stream completed with a finish reason
-                    $finalResponse['finish_reason'] = $choice->finish_reason;
-                    break;
-                }
-            }
-        }
-
-        // Build the final response structure
-        if (!empty($accumulatedContent) || !empty($finalResponse)) {
-            $result = [
-                'role' => $role,
-                'content' => $accumulatedContent,
-            ];
-
-            // Add function call if present
-            if (isset($finalResponse['function_call'])) {
-                $result['function_call'] = $finalResponse['function_call'];
-            }
-
-            // Add tool calls if present
-            if (isset($finalResponse['tool_calls'])) {
-                $result['tool_calls'] = array_values($finalResponse['tool_calls']);
-            }
-
-            // Add finish reason if available
-            if (isset($finalResponse['finish_reason'])) {
-                $result['finish_reason'] = $finalResponse['finish_reason'];
-            }
-
-            return $result;
-        }
-
-        return [];
-    }
-
-    /**
      * Cancel an in-flight response by id.
      */
     public function cancel(string $responseId): bool
@@ -788,94 +636,6 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
     /**
      * Convenience wrapper: streaming response for a user text message.
      */
-    public function getStreamingResponse(
-        string $conversationId,
-        string $message,
-        array $options = [],
-        ?callable $onEvent = null,
-        ?callable $shouldStop = null
-    ): Generator {
-        $chatModel = config('ai-assistant.chat_model', config('ai-assistant.model'));
-        $model = $options['model'] ?? (is_string($chatModel) ? $chatModel : '');
-        $instructions = $options['instructions'] ?? null;
-        $tools = $options['tools'] ?? [];
-        $responseFormat = $options['response_format'] ?? null;
-        $modalities = $options['modalities'] ?? null;
-        $metadata = $options['metadata'] ?? [];
-        $idempotencyKey = $options['idempotency_key'] ?? null;
-
-        $fileIds = array_values(array_unique(array_filter((array)($options['file_ids'] ?? []), 'is_string')));
-        $imageInputs = array_values(array_filter((array)($options['input_images'] ?? []), static function ($v) {
-            return is_string($v) || is_array($v);
-        }));
-        $attachments = array_values(array_filter((array)($options['attachments'] ?? []), 'is_array'));
-        $attachments = $this->validateAttachments($attachments);
-
-        if ($fileIds !== [] || $attachments !== []) {
-            $hasFileSearch = false;
-            foreach ($tools as $t) {
-                if (is_array($t) && ($t['type'] ?? null) === 'file_search') {
-                    $hasFileSearch = true;
-                    break;
-                }
-            }
-            if (!$hasFileSearch) {
-                $tools[] = ['type' => 'file_search'];
-            }
-        }
-
-        $contentBlocks = [['type' => 'input_text', 'text' => $message]];
-        foreach ($imageInputs as $img) {
-            if (is_string($img)) {
-                $contentBlocks[] = [
-                    'type' => 'input_image',
-                    'file_id' => $img,
-                ];
-            } elseif (is_array($img)) {
-                if (isset($img['file_id']) && is_string($img['file_id'])) {
-                    $contentBlocks[] = [
-                        'type' => 'input_image',
-                        'file_id' => $img['file_id'],
-                    ];
-                } elseif (isset($img['url']) && is_string($img['url'])) {
-                    $contentBlocks[] = [
-                        'type' => 'input_image',
-                        'image_url' => $img['url'],
-                    ];
-                }
-            }
-        }
-        foreach ($fileIds as $fid) {
-            $contentBlocks[] = [
-                'type' => 'file_reference',
-                'file_id' => $fid,
-            ];
-        }
-
-        $input = [
-            'role' => 'user',
-            'content' => $contentBlocks,
-        ];
-        if ($attachments !== []) {
-            $input['attachments'] = $attachments;
-        }
-        $inputItems = [$input];
-
-        return $this->streamTurn(
-            $conversationId,
-            $instructions,
-            $model,
-            $tools,
-            $inputItems,
-            $responseFormat,
-            $modalities,
-            $metadata,
-            $onEvent,
-            $shouldStop,
-            $idempotencyKey,
-            $options['tool_choice'] ?? null
-        );
-    }
 
     /**
      * Stream a Responses.create turn and yield normalized events.
@@ -908,8 +668,8 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
             $toolChoice
         );
 
-        $raw = $this->facade()->responses()->streamResponse($payload);
-        $events = $this->streaming()->streamResponses($raw, $onEvent, $shouldStop);
+        $request = CompletionRequest::fromArray($payload);
+        $events = $this->streaming()->process(Mode::CHAT, $request, $onEvent, $shouldStop);
         foreach ($events as $evt) {
             yield $evt;
         }
@@ -1032,15 +792,226 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
         }
     }
 
+    /**
+     * NEW: Unified streaming completion (accumulates to a final result).
+     *
+     * @throws Exception
+     */
+    public function completeStream(Mode $mode, CompletionRequest $request): CompletionResult
+    {
+        if ($mode === Mode::TEXT) {
+            $text = $this->streaming()->accumulateText($request);
+            return CompletionResult::fromText($text);
+        }
+
+        $data = $this->streaming()->accumulateChat($request);
+        return CompletionResult::fromArray($data);
+    }
+
+    /**
+     * NEW: Unified sync completion for Text or Chat.
+     *
+     * @throws JsonException
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     */
+    public function completeSync(Mode $mode, CompletionRequest $request): CompletionResult
+    {
+        $payload = $request->toArray();
+
+        if ($mode === Mode::TEXT) {
+            $text = $this->textCompletion($payload);
+            return CompletionResult::fromText($text);
+        }
+        $data = $this->chatTextCompletion($payload);
+        return CompletionResult::fromArray($data);
+    }
+
+    /**
+     * Backward-compat: legacy streaming entry used by AiAssistant::streamChatText tests.
+     *
+     * @param string $conversationId
+     * @param string $message
+     * @param array $options
+     * @param callable(array):void|null $onEvent
+     * @param callable():bool|null $shouldStop
+     * @return Generator
+     */
+    public function getStreamingResponse(string $conversationId, string $message, array $options = [], ?callable $onEvent = null, ?callable $shouldStop = null): Generator
+    {
+        $instructions = isset($options['instructions']) && is_string($options['instructions']) && $options['instructions'] !== '' ? $options['instructions'] : null;
+        $model = isset($options['model']) && is_string($options['model']) && $options['model'] !== '' ? $options['model'] : null;
+        $tools = isset($options['tools']) && is_array($options['tools']) ? $options['tools'] : [];
+        $responseFormat = $options['response_format'] ?? null;
+        $responseFormat = is_array($responseFormat) || is_string($responseFormat) ? $responseFormat : null;
+        $modalities = $options['modalities'] ?? null;
+        $modalities = is_array($modalities) || is_string($modalities) ? $modalities : null;
+        $metadata = isset($options['metadata']) && is_array($options['metadata']) ? $options['metadata'] : [];
+        $idempotencyKey = isset($options['idempotency_key']) && is_string($options['idempotency_key']) && $options['idempotency_key'] !== '' ? $options['idempotency_key'] : null;
+        $toolChoice = $options['tool_choice'] ?? null;
+        $toolChoice = is_array($toolChoice) || is_string($toolChoice) ? $toolChoice : null;
+
+        $inputItems = [
+            [
+                'role' => 'user',
+                'content' => [['type' => 'input_text', 'text' => $message]],
+            ]
+        ];
+
+        $events = $this->streamTurn(
+            $conversationId,
+            $instructions,
+            $model,
+            $tools,
+            $inputItems,
+            $responseFormat,
+            $modalities,
+            $metadata,
+            $onEvent,
+            $shouldStop,
+            $idempotencyKey,
+            $toolChoice
+        );
+        foreach ($events as $evt) {
+            yield $evt;
+        }
+    }
+
+    /**
+     * Validate text completion payload.
+     *
+     * @param array $payload Text completion payload to validate
+     * @throws InvalidArgumentException When required parameters are missing or invalid
+     */
+    private function validateTextCompletionPayload(array $payload): void
+    {
+        if (empty($payload)) {
+            throw new InvalidArgumentException('Text completion payload cannot be empty.');
+        }
+
+        // Validate model parameter
+        if (!isset($payload['model']) || !is_string($payload['model']) || trim($payload['model']) === '') {
+            throw new InvalidArgumentException('Model parameter is required and must be a non-empty string.');
+        }
+
+        // For chat completions, validate messages
+        if (isset($payload['messages'])) {
+            if (!is_array($payload['messages']) || empty($payload['messages'])) {
+                throw new InvalidArgumentException('Messages must be a non-empty array for chat completions.');
+            }
+
+            foreach ($payload['messages'] as $index => $message) {
+                if (!is_array($message)) {
+                    throw new InvalidArgumentException("Message at index {$index} must be an array.");
+                }
+                if (!isset($message['role']) || !is_string($message['role'])) {
+                    throw new InvalidArgumentException("Message at index {$index} must have a valid role.");
+                }
+                if (!isset($message['content']) || (!is_string($message['content']) && !is_array($message['content']))) {
+                    throw new InvalidArgumentException("Message at index {$index} must have valid content.");
+                }
+            }
+        }
+
+        // For text completions, validate prompt
+        if (isset($payload['prompt'])) {
+            if (!is_string($payload['prompt']) && !is_array($payload['prompt'])) {
+                throw new InvalidArgumentException('Prompt must be a string or array.');
+            }
+        }
+
+        // Validate max_tokens if provided
+        if (isset($payload['max_tokens'])) {
+            if (!is_int($payload['max_tokens']) || $payload['max_tokens'] < 1) {
+                throw new InvalidArgumentException('Max tokens must be a positive integer.');
+            }
+        }
+
+        // Validate temperature if provided
+        if (isset($payload['temperature'])) {
+            if (!is_numeric($payload['temperature']) || $payload['temperature'] < 0 || $payload['temperature'] > 2) {
+                throw new InvalidArgumentException('Temperature must be a number between 0 and 2.');
+            }
+        }
+
+        // Validate top_p if provided
+        if (isset($payload['top_p'])) {
+            if (!is_numeric($payload['top_p']) || $payload['top_p'] < 0 || $payload['top_p'] > 1) {
+                throw new InvalidArgumentException('Top_p must be a number between 0 and 1.');
+            }
+        }
+    }
+
+    /**
+     * Filter parameters that should be included in cache key generation.
+     * This method removes parameters that shouldn't affect caching decisions,
+     * such as streaming flags or callback parameters.
+     *
+     * @param array $payload The original payload
+     * @return array<string, mixed> Filtered parameters suitable for caching containing only cacheable parameter keys
+     */
+    private function filterCacheableParameters(array $payload): array
+    {
+        // Parameters that should be included in cache key
+        $cacheableParams = [
+            'model',
+            'prompt',
+            'messages',
+            'max_tokens',
+            'max_completion_tokens',
+            'temperature',
+            'top_p',
+            'frequency_penalty',
+            'presence_penalty',
+            'stop',
+            'functions',
+            'function_call',
+            'tools',
+            'tool_choice',
+            'response_format',
+            'seed', // For deterministic responses
+        ];
+
+        return array_intersect_key($payload, array_flip($cacheableParams));
+    }
+
+    /**
+     * Build a cache key for chat completion requests.
+     * This method creates a deterministic cache key based on the chat payload,
+     * ensuring that identical chat requests can be cached and retrieved efficiently.
+     *
+     * @param array $payload The chat completion payload
+     * @return string Cache key for the chat request
+     */
+    private function buildChatCacheKey(array $payload): string
+    {
+        $cacheableParams = $this->filterCacheableParameters($payload);
+
+        // Sort the parameters to ensure consistent key generation
+        ksort($cacheableParams);
+
+        // If messages exist, sort them to ensure consistency
+        if (isset($cacheableParams['messages']) && is_array($cacheableParams['messages'])) {
+            // Don't sort messages as order matters for chat context
+            // but ensure consistent serialization
+            $cacheableParams['messages'] = array_values($cacheableParams['messages']);
+        }
+
+        // Create a hash of the cacheable parameters
+        $serialized = json_encode($cacheableParams);
+        if ($serialized === false) {
+            // Fallback if json_encode fails
+            $serialized = serialize($cacheableParams);
+        }
+        $hash = hash('sha256', $serialized);
+
+        return "chat_completion_{$hash}";
+    }
+
     private function facade(): OpenAIClientFacade
     {
         // Resolve lazily to avoid constructor signature changes
         return app(OpenAIClientFacade::class);
     }
-
-    // =========================
-    // Responses + Conversations Orchestrator methods
-    // =========================
 
     private function validateAttachments(array $attachments): array
     {
@@ -1303,137 +1274,6 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
         }
     }
 
-    /**
-     * Validate text completion payload.
-     *
-     * @param array $payload Text completion payload to validate
-     * @throws InvalidArgumentException When required parameters are missing or invalid
-     */
-    private function validateTextCompletionPayload(array $payload): void
-    {
-        if (empty($payload)) {
-            throw new InvalidArgumentException('Text completion payload cannot be empty.');
-        }
-
-        // Validate model parameter
-        if (!isset($payload['model']) || !is_string($payload['model']) || trim($payload['model']) === '') {
-            throw new InvalidArgumentException('Model parameter is required and must be a non-empty string.');
-        }
-
-        // For chat completions, validate messages
-        if (isset($payload['messages'])) {
-            if (!is_array($payload['messages']) || empty($payload['messages'])) {
-                throw new InvalidArgumentException('Messages must be a non-empty array for chat completions.');
-            }
-
-            foreach ($payload['messages'] as $index => $message) {
-                if (!is_array($message)) {
-                    throw new InvalidArgumentException("Message at index {$index} must be an array.");
-                }
-                if (!isset($message['role']) || !is_string($message['role'])) {
-                    throw new InvalidArgumentException("Message at index {$index} must have a valid role.");
-                }
-                if (!isset($message['content']) || (!is_string($message['content']) && !is_array($message['content']))) {
-                    throw new InvalidArgumentException("Message at index {$index} must have valid content.");
-                }
-            }
-        }
-
-        // For text completions, validate prompt
-        if (isset($payload['prompt'])) {
-            if (!is_string($payload['prompt']) && !is_array($payload['prompt'])) {
-                throw new InvalidArgumentException('Prompt must be a string or array.');
-            }
-        }
-
-        // Validate max_tokens if provided
-        if (isset($payload['max_tokens'])) {
-            if (!is_int($payload['max_tokens']) || $payload['max_tokens'] < 1) {
-                throw new InvalidArgumentException('Max tokens must be a positive integer.');
-            }
-        }
-
-        // Validate temperature if provided
-        if (isset($payload['temperature'])) {
-            if (!is_numeric($payload['temperature']) || $payload['temperature'] < 0 || $payload['temperature'] > 2) {
-                throw new InvalidArgumentException('Temperature must be a number between 0 and 2.');
-            }
-        }
-
-        // Validate top_p if provided
-        if (isset($payload['top_p'])) {
-            if (!is_numeric($payload['top_p']) || $payload['top_p'] < 0 || $payload['top_p'] > 1) {
-                throw new InvalidArgumentException('Top_p must be a number between 0 and 1.');
-            }
-        }
-    }
-
-    /**
-     * Filter parameters that should be included in cache key generation.
-     * This method removes parameters that shouldn't affect caching decisions,
-     * such as streaming flags or callback parameters.
-     *
-     * @param array $payload The original payload
-     * @return array<string, mixed> Filtered parameters suitable for caching containing only cacheable parameter keys
-     */
-    private function filterCacheableParameters(array $payload): array
-    {
-        // Parameters that should be included in cache key
-        $cacheableParams = [
-            'model',
-            'prompt',
-            'messages',
-            'max_tokens',
-            'max_completion_tokens',
-            'temperature',
-            'top_p',
-            'frequency_penalty',
-            'presence_penalty',
-            'stop',
-            'functions',
-            'function_call',
-            'tools',
-            'tool_choice',
-            'response_format',
-            'seed', // For deterministic responses
-        ];
-
-        return array_intersect_key($payload, array_flip($cacheableParams));
-    }
-
-    /**
-     * Build a cache key for chat completion requests.
-     * This method creates a deterministic cache key based on the chat payload,
-     * ensuring that identical chat requests can be cached and retrieved efficiently.
-     *
-     * @param array $payload The chat completion payload
-     * @return string Cache key for the chat request
-     */
-    private function buildChatCacheKey(array $payload): string
-    {
-        $cacheableParams = $this->filterCacheableParameters($payload);
-
-        // Sort the parameters to ensure consistent key generation
-        ksort($cacheableParams);
-
-        // If messages exist, sort them to ensure consistency
-        if (isset($cacheableParams['messages']) && is_array($cacheableParams['messages'])) {
-            // Don't sort messages as order matters for chat context
-            // but ensure consistent serialization
-            $cacheableParams['messages'] = array_values($cacheableParams['messages']);
-        }
-
-        // Create a hash of the cacheable parameters
-        $serialized = json_encode($cacheableParams);
-        if ($serialized === false) {
-            // Fallback if json_encode fails
-            $serialized = serialize($cacheableParams);
-        }
-        $hash = hash('sha256', $serialized);
-
-        return "chat_completion_{$hash}";
-    }
-
     private function streaming(): StreamingService
     {
         return app(StreamingService::class);
@@ -1474,5 +1314,22 @@ class AssistantService implements AudioProcessingContract, TextCompletionContrac
         return null;
     }
 
+    private function deprecateOnce(string $method, string $useInstead): void
+    {
+        if (!isset(self::$deprecationOnce[$method])) {
+            self::$deprecationOnce[$method] = true;
+            $msg = sprintf('[DEPRECATED] %s is deprecated. Use %s.', $method, $useInstead);
+            // log and trigger a user-level deprecation warning once per process
+            try {
+                $logger = app(LoggingService::class);
+                if (method_exists($logger, 'warning')) {
+                    $logger->warning($msg);
+                }
+            } catch (Throwable) {
+                // ignore logging failures
+            }
+            @trigger_error($msg, E_USER_DEPRECATED);
+        }
+    }
 
 }

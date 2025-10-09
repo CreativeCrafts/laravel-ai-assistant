@@ -14,6 +14,9 @@ return new class () extends Migration {
             if (!Schema::hasTable($table) || !Schema::hasColumn($table, $from)) {
                 return; // nothing to do
             }
+            if (Schema::hasColumn($table, $to)) {
+                return; // target already exists; skip to avoid duplicate column error
+            }
 
             $driver = Schema::getConnection()->getDriverName();
 
@@ -30,14 +33,14 @@ return new class () extends Migration {
             }
         };
 
+        // thread_id → conversation_id (legacy thread mapping) - run first to avoid conflicts
+        $rename('ai_conversation_items', 'thread_id', 'conversation_id');
+        $rename('ai_responses', 'thread_id', 'conversation_id');
+
         // assistant_id → conversation_id on potential legacy tables
         $rename('ai_conversation_items', 'assistant_id', 'conversation_id');
         $rename('ai_responses', 'assistant_id', 'conversation_id');
         $rename('ai_conversations', 'assistant_id', 'conversation_id');
-
-        // thread_id → conversation_id (legacy thread mapping)
-        $rename('ai_conversation_items', 'thread_id', 'conversation_id');
-        $rename('ai_responses', 'thread_id', 'conversation_id');
 
         // run_id → response_id
         $rename('ai_tool_invocations', 'run_id', 'response_id');

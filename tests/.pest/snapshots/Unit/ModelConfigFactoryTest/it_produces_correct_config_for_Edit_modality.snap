@@ -1,0 +1,5 @@
+{
+    "model": "gpt-4-edit",
+    "temperature": 0.7,
+    "top_p": 0.9
+}

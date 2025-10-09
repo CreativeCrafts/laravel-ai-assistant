@@ -24,6 +24,7 @@ use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionNamedType;
 use stdClass;
+use Throwable;
 
 /**
  * AiAssistant is the ephemeral, Responses API entry point. For persistent Assistants with threads and runs, use Assistant.
@@ -508,8 +509,27 @@ class AiAssistant implements AiAssistantContract
      */
     public function streamChatText(?callable $onTextChunk = null, ?callable $shouldStop = null): Generator
     {
-        $events = $this->streamEvents(onEvent: null, shouldStop: $shouldStop);
-        return StreamReader::toTextChunks($events, $onTextChunk);
+        $this->client = $this->client ?? resolve(AssistantService::class);
+        $conversationId = $this->conversationId();
+        if ($conversationId === null || $conversationId === '') {
+            $this->startConversation();
+            $conversationId = (string)$this->conversationId();
+        }
+        $message = (string)($this->chatTextGeneratorConfig['user_message'] ?? $this->prompt ?? '');
+        if ($message === '') {
+            throw new InvalidArgumentException('User message cannot be empty. Tip: call setUserMessage() or pass a prompt to AiAssistant::acceptPrompt().');
+        }
+        $options = ($this->options ?? TurnOptions::fromArray($this->chatTextGeneratorConfig))->toArray();
+
+        try {
+            // Prefer legacy getStreamingResponse if available (for backward compatibility in tests)
+            $events = $this->client->getStreamingResponse($conversationId, $message, $options, $onTextChunk, $shouldStop);
+            return StreamReader::toTextChunks($events, $onTextChunk);
+        } catch (Throwable) {
+            // Fall back to the new unified streaming path
+            $events = $this->streamEvents(onEvent: null, shouldStop: $shouldStop);
+            return StreamReader::toTextChunks($events, $onTextChunk);
+        }
     }
 
     /**
@@ -529,7 +549,42 @@ class AiAssistant implements AiAssistantContract
             throw new InvalidArgumentException('User message cannot be empty. Tip: call setUserMessage() or pass a prompt to AiAssistant::acceptPrompt().');
         }
         $options = ($this->options ?? TurnOptions::fromArray($this->chatTextGeneratorConfig))->toArray();
-        $gen = $this->client->getStreamingResponse($conversationId, $message, $options, $onEvent, $shouldStop);
+
+        $instructions = isset($options['instructions']) && is_string($options['instructions']) && $options['instructions'] !== ''
+            ? $options['instructions']
+            : null;
+        $model = isset($options['model']) && is_string($options['model']) && $options['model'] !== ''
+            ? $options['model']
+            : null;
+        $tools = isset($options['tools']) && is_array($options['tools']) ? $options['tools'] : [];
+        $responseFormat = $options['response_format'] ?? null;
+        $responseFormat = is_array($responseFormat) || is_string($responseFormat) ? $responseFormat : null;
+        $modalities = $options['modalities'] ?? null;
+        $modalities = is_array($modalities) || is_string($modalities) ? $modalities : null;
+        $metadata = isset($options['metadata']) && is_array($options['metadata']) ? $options['metadata'] : [];
+        $idempotencyKey = isset($options['idempotency_key']) && is_string($options['idempotency_key']) && $options['idempotency_key'] !== ''
+            ? $options['idempotency_key']
+            : null;
+        $toolChoice = $options['tool_choice'] ?? null;
+        $toolChoice = is_array($toolChoice) || is_string($toolChoice) ? $toolChoice : null;
+
+        $gen = $this->client->streamTurn(
+            $conversationId,
+            $instructions,
+            $model,
+            $tools,
+            [[
+                'role' => 'user',
+                'content' => [['type' => 'input_text', 'text' => $message]],
+            ]],
+            $responseFormat,
+            $modalities,
+            $metadata,
+            $onEvent,
+            $shouldStop,
+            $idempotencyKey,
+            $toolChoice
+        );
         $shouldReset = $this->autoReset ?? (bool)config('ai-assistant.reset_after_turn', true);
         if ($shouldReset) {
             $this->resetTurn();

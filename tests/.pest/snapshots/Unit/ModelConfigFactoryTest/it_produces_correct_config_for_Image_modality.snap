@@ -1,0 +1,5 @@
+{
+    "model": "dall-e-3",
+    "n": 1,
+    "response_format": "json"
+}

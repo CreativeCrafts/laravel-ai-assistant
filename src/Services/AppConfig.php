@@ -6,8 +6,11 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 
 // SDK factory removed; using internal stub OpenAI\\Client only
 use CreativeCrafts\LaravelAiAssistant\Contracts\AppConfigContract;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ModelOptions;
+use CreativeCrafts\LaravelAiAssistant\Enums\Modality;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
+use CreativeCrafts\LaravelAiAssistant\Factories\ModelConfigFactory;
 
 final class AppConfig implements AppConfigContract
 {
@@ -50,6 +53,8 @@ final class AppConfig implements AppConfigContract
     /**
      * Returns an array of configuration settings for the text generator.
      *
+     * @deprecated Use ModelConfigFactory::for(Modality::Text, ModelOptions) instead
+     *
      * @return array An associative array containing the following keys:
      *  - model: The model to use for text generation.
      *  - max_tokens: The maximum number of tokens to generate.
@@ -66,29 +71,23 @@ final class AppConfig implements AppConfigContract
      */
     public static function textGeneratorConfig(): array
     {
-        $temperature = config('ai-assistant.temperature');
-        $topP = config('ai-assistant.top_p');
-        $stop = config('ai-assistant.stop');
+        trigger_error(
+            'AppConfig::textGeneratorConfig() is deprecated. Use ModelConfigFactory::for(Modality::Text, ModelOptions::fromConfig()) instead.',
+            E_USER_DEPRECATED
+        );
 
-        return [
-            'model' => config('ai-assistant.model'),
-            // Map standardised config key to API parameter name
-            'max_tokens' => config('ai-assistant.max_completion_tokens'),
-            'temperature' => is_numeric($temperature) ? (float) $temperature : null,
-            'stream' => (bool) config('ai-assistant.stream'),
-            'echo' => (bool) config('ai-assistant.echo'),
-            'n' => config('ai-assistant.n'),
-            'suffix' => config('ai-assistant.suffix'),
-            'top_p' => is_numeric($topP) ? (float) $topP : null,
-            'presence_penalty' => config('ai-assistant.presence_penalty'),
-            'frequency_penalty' => config('ai-assistant.frequency_penalty'),
-            'best_of' => config('ai-assistant.best_of'),
-            'stop' => self::normalizeStop($stop),
-        ];
+        $config = ModelConfigFactory::for(
+            Modality::Text,
+            ModelOptions::fromConfig()
+        );
+
+        return $config->toArray();
     }
 
     /**
      * Returns an array of configuration settings for the chat text generator.
+     *
+     * @deprecated Use ModelConfigFactory::for(Modality::Chat, ModelOptions) instead
      *
      * @return array An associative array containing the following keys:
      *  - model: The model to use for chat text generation.
@@ -103,25 +102,23 @@ final class AppConfig implements AppConfigContract
      */
     public static function chatTextGeneratorConfig(): array
     {
-        $temperature = config('ai-assistant.temperature');
-        $topP = config('ai-assistant.top_p');
-        $stop = config('ai-assistant.stop');
+        trigger_error(
+            'AppConfig::chatTextGeneratorConfig() is deprecated. Use ModelConfigFactory::for(Modality::Chat, ModelOptions::fromConfig()) instead.',
+            E_USER_DEPRECATED
+        );
 
-        return [
-            'model' => config('ai-assistant.chat_model'),
-            'max_tokens' => config('ai-assistant.max_completion_tokens'),
-            'temperature' => is_numeric($temperature) ? (float) $temperature : null,
-            'stream' => (bool) config('ai-assistant.stream'),
-            'n' => config('ai-assistant.n'),
-            'top_p' => is_numeric($topP) ? (float) $topP : null,
-            'presence_penalty' => config('ai-assistant.presence_penalty'),
-            'frequency_penalty' => config('ai-assistant.frequency_penalty'),
-            'stop' => self::normalizeStop($stop),
-        ];
+        $config = ModelConfigFactory::for(
+            Modality::Chat,
+            ModelOptions::fromConfig()
+        );
+
+        return $config->toArray();
     }
 
     /**
      * Returns an array of configuration settings for the text editing model.
+     *
+     * @deprecated Use ModelConfigFactory::for(Modality::Edit, ModelOptions) instead
      *
      * @return array An associative array containing the following keys:
      *  - model: The model to use for text editing.
@@ -130,17 +127,23 @@ final class AppConfig implements AppConfigContract
      */
     public static function editTextGeneratorConfig(): array
     {
-        $temperature = config('ai-assistant.temperature');
-        $topP = config('ai-assistant.top_p');
-        return [
-            'model' => config('ai-assistant.edit_model'),
-            'temperature' => is_numeric($temperature) ? (float) $temperature : null,
-            'top_p' => is_numeric($topP) ? (float) $topP : null,
-        ];
+        trigger_error(
+            'AppConfig::editTextGeneratorConfig() is deprecated. Use ModelConfigFactory::for(Modality::Edit, ModelOptions::fromConfig()) instead.',
+            E_USER_DEPRECATED
+        );
+
+        $config = ModelConfigFactory::for(
+            Modality::Edit,
+            ModelOptions::fromConfig()
+        );
+
+        return $config->toArray();
     }
 
     /**
      * Returns an array of configuration settings for the audio to text generator.
+     *
+     * @deprecated Use ModelConfigFactory::for(Modality::AudioToText, ModelOptions) instead
      *
      * @return array An associative array containing the following keys:
      *  - model: The model to use for audio to text conversion.
@@ -149,40 +152,16 @@ final class AppConfig implements AppConfigContract
      */
     public static function audioToTextGeneratorConfig(): array
     {
-        $temperature = config('ai-assistant.temperature');
-        return [
-            'model' => config('ai-assistant.audio_model'),
-            'temperature' => is_numeric($temperature) ? (float) $temperature : null,
-            'response_format' => config('ai-assistant.response_format'),
-        ];
-    }
+        trigger_error(
+            'AppConfig::audioToTextGeneratorConfig() is deprecated. Use ModelConfigFactory::for(Modality::AudioToText, ModelOptions::fromConfig()) instead.',
+            E_USER_DEPRECATED
+        );
 
+        $config = ModelConfigFactory::for(
+            Modality::AudioToText,
+            ModelOptions::fromConfig()
+        );
 
-    /**
-     * Normalize the 'stop' parameter to null|string|array of strings as expected by the API.
-     * Accepts string, array, or null; trims strings and filters out empty values.
-     */
-    private static function normalizeStop(mixed $stop): array|string|null
-    {
-        if ($stop === null || $stop === '') {
-            return null;
-        }
-        if (is_string($stop)) {
-            $trimmed = trim($stop);
-            return $trimmed === '' ? null : $trimmed;
-        }
-        if (is_array($stop)) {
-            $normalized = [];
-            foreach ($stop as $item) {
-                if (is_string($item)) {
-                    $t = trim($item);
-                    if ($t !== '') {
-                        $normalized[] = $t;
-                    }
-                }
-            }
-            return $normalized === [] ? null : $normalized;
-        }
-        return null;
+        return $config->toArray();
     }
 }

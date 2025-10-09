@@ -10,6 +10,10 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
+use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
+use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
+use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
 use CreativeCrafts\LaravelAiAssistant\Tests\DataFactories\ApiPayloadFactory;
 
 /**
@@ -27,6 +31,7 @@ beforeEach(function () {
     $this->cacheServiceMock->shouldReceive('cacheResponse')->andReturn(true)->byDefault();
 
     $this->assistantService = new AssistantService($this->repositoryMock, $this->cacheServiceMock);
+        $this->aiManager = new AiManager($this->assistantService);
 });
 
 afterEach(function () {
@@ -47,7 +52,7 @@ test('text completion flow', function () {
 
     $this->repositoryMock->shouldReceive('createCompletion')->once()->with($payload)->andReturn($mockResponse);
 
-    $result = $this->assistantService->textCompletion($payload);
+    $result = (string) $this->aiManager->complete(Mode::TEXT, Transport::SYNC, CompletionRequest::fromArray($payload));
 
     expect($result)->toBe($expectedText);
 });
@@ -58,7 +63,7 @@ test('text completion with caching', function () {
 
     $this->cacheServiceMock->shouldReceive('getCompletion')->once()->andReturn($cachedResult);
 
-    $result = $this->assistantService->textCompletion($payload);
+    $result = (string) $this->aiManager->complete(Mode::TEXT, Transport::SYNC, CompletionRequest::fromArray($payload));
 
     expect($result)->toBe($cachedResult);
 });
@@ -83,7 +88,7 @@ test('chat completion flow', function () {
 
     $this->repositoryMock->shouldReceive('createChatCompletion')->once()->with($payload)->andReturn($mockResponse);
 
-    $result = $this->assistantService->chatTextCompletion($payload);
+    $result = $this->aiManager->complete(Mode::CHAT, Transport::SYNC, CompletionRequest::fromArray($payload))->toArray();
 
     expect($result)->toBe(['content' => $expectedContent]);
 });
@@ -136,6 +141,6 @@ test('audio processing with invalid file', function () {
 });
 
 test('validation error scenarios', function () {
-    expect(fn () => $this->assistantService->textCompletion([]))
+    expect(fn () => $this->aiManager->complete(Mode::TEXT, Transport::SYNC, CompletionRequest::fromArray([])))
         ->toThrow(InvalidArgumentException::class, 'Text completion payload cannot be empty.');
 });

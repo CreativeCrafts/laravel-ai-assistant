@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
+use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ProgressTrackerContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
+use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\ResponseCanceledException;
 use Exception;
 use Generator;
 use Illuminate\Support\Str;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\ResponseCanceledException;
 use JsonException;
+use Throwable;
 
 /**
  * Streaming service for handling large API responses efficiently.
@@ -25,15 +31,23 @@ class StreamingService
     private array $config;
     private LoggingService $loggingService;
     private MemoryMonitoringService $memoryMonitor;
-    private array $activeStreams = [];
+    private ResponsesRepositoryContract $responses;
+    private OpenAiRepositoryContract $repository;
+    private ProgressTrackerContract $progressTracker;
 
     public function __construct(
+        ResponsesRepositoryContract $responses,
+        OpenAiRepositoryContract $repository,
         LoggingService $loggingService,
         MemoryMonitoringService $memoryMonitor,
+        ProgressTrackerContract $progressTracker,
         array $config = []
     ) {
+        $this->responses = $responses;
+        $this->repository = $repository;
         $this->loggingService = $loggingService;
         $this->memoryMonitor = $memoryMonitor;
+        $this->progressTracker = $progressTracker;
         $this->config = $config;
     }
 
@@ -41,10 +55,51 @@ class StreamingService
      * Stream OpenAI Responses API SSE events, normalizing and accumulating deltas.
      * Supports backpressure via periodic GC and optional stop callback.
      *
-     * @param iterable $sse Iterable of raw SSE lines (from ResponsesHttpRepository::streamResponse)
+     * @param Mode $mode
+     * @param CompletionRequest $request
      * @param callable|null $onEvent Optional callback invoked with each normalized event
-     * @param callable|null $shouldStop Optional callback returning true to stop early (client disconnected)
-     * @return Generator Yields normalized events: ['type' => string, 'data' => array, 'isFinal' => bool]
+     * @param callable|null $shouldStop Optional callback returning true to stop early (a client disconnected)
+     * @return Generator Yields normalised events: ['type' => string, 'data' => array, 'isFinal' => bool]
+     * @throws Exception
+     */
+    public function process(Mode $mode, CompletionRequest $request, ?callable $onEvent = null, ?callable $shouldStop = null): Generator
+    {
+        $payload = $request->toArray();
+
+        // For TEXT mode with legacy completions (prompt-based), prefer repository streaming
+        // This handles cases where only prompt is provided (no conversation_id or messages)
+        if ($mode === Mode::TEXT && isset($payload['prompt'])) {
+            // If conversation_id is present, it's a Responses API call, otherwise legacy
+            if (!isset($payload['conversation_id'])) {
+                $events = $this->streamLegacyCompletion($payload, $onEvent, $shouldStop);
+                foreach ($events as $evt) {
+                    yield $evt;
+                }
+                return;
+            }
+        }
+
+        // For CHAT mode or conversation-based requests, use Responses API streaming
+        try {
+            $sse = $this->responses->streamResponse($payload);
+            $events = $this->streamResponses($sse, $onEvent, $shouldStop);
+            foreach ($events as $evt) {
+                yield $evt;
+            }
+        } catch (Throwable $e) {
+            // If Responses API fails and we're in TEXT mode with prompt, fallback to legacy
+            if ($mode === Mode::TEXT && isset($payload['prompt'])) {
+                $events = $this->streamLegacyCompletion($payload, $onEvent, $shouldStop);
+                foreach ($events as $evt) {
+                    yield $evt;
+                }
+                return;
+            }
+            throw $e;
+        }
+    }
+
+    /**
      * @throws Exception
      */
     public function streamResponses(iterable $sse, ?callable $onEvent = null, ?callable $shouldStop = null): Generator
@@ -61,7 +116,6 @@ class StreamingService
                 $serialized = json_encode($evt, JSON_THROW_ON_ERROR);
                 $totalSize += strlen($serialized);
 
-                // Surface cancellation immediately
                 if (($evt['type'] ?? '') === 'response.canceled') {
                     throw new ResponseCanceledException('Response streaming was canceled by client or server.');
                 }
@@ -102,6 +156,77 @@ class StreamingService
             $memoryReport = $this->memoryMonitor->endMonitoring($memoryCheckpoint);
             $this->logStreamCompletion($streamId, $memoryReport);
         }
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function accumulateText(CompletionRequest $request): string
+    {
+        $accumulated = '';
+        foreach ($this->process(Mode::TEXT, $request) as $evt) {
+            if (!is_array($evt)) {
+                continue;
+            }
+            $type = (string)($evt['type'] ?? '');
+            $data = (array)($evt['data'] ?? []);
+
+            if ($type === 'response.output_text.delta') {
+                $accumulated .= (string)($data['delta'] ?? ($data['text'] ?? ''));
+            } elseif ($type === 'response.output_text.completed') {
+                if (isset($data['text']) && is_string($data['text']) && $data['text'] !== '') {
+                    $accumulated = $data['text'];
+                }
+            } elseif (in_array($type, ['response.completed', 'response.failed', 'response.canceled'], true)) {
+                break;
+            }
+        }
+
+        return trim($accumulated);
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    public function accumulateChat(CompletionRequest $request): array
+    {
+        $role = 'assistant';
+        $content = '';
+        $toolCalls = [];
+        $finishReason = null;
+
+        foreach ($this->process(Mode::CHAT, $request) as $evt) {
+            if (!is_array($evt)) {
+                continue;
+            }
+            $type = (string)($evt['type'] ?? '');
+            $data = (array)($evt['data'] ?? []);
+
+            if ($type === 'response.output_text.delta') {
+                $content .= (string)($data['delta'] ?? ($data['text'] ?? ''));
+            } elseif ($type === 'response.output_text.completed') {
+                if (isset($data['text']) && is_string($data['text']) && $data['text'] !== '') {
+                    $content = $data['text'];
+                }
+            } elseif (str_contains($type, 'tool_call.created')) {
+                $toolCalls[] = $data;
+            } elseif (in_array($type, ['response.completed', 'response.failed', 'response.canceled'], true)) {
+                $finishReason = $type === 'response.completed' ? 'stop' : $type;
+                break;
+            }
+        }
+
+        $result = [
+            'role' => $role,
+            'content' => $content,
+        ];
+        if ($toolCalls !== []) {
+            $result['tool_calls'] = $toolCalls;
+        }
+        if ($finishReason !== null) {
+            $result['finish_reason'] = $finishReason;
+        }
+        return $result;
     }
 
     /**
@@ -229,8 +354,9 @@ class StreamingService
      * Buffer streaming data to reduce memory usage.
      *
      * @param iterable $stream Input stream
-     * @param int $bufferSize Buffer size in bytes
+     * @param int|null $bufferSize Buffer size in bytes
      * @return Generator Buffered chunks
+     * @throws JsonException
      */
     public function bufferStream(iterable $stream, int $bufferSize = null): Generator
     {
@@ -260,6 +386,7 @@ class StreamingService
      * Validate streaming configuration and capabilities.
      *
      * @return array Validation results
+     * @throws JsonException
      */
     public function validateStreamingCapabilities(): array
     {
@@ -282,16 +409,113 @@ class StreamingService
      */
     public function getStreamingMetrics(): array
     {
-        $totalStreams = count($this->activeStreams);
-        $metrics = [
-            'active_streams' => $totalStreams,
-            'total_streams_processed' => $this->getTotalStreamsProcessed(),
-            'average_stream_size_mb' => $this->getAverageStreamSize(),
-            'total_data_processed_mb' => $this->getTotalDataProcessed(),
-            'streaming_errors' => $this->getStreamingErrorCount(),
+        // Metrics are tracked via ProgressTracker and MetricsCollectionService
+        // This method provides basic capabilities info
+        return [
+            'active_streams' => 0,
+            'total_streams_processed' => 0,
+            'average_stream_size_mb' => 0.0,
+            'total_data_processed_mb' => 0.0,
+            'streaming_errors' => 0,
         ];
+    }
 
-        return $metrics;
+    /**
+     * Stream legacy text completions via repository with metrics and monitoring.
+     *
+     * @param array $payload
+     * @param callable|null $onEvent
+     * @param callable|null $shouldStop
+     * @return Generator
+     * @throws Exception
+     */
+    private function streamLegacyCompletion(array $payload, ?callable $onEvent = null, ?callable $shouldStop = null): Generator
+    {
+        $streamId = $this->initializeStream('legacy_completion');
+        $memoryCheckpoint = $this->memoryMonitor->startMonitoring('legacy_completion');
+
+        try {
+            $chunkCount = 0;
+            $totalSize = 0;
+            $stream = $this->repository->createStreamedCompletion($payload);
+
+            foreach ($stream as $chunk) {
+                $chunkCount++;
+                $serialized = json_encode($chunk, JSON_THROW_ON_ERROR);
+                $totalSize += strlen($serialized);
+
+                // Normalize chunk to event format
+                $choices = [];
+                if (is_array($chunk)) {
+                    $choices = $chunk['choices'] ?? [];
+                } elseif (is_object($chunk)) {
+                    $choices = $chunk->choices ?? [];
+                }
+
+                $first = $choices[0] ?? null;
+                $text = null;
+                if (is_array($first)) {
+                    $text = $first['text'] ?? null;
+                } elseif (is_object($first)) {
+                    $text = $first->text ?? null;
+                }
+
+                $evt = [
+                    'type' => 'response.output_text.delta',
+                    'data' => [
+                        'delta' => is_string($text) ? $text : '',
+                        'text' => is_string($text) ? $text : '',
+                    ],
+                    'isFinal' => false,
+                ];
+
+                if ($chunkCount % 10 === 0) {
+                    $this->memoryMonitor->updateMonitoring($memoryCheckpoint, "chunk_{$chunkCount}");
+                    $this->updateStreamProgress($streamId, $chunkCount, $totalSize);
+                }
+
+                if ($onEvent) {
+                    try {
+                        $onEvent($evt);
+                    } catch (Throwable $e) {
+                        // Ignore callback errors
+                    }
+                }
+
+                yield $evt;
+
+                if ($shouldStop && $shouldStop()) {
+                    $this->logStreamEvent($streamId, 'client_disconnected', [
+                        'chunks_processed' => $chunkCount,
+                        'size_processed' => $totalSize,
+                    ]);
+                    break;
+                }
+
+                if ($chunkCount % 100 === 0) {
+                    $this->performGarbageCollection($streamId);
+                }
+
+                // Legacy completions typically return first chunk only, break after
+                break;
+            }
+
+            // Emit completion event
+            yield [
+                'type' => 'response.completed',
+                'data' => [],
+                'isFinal' => true,
+            ];
+
+            $this->completeStream($streamId, $chunkCount, $totalSize);
+        } catch (Exception $e) {
+            $this->handleStreamError($streamId, $e);
+            throw $e;
+        } finally {
+            $this->cleanupStream($streamId);
+            $memoryReport = $this->memoryMonitor->endMonitoring($memoryCheckpoint);
+            $this->logStreamCompletion($streamId, $memoryReport);
+        }
     }
 
     /**
@@ -369,16 +593,12 @@ class StreamingService
         $unit = strtolower(substr($memoryLimit, -1));
         $value = (float) substr($memoryLimit, 0, -1);
 
-        switch ($unit) {
-            case 'g':
-                return $value * 1024;
-            case 'm':
-                return $value;
-            case 'k':
-                return $value / 1024;
-            default:
-                return $value / (1024 * 1024);
-        }
+        return match ($unit) {
+            'g' => $value * 1024,
+            'm' => $value,
+            'k' => $value / 1024,
+            default => $value / (1024 * 1024),
+        };
     }
 
     /**
@@ -391,13 +611,16 @@ class StreamingService
     {
         $streamId = 'stream_' . Str::uuid()->toString();
 
-        $this->activeStreams[$streamId] = [
-            'operation' => $operation,
-            'start_time' => microtime(true),
-            'chunk_count' => 0,
-            'total_size' => 0,
-            'status' => 'active',
-        ];
+        $this->progressTracker->start(
+            $streamId,
+            'stream',
+            [
+                'operation' => $operation,
+                'start_time' => microtime(true),
+                'chunk_count' => 0,
+                'total_size' => 0,
+            ]
+        );
 
         $this->logStreamEvent($streamId, 'stream_initialized', [
             'operation' => $operation,
@@ -415,19 +638,20 @@ class StreamingService
      */
     private function updateStreamProgress(string $streamId, int $chunkCount, int $totalSize): void
     {
-        if (!isset($this->activeStreams[$streamId])) {
-            return;
-        }
-
-        $this->activeStreams[$streamId]['chunk_count'] = $chunkCount;
-        $this->activeStreams[$streamId]['total_size'] = $totalSize;
+        $this->progressTracker->update($streamId, $chunkCount, [
+            'chunk_count' => $chunkCount,
+            'total_size' => $totalSize,
+        ]);
 
         // Log progress periodically
         if ($chunkCount % 50 === 0) {
+            $status = $this->progressTracker->getStatus($streamId);
+            $startTime = $status ? strtotime($status['started_at'] ?? $status['created_at']) : time();
+
             $this->logStreamEvent($streamId, 'progress_update', [
                 'chunks_processed' => $chunkCount,
                 'size_mb' => round($totalSize / (1024 * 1024), 2),
-                'duration_seconds' => microtime(true) - $this->activeStreams[$streamId]['start_time'],
+                'duration_seconds' => time() - $startTime,
             ]);
         }
     }
@@ -441,22 +665,27 @@ class StreamingService
      */
     private function completeStream(string $streamId, int $chunkCount, int $totalSize): void
     {
-        if (!isset($this->activeStreams[$streamId])) {
+        $status = $this->progressTracker->getStatus($streamId);
+        if (!$status) {
             return;
         }
 
-        $duration = microtime(true) - $this->activeStreams[$streamId]['start_time'];
+        $startTime = strtotime($status['started_at'] ?? $status['created_at']);
+        $duration = time() - $startTime;
 
-        $this->activeStreams[$streamId]['status'] = 'completed';
-        $this->activeStreams[$streamId]['chunk_count'] = $chunkCount;
-        $this->activeStreams[$streamId]['total_size'] = $totalSize;
-        $this->activeStreams[$streamId]['duration'] = $duration;
+        $result = [
+            'chunk_count' => $chunkCount,
+            'total_size' => $totalSize,
+            'duration' => $duration,
+        ];
+
+        $this->progressTracker->complete($streamId, $result);
 
         $this->logStreamEvent($streamId, 'stream_completed', [
             'total_chunks' => $chunkCount,
             'total_size_mb' => round($totalSize / (1024 * 1024), 2),
             'duration_seconds' => $duration,
-            'throughput_mbps' => $totalSize > 0 ? round(($totalSize / (1024 * 1024)) / $duration, 2) : 0,
+            'throughput_mbps' => $totalSize > 0 ? round(($totalSize / (1024 * 1024)) / max(1, $duration), 2) : 0,
         ]);
     }
 
@@ -468,19 +697,19 @@ class StreamingService
      */
     private function handleStreamError(string $streamId, Exception $exception): void
     {
-        if (!isset($this->activeStreams[$streamId])) {
-            return;
-        }
+        $status = $this->progressTracker->getStatus($streamId);
 
-        $this->activeStreams[$streamId]['status'] = 'error';
-        $this->activeStreams[$streamId]['error'] = $exception->getMessage();
-
-        $this->logStreamEvent($streamId, 'stream_error', [
-            'error_message' => $exception->getMessage(),
+        $context = [
             'error_class' => get_class($exception),
-            'chunks_processed' => $this->activeStreams[$streamId]['chunk_count'],
-            'size_processed_mb' => round($this->activeStreams[$streamId]['total_size'] / (1024 * 1024), 2),
-        ]);
+            'chunks_processed' => $status['metadata']['chunk_count'] ?? 0,
+            'size_processed_mb' => round(($status['metadata']['total_size'] ?? 0) / (1024 * 1024), 2),
+        ];
+
+        $this->progressTracker->fail($streamId, $exception->getMessage(), $context);
+
+        $this->logStreamEvent($streamId, 'stream_error', array_merge([
+            'error_message' => $exception->getMessage(),
+        ], $context));
     }
 
     /**
@@ -490,11 +719,9 @@ class StreamingService
      */
     private function cleanupStream(string $streamId): void
     {
-        // Move to completed streams for metrics
-        if (isset($this->activeStreams[$streamId])) {
-            // Keep stream data for metrics collection
-            unset($this->activeStreams[$streamId]);
-        }
+        // Progress tracker maintains data for configured TTL for metrics/audit
+        // Only cleanup if explicitly needed, otherwise let TTL handle it
+        // $this->progressTracker->cleanup($streamId);
     }
 
     /**
@@ -540,7 +767,7 @@ class StreamingService
     }
 
     /**
-     * Log stream completion with memory report.
+     * Log stream completion with a memory report.
      *
      * @param string $streamId Stream identifier
      * @param array $memoryReport Memory monitoring report
@@ -548,49 +775,5 @@ class StreamingService
     private function logStreamCompletion(string $streamId, array $memoryReport): void
     {
         $this->logStreamEvent($streamId, 'stream_completed_with_memory', $memoryReport);
-    }
-
-    /**
-     * Get total streams processed (placeholder for metrics).
-     *
-     * @return int
-     */
-    private function getTotalStreamsProcessed(): int
-    {
-        // This would be stored in a cache or database for persistence
-        return 0;
-    }
-
-    /**
-     * Get average stream size (placeholder for metrics).
-     *
-     * @return float
-     */
-    private function getAverageStreamSize(): float
-    {
-        // This would be calculated from historical data
-        return 0.0;
-    }
-
-    /**
-     * Get total data processed (placeholder for metrics).
-     *
-     * @return float
-     */
-    private function getTotalDataProcessed(): float
-    {
-        // This would be stored in a cache or database for persistence
-        return 0.0;
-    }
-
-    /**
-     * Get streaming error count (placeholder for metrics).
-     *
-     * @return int
-     */
-    private function getStreamingErrorCount(): int
-    {
-        // This would be stored in a cache or database for persistence
-        return 0;
     }
 }

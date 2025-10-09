@@ -11,6 +11,10 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
+use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
+use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
+use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
 
 covers(AssistantService::class);
 
@@ -24,7 +28,11 @@ beforeEach(function () {
     $this->cacheServiceMock->shouldReceive('getResponse')->andReturn(null)->byDefault();
     $this->cacheServiceMock->shouldReceive('cacheResponse')->andReturn(true)->byDefault();
 
+    // Bind the mock repository to the container so StreamingService uses it
+    app()->instance(OpenAiRepositoryContract::class, $this->repositoryMock);
+
     $this->service = new AssistantService($this->repositoryMock, $this->cacheServiceMock);
+    $this->aiManager = new AiManager($this->service);
 });
 
 it('performs text completion and returns last choice text', function () {
@@ -38,7 +46,7 @@ it('performs text completion and returns last choice text', function () {
 
     $this->repositoryMock->shouldReceive('createCompletion')->once()->with($payload)->andReturn($response);
 
-    expect($this->service->textCompletion($payload))->toBe('Second');
+    expect((string) $this->aiManager->complete(Mode::TEXT, Transport::SYNC, CompletionRequest::fromArray($payload)))->toBe('Second');
 });
 
 it('performs chat completion and returns message array', function () {
@@ -58,7 +66,7 @@ it('performs chat completion and returns message array', function () {
 
     $this->repositoryMock->shouldReceive('createChatCompletion')->once()->with($payload)->andReturn($chat);
 
-    expect($this->service->chatTextCompletion($payload))->toBe(['content' => 'Reply']);
+    expect($this->aiManager->complete(Mode::CHAT, Transport::SYNC, CompletionRequest::fromArray($payload))->toArray())->toBe(['content' => 'Reply']);
 });
 
 it('performs streamed text completion and returns first chunk text if present', function () {
@@ -69,7 +77,7 @@ it('performs streamed text completion and returns first chunk text if present', 
 
     $this->repositoryMock->shouldReceive('createStreamedCompletion')->once()->with($payload)->andReturn($generator());
 
-    expect($this->service->streamedCompletion($payload))->toBe('chunk');
+    expect((string) $this->aiManager->complete(Mode::TEXT, Transport::STREAM, CompletionRequest::fromArray($payload)))->toBe('chunk');
 });
 
 it('returns empty string when streamed chunk has no text', function () {
@@ -80,7 +88,7 @@ it('returns empty string when streamed chunk has no text', function () {
 
     $this->repositoryMock->shouldReceive('createStreamedCompletion')->once()->with($payload)->andReturn($generator());
 
-    expect($this->service->streamedCompletion($payload))->toBe('');
+    expect((string) $this->aiManager->complete(Mode::TEXT, Transport::STREAM, CompletionRequest::fromArray($payload)))->toBe('');
 });
 
 it('transcribes audio and returns text', function () {
@@ -118,4 +126,41 @@ it('translates audio and returns text', function () {
 
     expect($this->service->translateTo($payload))->toBe('translated');
     fclose($file);
+});
+
+it('emits deprecation once for legacy textCompletion', function () {
+    $payload = ['model' => 'gpt-3.5-turbo', 'prompt' => 'Hello'];
+
+    $response = Mockery::mock(CreateResponse::class);
+    $ref = new ReflectionClass(CreateResponse::class);
+    $prop = $ref->getProperty('choices');
+    $prop->setAccessible(true);
+    $prop->setValue($response, [ (object)['text' => 'Only'] ]);
+
+    $this->repositoryMock->shouldReceive('createCompletion')->twice()->with($payload)->andReturn($response);
+
+    // Reset deprecation flag
+    $classRef = new ReflectionClass(AssistantService::class);
+    $depProp = $classRef->getProperty('deprecationOnce');
+    $depProp->setAccessible(true);
+    $depProp->setValue(null, []);
+
+    $count = 0;
+    $prev = set_error_handler(function (int $errno, string $errstr) use (&$count): bool {
+        if ($errno === E_USER_DEPRECATED && str_contains($errstr, 'textCompletion')) {
+            $count++;
+        }
+        // prevent default handling
+        return true;
+    });
+
+    try {
+        // Call legacy twice, should emit once
+        $this->service->textCompletion($payload);
+        $this->service->textCompletion($payload);
+    } finally {
+        set_error_handler($prev);
+    }
+
+    expect($count)->toBe(1);
 });

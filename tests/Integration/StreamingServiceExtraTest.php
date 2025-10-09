@@ -47,9 +47,18 @@ it('invokes onEvent callback and supports early termination via shouldStop', fun
     $count = 0;
     $shouldStopAfter = 2;
 
-    $gen = $assistant->getStreamingResponse(
+    $gen = $assistant->streamTurn(
         $convId,
-        'hi',
+        instructions: null,
+        model: null,
+        tools: [],
+        inputItems: [[
+            'role' => 'user',
+            'content' => [['type' => 'input_text', 'text' => 'hi']],
+        ]],
+        responseFormat: null,
+        modalities: null,
+        metadata: [],
         onEvent: function ($evt) use (&$count) { $count++; },
         shouldStop: function () use (&$count, $shouldStopAfter) { return $count >= $shouldStopAfter; }
     );
@@ -80,7 +89,16 @@ it('throws ResponseCanceledException when a canceled event is seen', function ()
     $this->expectException(ResponseCanceledException::class);
 
     // Force iteration to trigger exception inside StreamingService
-    foreach ($assistant->getStreamingResponse($convId, 'hi') as $evt) {
+    foreach ($assistant->streamTurn(
+        $convId,
+        instructions: null,
+        model: null,
+        tools: [],
+        inputItems: [[
+                'role' => 'user',
+                'content' => [['type' => 'input_text', 'text' => 'hi']],
+            ]]
+    ) as $evt) {
         // no-op
     }
 });

@@ -6,18 +6,28 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 
 use CreativeCrafts\LaravelAiAssistant\Chat\ChatSession;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionResult;
+use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
+use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
 use CreativeCrafts\LaravelAiAssistant\Support\ConversationsBuilder;
 use CreativeCrafts\LaravelAiAssistant\Support\ResponsesBuilder;
 use Generator;
+use JsonException;
+use Psr\SimpleCache\InvalidArgumentException;
 
 final class AiManager
 {
+    public function __construct(public AssistantService $assistantService)
+    {
+    }
+
     /**
      * Access the Responses API via a fluent builder.
      */
     public function responses(): ResponsesBuilder
     {
-        return new ResponsesBuilder(resolve(AssistantService::class));
+        return new ResponsesBuilder($this->assistantService);
     }
 
     /**
@@ -25,7 +35,7 @@ final class AiManager
      */
     public function conversations(): ConversationsBuilder
     {
-        return new ConversationsBuilder(resolve(AssistantService::class));
+        return new ConversationsBuilder($this->assistantService);
     }
 
     /**
@@ -91,6 +101,23 @@ final class AiManager
     public function stream(string $prompt, ?callable $onEvent = null, ?callable $shouldStop = null): Generator
     {
         return ChatSession::make($prompt)->stream($onEvent, $shouldStop);
+    }
+
+    /**
+     * NEW: Unified completion entrypoint (public front door).
+     * Wraps AssistantService::completeSync/completeStream.
+     *
+     * @throws JsonException
+     * @throws InvalidArgumentException
+     */
+    public function complete(Mode $mode, Transport $transport, CompletionRequest $request): CompletionResult
+    {
+        if ($transport === Transport::SYNC) {
+            return $this->assistantService->completeSync($mode, $request);
+        }
+
+        // Stream → accumulate into a final result (callers who need incremental events should still use ChatSession::stream)
+        return $this->assistantService->completeStream($mode, $request);
     }
 
 }

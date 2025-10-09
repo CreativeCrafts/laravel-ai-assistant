@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
-use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeResponsesRepository;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
-use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeConversationsRepository;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeResponsesRepository;
+use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeConversationsRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeFilesRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\DataFactories\ResponsesFactory;
-use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 
 beforeEach(function () {
     config()->set('ai-assistant.api_key', 'test_key_123');
@@ -35,26 +35,37 @@ beforeEach(function () {
     });
 });
 
-it('streams tool_call created events and completes', function () {
+it('supports Responses list/get/cancel/delete and respects payload tools', function () {
     $assistant = app(AssistantService::class);
     /** @var FakeResponsesRepository $responses */
     $responses = app(ResponsesRepositoryContract::class);
 
     $convId = $assistant->createConversation();
 
-    $responses->setStream(ResponsesFactory::streamingToolCallSse('lookup', ['q' => 'hello']));
+    // Queue two responses and verify list
+    $responses->pushResponse(ResponsesFactory::syncTextResponse($convId, 'one'));
+    $responses->pushResponse(ResponsesFactory::syncTextResponse($convId, 'two'));
+    $list = $responses->listResponses();
+    expect(count($list['data'] ?? []))->toBeGreaterThanOrEqual(2);
 
-    $events = iterator_to_array($assistant->streamTurn(
-        $convId,
-        instructions: null,
-        model: null,
-        tools: [],
-        inputItems: [[
-                'role' => 'user',
-                'content' => [['type' => 'input_text', 'text' => 'hi']],
-            ]]
-    ));
+    // Create response with file_ids should auto-enable file_search
+    $assistant->sendChatMessage($convId, 'with files', [
+        'file_ids' => ['file_1'],
+        'tools' => [],
+    ]);
+    $payload = $responses->lastPayload;
+    $hasFileSearch = collect($payload['tools'] ?? [])->contains(fn ($t) => ($t['type'] ?? null) === 'file_search');
+    expect($hasFileSearch)->toBeTrue();
 
-    $types = array_map(fn ($e) => $e['type'] ?? '', $events);
-    expect($types)->toContain('response.tool_call.created')->toContain('response.completed');
+    // Last queued response becomes lastResponse
+    $created = $responses->createResponse(['conversation' => $convId]);
+    expect($created['conversation_id'] ?? null)->toBe($convId);
+
+    // get/cancel/delete paths
+    $rid = $created['id'] ?? 'resp_x';
+    $got = $responses->getResponse($rid);
+    expect($got['id'] ?? null)->toBe($rid);
+
+    expect($responses->cancelResponse($rid))->toBeTrue();
+    expect($responses->deleteResponse($rid))->toBeTrue();
 });

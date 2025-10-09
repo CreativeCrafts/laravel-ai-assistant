@@ -7,6 +7,10 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
+use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
+use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
+use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeConversationsRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeFilesRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeResponsesRepository;
@@ -34,6 +38,7 @@ beforeEach(function () {
     });
 
     $this->assistantService = app(AssistantService::class);
+    $this->aiManager = new AiManager($this->assistantService);
     $this->performanceMetrics = [];
 });
 
@@ -49,17 +54,21 @@ it('chat completion performance', function () {
     $memoryStart = memory_get_usage(true);
 
     for ($i = 0; $i < $iterations; $i++) {
-        $response = $this->assistantService->chatTextCompletion([
-            'model' => 'gpt-3.5-turbo',
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => "Test message {$i}",
+        $result = $this->aiManager->complete(
+            Mode::CHAT,
+            Transport::SYNC,
+            CompletionRequest::fromArray([
+                'model' => 'gpt-3.5-turbo',
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => "Test message {$i}",
+                    ],
                 ],
-            ],
-        ]);
+            ])
+        )->toArray();
 
-        expect($response)->not->toBeNull();
+        expect($result)->not->toBeNull();
     }
 
     $endTime = microtime(true);

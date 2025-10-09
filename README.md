@@ -769,3 +769,79 @@ The MIT License (MIT). Please see [LICENSE](LICENSE.md) for more information.
 - [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md) - Complete environment variable reference
 - [docs/PERFORMANCE_TUNING.md](docs/PERFORMANCE_TUNING.md) - Performance optimization guide
 - [docs/PRODUCTION_CONFIGURATION.md](docs/PRODUCTION_CONFIGURATION.md) - Production deployment guide
+
+
+---
+
+## Unified Completion Entrypoint (New)
+
+Use a single public entrypoint to cover text/chat × sync/stream via AiManager::complete.
+
+Text (sync):
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Enums\{Mode, Transport};
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\{CompletionRequest};
+use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
+
+$ai = app(AiManager::class);
+
+$result = $ai->complete(
+    Mode::TEXT,
+    Transport::SYNC,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'prompt' => 'Write a haiku about Laravel',
+        'temperature' => 0.2,
+    ])
+);
+
+echo (string) $result; // final text
+```
+
+Chat (sync):
+
+```php
+$result = $ai->complete(
+    Mode::CHAT,
+    Transport::SYNC,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'messages' => [
+            ['role' => 'user', 'content' => 'Summarize this: ...'],
+        ],
+    ])
+);
+
+$data = $result->toArray(); // normalized message array
+```
+
+Stream (accumulate to final result):
+
+```php
+// Text stream → accumulated final string
+$final = (string) $ai->complete(
+    Mode::TEXT,
+    Transport::STREAM,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'prompt' => 'Stream a short message',
+    ])
+);
+
+// Chat stream → accumulated final array
+$finalArray = $ai->complete(
+    Mode::CHAT,
+    Transport::STREAM,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'messages' => [ ['role' => 'user', 'content' => 'Hello'] ],
+    ])
+)->toArray();
+
+// If you need incremental events, prefer ChatSession::stream(...)
+```
+
+Deprecation notice:
+
+Legacy methods on AssistantService (textCompletion, chatTextCompletion, streamedCompletion, streamedChat) are deprecated and will be removed in a future release. They now log a deprecation warning once per process. Prefer AiManager::complete.
