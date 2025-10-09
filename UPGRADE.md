@@ -2,14 +2,175 @@
 
 This document provides comprehensive upgrade instructions for major version changes of the Laravel AI Assistant package.
 
-## Migrating from Assistant API to Responses/Conversations API (Recommended)
+## Modern Approach: Unified Completion API (Recommended)
 
-The Assistant API is **deprecated in 1.x** and will be removed in a future major version. We strongly recommend migrating to the modern **Responses API** and **Conversations API**.
+The **unified completion API** (`AiManager::complete()`) is the **modern, recommended approach** for all AI operations. It provides:
 
-### Why Migrate to Responses API?
+- **Explicit control**: Clear separation of mode (TEXT/CHAT) and transport (SYNC/STREAM)
+- **Type safety**: Strongly-typed enums and DTOs
+- **Consistency**: Single interface for all completion types
+- **Future-proof**: Designed for extensibility and new features
 
-The Responses API aligns with OpenAI's direction — see the official migration guide: https://platform.openai.com/docs/guides/migrating-from-chat-completions-to-responses and provides:
+### Quick Migration to Unified API
 
+**Before (Legacy approaches):**
+
+```php
+// Old Assistant API (deprecated)
+$assistant = app(Assistant::class)
+    ->setModelName('gpt-4')
+    ->createTask()
+    ->askQuestion('Hello')
+    ->process();
+$text = $assistant->response();
+
+// Or old AssistantService methods (deprecated)
+$service->textCompletion('Hello', 'gpt-4');
+```
+
+**After (Modern unified API):**
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
+use CreativeCrafts\LaravelAiAssistant\Enums\{Mode, Transport};
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
+
+$ai = app(AiManager::class);
+
+$result = $ai->complete(
+    Mode::TEXT,
+    Transport::SYNC,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4',
+        'prompt' => 'Hello',
+    ])
+);
+
+echo (string) $result;
+```
+
+### Unified API Examples
+
+#### Text Completion
+
+**Before:**
+```php
+$response = $assistantService->textCompletion(
+    'Write a haiku about Laravel',
+    'gpt-4o-mini'
+);
+```
+
+**After:**
+```php
+$result = $ai->complete(
+    Mode::TEXT,
+    Transport::SYNC,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'prompt' => 'Write a haiku about Laravel',
+        'temperature' => 0.7,
+    ])
+);
+echo (string) $result;
+```
+
+#### Chat Completion
+
+**Before:**
+```php
+$response = $assistantService->chatTextCompletion(
+    [
+        ['role' => 'user', 'content' => 'Explain DI']
+    ],
+    'gpt-4'
+);
+```
+
+**After:**
+```php
+$result = $ai->complete(
+    Mode::CHAT,
+    Transport::SYNC,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4',
+        'messages' => [
+            ['role' => 'system', 'content' => 'You are a helpful assistant'],
+            ['role' => 'user', 'content' => 'Explain DI'],
+        ],
+    ])
+);
+$data = $result->toArray();
+```
+
+#### Streaming
+
+**Before:**
+```php
+$stream = $assistantService->streamedCompletion('Tell a story');
+foreach ($stream as $chunk) {
+    echo $chunk;
+}
+```
+
+**After:**
+```php
+$result = $ai->complete(
+    Mode::TEXT,
+    Transport::STREAM,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'prompt' => 'Tell a story',
+    ])
+);
+echo (string) $result; // Returns accumulated final result
+```
+
+> **Note**: For incremental streaming with callbacks, use `Ai::stream()` which provides `onEvent` and `shouldStop` callbacks.
+
+### Benefits of Unified API
+
+| Feature | Unified API | Legacy APIs |
+|---------|-------------|-------------|
+| **Type Safety** | ✅ Enums, DTOs | ❌ Strings, arrays |
+| **IDE Support** | ✅ Full autocompletion | ⚠️ Limited |
+| **Consistency** | ✅ Single interface | ❌ Multiple methods |
+| **Deprecation Warnings** | ✅ None | ⚠️ Logged |
+| **Future Support** | ✅ Active development | ❌ Maintenance only |
+
+### Convenience Methods (Alternative)
+
+For rapid development, you can still use convenience methods:
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Quick one-off (good for simple cases)
+$response = Ai::quick('Hello AI');
+
+// Chat session (good for multi-turn)
+$chat = Ai::chat('You are helpful');
+$response = $chat->message('Hello')->send();
+
+// Streaming (good for real-time UX)
+foreach (Ai::stream('Tell a story') as $chunk) {
+    echo $chunk;
+}
+```
+
+These convenience methods are **not deprecated** and are perfect for simple use cases.
+
+---
+
+## Migrating from Assistant API to Responses/Conversations API
+
+The Assistant API is **deprecated in 1.x** and will be removed in a future major version. We strongly recommend migrating to the modern **Responses API** and **Conversations API** (or the unified completion API above).
+
+### Why Migrate?
+
+The modern APIs align with OpenAI's direction — see: https://platform.openai.com/docs/guides/migrating-from-chat-completions-to-responses
+
+Benefits:
 - **Better structure**: Clean separation between responses (single turns) and conversations (multi-turn threads)
 - **Enhanced features**: Native support for tool calls, streaming, and multimodal inputs
 - **Improved ergonomics**: Fluent builder pattern with IDE autocompletion

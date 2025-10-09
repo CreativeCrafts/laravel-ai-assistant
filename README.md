@@ -9,25 +9,16 @@ Laravel AI Assistant is a modern, production-ready package for integrating OpenA
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (≤5 Minutes)
 
-### Installation
+### Step 1: Install (1 min)
 
 ```bash
 composer require creativecrafts/laravel-ai-assistant
-```
-
-Publish the configuration:
-
-```bash
-php artisan vendor:publish --tag=laravel-ai-assistant-config
-```
-
-Run the installer (recommended):
-
-```bash
 php artisan ai:install
 ```
+
+### Step 2: Configure (1 min)
 
 Set your OpenAI API key in `.env`:
 
@@ -35,17 +26,27 @@ Set your OpenAI API key in `.env`:
 OPENAI_API_KEY=your-openai-api-key-here
 ```
 
-### Your First AI Request
+### Step 3: Hello World Chat (1 min)
 
 ```php
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 
-// Quick one-off request
+// Simple one-off request
 $response = Ai::quick('Explain Laravel queues in simple terms');
 echo $response->text;
 ```
 
-That's it! You're ready to build AI-powered features.
+### Step 4: Streaming Response (2 min)
+
+```php
+// Real-time streaming for better UX
+foreach (Ai::stream('Tell me about Laravel') as $chunk) {
+    echo $chunk;
+    flush();
+}
+```
+
+**That's it!** You now have AI-powered chat with streaming. See [examples/](examples/) for more patterns.
 
 ---
 
@@ -67,19 +68,104 @@ This package uses OpenAI's modern **Responses API** and **Conversations API**, w
 ```php
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 
-// One-off requests (stateless)
-Ai::quick('Your prompt here');
+// Unified completion API (recommended)
+$ai->complete(Mode::TEXT, Transport::SYNC, $request);
 
-// Stateful conversations
-Ai::chat('System instructions here');
+// Convenience methods
+Ai::quick('Your prompt here');           // One-off requests
+Ai::chat('System instructions');         // Stateful conversations
+Ai::stream('Your prompt here');          // Streaming responses
 
 // Direct API access
-Ai::responses();      // For single-turn responses
-Ai::conversations();  // For multi-turn threads
-
-// Streaming
-Ai::stream('Your prompt here');
+Ai::responses();                         // Single-turn responses
+Ai::conversations();                     // Multi-turn threads
 ```
+
+### Comparison: Sync vs Stream
+
+| Feature | SYNC | STREAM |
+|---------|------|--------|
+| **Response Time** | Wait for complete response | First token arrives quickly |
+| **Memory Usage** | Lower | Higher (buffering) |
+| **User Experience** | Blocking | Progressive, real-time |
+| **Best For** | Batch processing, APIs | Interactive UIs, long responses |
+
+---
+
+## 🎯 Unified Completion API (Recommended)
+
+The **unified completion API** provides a consistent interface for all AI operations with explicit control over mode and transport.
+
+### Quick Example
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
+use CreativeCrafts\LaravelAiAssistant\Enums\{Mode, Transport};
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
+
+$ai = app(AiManager::class);
+
+// Text completion (sync)
+$result = $ai->complete(
+    Mode::TEXT,
+    Transport::SYNC,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'prompt' => 'Write a haiku about Laravel',
+        'temperature' => 0.2,
+    ])
+);
+
+echo (string) $result;
+```
+
+### Mode Options
+
+- **`Mode::TEXT`** - Simple text completion (single prompt string)
+- **`Mode::CHAT`** - Chat with message history (conversation context)
+
+### Transport Options
+
+- **`Transport::SYNC`** - Wait for complete response (blocking)
+- **`Transport::STREAM`** - Stream tokens as generated (accumulated into final result)
+
+### Chat Example
+
+```php
+$result = $ai->complete(
+    Mode::CHAT,
+    Transport::SYNC,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'messages' => [
+            ['role' => 'system', 'content' => 'You are a helpful assistant'],
+            ['role' => 'user', 'content' => 'Explain dependency injection'],
+        ],
+    ])
+);
+
+$data = $result->toArray();
+```
+
+### Streaming Example
+
+```php
+// Stream accumulates to final result
+$finalResult = $ai->complete(
+    Mode::TEXT,
+    Transport::STREAM,
+    CompletionRequest::fromArray([
+        'model' => 'gpt-4o-mini',
+        'prompt' => 'Tell me a story',
+    ])
+);
+
+echo (string) $finalResult;
+```
+
+> **Note**: For incremental streaming events (processing chunks as they arrive), use `Ai::stream()` instead.
+
+See [docs/API.md](docs/API.md) for complete API reference.
 
 ---
 
@@ -198,6 +284,64 @@ Route::get('/ai/stream', function (Request $request) {
     
     return StreamedAiResponse::fromGenerator($generator);
 });
+```
+
+#### Cancellation (Stopping Streams)
+
+Stop streaming operations mid-flight using the `shouldStop` callback:
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Limit by chunk count
+$maxChunks = 10;
+$chunkCount = 0;
+
+$stream = Ai::stream(
+    'Write a very long essay',
+    onEvent: null,
+    shouldStop: function () use (&$chunkCount, $maxChunks): bool {
+        $chunkCount++;
+        return $chunkCount >= $maxChunks; // Stop after 10 chunks
+    }
+);
+
+foreach ($stream as $chunk) {
+    echo $chunk;
+    if ($chunkCount >= $maxChunks) {
+        break;
+    }
+}
+
+// Limit by time
+$startTime = microtime(true);
+$maxDuration = 5.0; // 5 seconds
+
+$stream = Ai::stream(
+    'Generate content',
+    shouldStop: function () use ($startTime, $maxDuration): bool {
+        return (microtime(true) - $startTime) >= $maxDuration;
+    }
+);
+
+foreach ($stream as $chunk) {
+    echo $chunk;
+}
+
+// User-initiated cancellation
+$cancelled = false; // Set to true from external signal
+
+$stream = Ai::stream(
+    'Long operation',
+    shouldStop: fn() => $cancelled
+);
+
+foreach ($stream as $chunk) {
+    echo $chunk;
+    if ($cancelled) {
+        break;
+    }
+}
 ```
 
 ### Tool Calls (Function Calling)
@@ -652,7 +796,100 @@ $this->assertCount(3, $chunks);
 
 ---
 
-## 📊 Monitoring & Metrics
+## 📊 Monitoring & Observability
+
+### Observability Integration
+
+Track all AI operations with correlation IDs, metrics, and structured logging:
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\{Ai, Observability};
+use Illuminate\Support\Str;
+
+// Set correlation ID for request tracing
+Observability::setCorrelationId(Str::uuid()->toString());
+
+// Track operation with memory monitoring
+$startTime = microtime(true);
+$checkpoint = Observability::trackMemory('ai-chat');
+
+try {
+    // Log request
+    Observability::log('ai-request', 'info', 'Processing AI request');
+    
+    // Make AI request
+    $response = Ai::quick('Hello AI');
+    
+    $duration = microtime(true) - $startTime;
+    
+    // Log success metrics
+    Observability::logApiResponse(
+        'ai-completion',
+        true,
+        ['text_length' => strlen($response->text)],
+        $duration
+    );
+    
+    // Record performance metrics
+    Observability::recordApiCall(
+        '/ai/complete',
+        $duration * 1000,
+        200
+    );
+    
+    // End memory tracking
+    $metrics = Observability::endMemoryTracking($checkpoint);
+    
+    Observability::logPerformanceMetrics(
+        'ai-chat',
+        $duration * 1000,
+        $metrics
+    );
+    
+} catch (\Exception $e) {
+    Observability::endMemoryTracking($checkpoint);
+    Observability::report($e, ['operation' => 'ai-chat']);
+    throw $e;
+}
+```
+
+### Streaming with Observability
+
+```php
+Observability::setCorrelationId(request()->header('X-Request-ID'));
+
+$checkpoint = Observability::trackMemory('ai-stream');
+$chunkCount = 0;
+
+try {
+    Observability::log('ai-stream', 'info', 'Starting stream');
+    
+    foreach (Ai::stream('Tell a story') as $chunk) {
+        $chunkCount++;
+        echo $chunk;
+    }
+    
+    $metrics = Observability::endMemoryTracking($checkpoint);
+    Observability::logPerformanceMetrics(
+        'ai-stream',
+        $duration * 1000,
+        array_merge($metrics, ['chunks' => $chunkCount])
+    );
+} catch (\Exception $e) {
+    Observability::endMemoryTracking($checkpoint);
+    Observability::reportApiError(
+        'ai-stream',
+        '/stream',
+        500,
+        $e->getMessage(),
+        [],
+        ['error' => $e->getMessage()]
+    );
+    throw $e;
+}
+```
+
+See [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) for complete documentation on correlation IDs, logging, metrics, error reporting, and memory tracking.
 
 ### Built-in Metrics
 
@@ -763,12 +1000,29 @@ The MIT License (MIT). Please see [LICENSE](LICENSE.md) for more information.
 
 ## 📚 Additional Documentation
 
-- [UPGRADE.md](UPGRADE.md) - Migration guide from Assistant API to Responses API
-- [CHANGELOG.md](CHANGELOG.md) - Version history and changes
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Package architecture
+### Core Documentation
+
+- **[docs/API.md](docs/API.md)** - Complete API reference with all methods, modes, and examples
+- **[UPGRADE.md](UPGRADE.md)** - Migration guide from legacy APIs to modern interfaces
+- **[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)** - Comprehensive observability guide with correlation IDs, metrics, and logging
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
+
+### Advanced Guides
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Package architecture and design patterns
 - [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md) - Complete environment variable reference
 - [docs/PERFORMANCE_TUNING.md](docs/PERFORMANCE_TUNING.md) - Performance optimization guide
 - [docs/PRODUCTION_CONFIGURATION.md](docs/PRODUCTION_CONFIGURATION.md) - Production deployment guide
+- [docs/SCALING.md](docs/SCALING.md) - Scaling strategies and best practices
+
+### Examples
+
+See [examples/](examples/) for runnable code samples demonstrating:
+- Hello world chat completion
+- Streaming responses with cancellation
+- Unified completion API usage
+- Observability integration
+- Advanced patterns
 
 
 ---
