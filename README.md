@@ -46,7 +46,37 @@ foreach (Ai::stream('Tell me about Laravel') as $chunk) {
 }
 ```
 
-**That's it!** You now have AI-powered chat with streaming. See [examples/](examples/) for more patterns.
+### Step 5: Audio Transcription (1 min)
+
+```php
+// Transcribe audio files to text
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('audio/recording.mp3'),
+        'action' => 'transcribe',
+    ])
+    ->send();
+
+echo $response->text; // "Hello, this is a test recording..."
+```
+
+### Step 6: Image Generation (1 min)
+
+```php
+// Generate images from text descriptions
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'prompt' => 'A futuristic Laravel logo with neon lights',
+    ])
+    ->send();
+
+// Save generated images
+$response->saveImages(storage_path('images'));
+```
+
+**That's it!** You now have AI-powered chat, streaming, audio, and image capabilities. See [examples/](examples/) for more patterns.
 
 ---
 
@@ -89,6 +119,22 @@ Ai::conversations();                     // Multi-turn threads
 | **Memory Usage** | Lower | Higher (buffering) |
 | **User Experience** | Blocking | Progressive, real-time |
 | **Best For** | Batch processing, APIs | Interactive UIs, long responses |
+
+### Feature Capabilities
+
+| Capability | Description | Supported |
+|------------|-------------|-----------|
+| **Text Chat** | Single-turn and multi-turn conversations | ✅ |
+| **Streaming** | Real-time token-by-token responses | ✅ |
+| **Tool Calls** | Function calling and external integrations | ✅ |
+| **Audio Transcription** | Convert audio to text (speech-to-text) | ✅ |
+| **Audio Translation** | Translate audio to English | ✅ |
+| **Text-to-Speech** | Generate natural speech from text | ✅ |
+| **Image Generation** | Create images from text prompts (DALL-E) | ✅ |
+| **Image Editing** | Modify existing images with prompts | ✅ |
+| **Image Variations** | Generate variations of existing images | ✅ |
+| **Webhooks** | Asynchronous background processing | ✅ |
+| **Observability** | Built-in logging, metrics, and monitoring | ✅ |
 
 ---
 
@@ -615,6 +661,426 @@ Ai::responses()
     ->sendAsync(webhookUrl: route('ai.webhook'));
 ```
 
+### Audio Processing
+
+Process audio files with transcription, translation, and text-to-speech capabilities.
+
+#### Audio Transcription
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Basic transcription
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('audio/meeting.mp3'),
+        'action' => 'transcribe',
+    ])
+    ->send();
+
+echo $response->text; // Transcribed text
+
+// Advanced transcription with language and context
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('audio/interview.mp3'),
+        'action' => 'transcribe',
+        'language' => 'en',
+        'prompt' => 'This is a technical interview about Laravel.',
+        'temperature' => 0,
+    ])
+    ->send();
+
+echo $response->text;
+```
+
+#### Audio Translation
+
+```php
+// Translate audio to English
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('audio/spanish_speech.mp3'),
+        'action' => 'translate',
+    ])
+    ->send();
+
+echo $response->text; // English translation
+```
+
+#### Text-to-Speech
+
+```php
+// Generate speech from text
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'text' => 'Welcome to Laravel AI Assistant!',
+        'action' => 'speech',
+        'voice' => 'nova',
+    ])
+    ->send();
+
+// Save audio file
+$response->saveAudio(storage_path('audio/welcome.mp3'));
+
+// Advanced speech with custom settings
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'text' => 'This is a professional announcement.',
+        'action' => 'speech',
+        'model' => 'tts-1-hd',
+        'voice' => 'onyx',
+        'format' => 'mp3',
+        'speed' => 1.0,
+    ])
+    ->send();
+
+$response->saveAudio(storage_path('audio/announcement.mp3'));
+```
+
+### Image Generation and Editing
+
+Create and manipulate images using DALL-E models.
+
+#### Image Generation
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Basic image generation
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'prompt' => 'A futuristic Laravel logo with neon lights',
+    ])
+    ->send();
+
+// Save generated images
+$paths = $response->saveImages(storage_path('images'));
+
+// Advanced generation with DALL-E 3
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'prompt' => 'A professional developer workspace with multiple monitors',
+        'model' => 'dall-e-3',
+        'size' => '1024x1024',
+        'quality' => 'hd',
+        'style' => 'vivid',
+    ])
+    ->send();
+
+foreach ($response->images as $image) {
+    echo $image['url'] . "\n";
+    echo "Revised prompt: " . $image['revised_prompt'] . "\n";
+}
+```
+
+#### Image Editing
+
+```php
+// Edit existing image
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'image' => storage_path('images/photo.png'),
+        'prompt' => 'Add a sunset background',
+    ])
+    ->send();
+
+$response->saveImages(storage_path('images/edited'));
+
+// Edit with mask
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'image' => storage_path('images/product.png'),
+        'mask' => storage_path('images/mask.png'),
+        'prompt' => 'Change the product color to blue',
+        'n' => 3,
+    ])
+    ->send();
+```
+
+#### Image Variations
+
+```php
+// Create variations of an existing image
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'image' => storage_path('images/logo.png'),
+        'n' => 5,
+    ])
+    ->send();
+
+$paths = $response->saveImages(storage_path('images/variations'));
+```
+
+---
+
+## 🎵 Audio Features
+
+Laravel AI Assistant provides comprehensive audio processing capabilities through OpenAI's Whisper and TTS models, all accessible via the unified Response API.
+
+### Audio Transcription
+
+Convert audio files to text in their original language.
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Basic transcription
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('audio/recording.mp3'),
+        'action' => 'transcribe',
+    ])
+    ->send();
+
+echo $response->text;
+
+// Advanced transcription with language specification and context
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('audio/meeting.mp3'),
+        'action' => 'transcribe',
+        'model' => 'whisper-1',
+        'language' => 'en',
+        'prompt' => 'This is a business meeting discussing Q4 results.',
+        'response_format' => 'json',
+        'temperature' => 0,
+    ])
+    ->send();
+
+echo $response->text;
+
+// Access metadata
+$duration = $response->metadata['duration'] ?? null;
+$language = $response->metadata['language'] ?? null;
+```
+
+**Supported audio formats**: mp3, mp4, mpeg, mpga, m4a, wav, webm
+
+### Audio Translation
+
+Translate audio from any supported language to English.
+
+```php
+// Translate foreign language audio to English
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('audio/spanish_presentation.mp3'),
+        'action' => 'translate',
+    ])
+    ->send();
+
+echo $response->text; // English translation
+
+// With context for better translation
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('audio/french_interview.mp3'),
+        'action' => 'translate',
+        'prompt' => 'This is a formal technical presentation about software development.',
+        'temperature' => 0.2,
+    ])
+    ->send();
+
+echo $response->text;
+```
+
+### Text-to-Speech
+
+Generate natural-sounding speech from text using multiple voice options.
+
+```php
+// Basic text-to-speech
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'text' => 'Hello! Welcome to Laravel AI Assistant.',
+        'action' => 'speech',
+    ])
+    ->send();
+
+// Save audio to file
+$response->saveAudio(storage_path('audio/welcome.mp3'));
+
+// Advanced speech generation
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'text' => 'This is a professional announcement with high-quality audio.',
+        'action' => 'speech',
+        'model' => 'tts-1-hd', // High-quality model
+        'voice' => 'nova',      // Female, friendly voice
+        'format' => 'mp3',
+        'speed' => 1.0,
+    ])
+    ->send();
+
+if ($response->isAudio()) {
+    $path = storage_path('audio/announcement.mp3');
+    $response->saveAudio($path);
+}
+```
+
+**Available voices**:
+- `alloy` - Neutral, balanced (general purpose)
+- `echo` - Male, clear (announcements, narration)
+- `fable` - Warm, expressive (storytelling)
+- `onyx` - Deep, authoritative (professional content)
+- `nova` - Female, friendly (conversational)
+- `shimmer` - Soft, calming (meditation, relaxation)
+
+**Models**:
+- `tts-1` - Standard quality (faster, lower cost)
+- `tts-1-hd` - High quality (slower, higher quality)
+
+See [docs/API.md#audio-apis](docs/API.md#audio-apis) for complete audio API documentation.
+
+---
+
+## 🖼️ Image Features
+
+Create, edit, and manipulate images using OpenAI's DALL-E models through the unified Response API.
+
+### Image Generation
+
+Generate images from text descriptions.
+
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Basic image generation
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'prompt' => 'A futuristic Laravel logo with neon lights',
+    ])
+    ->send();
+
+// Access generated images
+foreach ($response->images as $image) {
+    $url = $image['url'];
+    echo "Image URL: {$url}\n";
+}
+
+// Save all generated images
+$paths = $response->saveImages(storage_path('images'));
+
+// Advanced generation with DALL-E 3
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'prompt' => 'A professional developer workspace with dual monitors showing Laravel code',
+        'model' => 'dall-e-3',
+        'size' => '1024x1024',
+        'quality' => 'hd',
+        'style' => 'vivid',
+        'n' => 1,
+    ])
+    ->send();
+
+if ($response->isImage()) {
+    foreach ($response->images as $image) {
+        echo "URL: " . $image['url'] . "\n";
+        echo "Revised prompt: " . $image['revised_prompt'] . "\n";
+    }
+}
+```
+
+**DALL-E Models**:
+- `dall-e-2` - Lower cost, supports multiple images (1-10), good quality
+- `dall-e-3` - Higher cost, single image only, excellent quality and prompt following
+
+**Sizes**:
+- DALL-E 2: `256x256`, `512x512`, `1024x1024`
+- DALL-E 3: `1024x1024`, `1792x1024`, `1024x1792`
+
+### Image Editing
+
+Edit existing images using text prompts.
+
+```php
+// Basic image editing
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'image' => storage_path('images/photo.png'),
+        'prompt' => 'Add a sunset background',
+    ])
+    ->send();
+
+$editedPaths = $response->saveImages(storage_path('images/edited'));
+
+// Edit with transparency mask
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'image' => storage_path('images/product.png'),
+        'mask' => storage_path('images/mask.png'),
+        'prompt' => 'Change the product color to blue',
+        'n' => 3,
+        'size' => '1024x1024',
+    ])
+    ->send();
+
+// Process multiple variations
+foreach ($response->images as $index => $image) {
+    $path = storage_path("images/variation_{$index}.png");
+    file_put_contents($path, file_get_contents($image['url']));
+}
+```
+
+**Requirements**:
+- Format: PNG only
+- Must be square (same width and height)
+- Max file size: 4MB
+- Only DALL-E 2 supports editing
+
+### Image Variations
+
+Create variations of existing images without text prompts.
+
+```php
+// Generate variations
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'image' => storage_path('images/logo.png'),
+        'n' => 5,
+        'size' => '1024x1024',
+    ])
+    ->send();
+
+// Save all variations
+$paths = $response->saveImages(storage_path('images/variations'));
+
+// Or download manually
+foreach ($response->images as $index => $image) {
+    $imageData = file_get_contents($image['url']);
+    file_put_contents(
+        storage_path("images/variation_{$index}.png"),
+        $imageData
+    );
+}
+```
+
+**Note**: Image variations do not use prompts. If you need to modify images based on text descriptions, use Image Editing instead.
+
+See [docs/API.md#image-apis](docs/API.md#image-apis) for complete image API documentation.
+
 ---
 
 ## 🔐 Security
@@ -793,6 +1259,77 @@ foreach (Ai::stream('Test') as $chunk) {
 
 $this->assertCount(3, $chunks);
 ```
+
+### Integration Tests
+
+This package includes comprehensive integration tests that verify the unified Response API with real OpenAI endpoints (audio, image, chat completion).
+
+#### Running All Tests
+
+```bash
+# Run all tests (excludes integration tests by default)
+composer test
+
+# Run only unit tests
+./vendor/bin/pest tests/Unit
+
+# Run only feature tests
+./vendor/bin/pest tests/Feature
+```
+
+#### Running Integration Tests
+
+Integration tests are marked with `@group integration` and are automatically skipped unless you have a valid OpenAI API key configured.
+
+```bash
+# Run integration tests (simulated adapter tests - no API key required)
+./vendor/bin/pest tests/Integration/AudioAdaptersIntegrationTest.php
+./vendor/bin/pest tests/Integration/ImageAdaptersIntegrationTest.php
+
+# Run real API integration tests (requires OPENAI_API_KEY)
+./vendor/bin/pest tests/Integration/RealApiIntegrationTest.php
+
+# Run all integration tests
+./vendor/bin/pest --group=integration
+
+# Exclude integration tests from CI
+./vendor/bin/pest --exclude-group=integration
+```
+
+#### Real API Integration Tests
+
+Real API tests make actual calls to OpenAI endpoints and require:
+
+1. **API Key**: Set `OPENAI_API_KEY` environment variable
+2. **Cost Awareness**: Full suite costs < $1 (using minimal test data)
+3. **Optional Execution**: Tests are automatically skipped without API key
+
+**Cost Optimization:**
+- Audio tests use minimal 483-byte MP3 file
+- Image tests use 256x256 size with DALL-E 2 (cheapest)
+- Text-to-speech uses minimal text (2 words)
+- Total cost: ~$0.075 for complete suite
+
+**Enable real API tests:**
+
+```bash
+# Option 1: Set environment variable
+export OPENAI_API_KEY="sk-..."
+./vendor/bin/pest tests/Integration/RealApiIntegrationTest.php
+
+# Option 2: Configure in your .env
+OPENAI_API_KEY=sk-...
+```
+
+**Test Coverage:**
+- ✅ Audio transcription (Whisper API)
+- ✅ Audio translation (Whisper API)
+- ✅ Audio speech generation (TTS API)
+- ✅ Image generation (DALL-E API)
+- ✅ Image editing (DALL-E API)
+- ✅ Image variations (DALL-E API)
+- ✅ Unified API end-to-end flow
+- ✅ Error handling across services
 
 ---
 
@@ -1003,6 +1540,9 @@ The MIT License (MIT). Please see [LICENSE](LICENSE.md) for more information.
 ### Core Documentation
 
 - **[docs/API.md](docs/API.md)** - Complete API reference with all methods, modes, and examples
+  - **[Audio APIs](docs/API.md#audio-apis)** - Audio transcription, translation, and text-to-speech documentation
+  - **[Image APIs](docs/API.md#image-apis)** - Image generation, editing, and variation documentation
+  - **[SSOT Architecture](docs/API.md#ssot-architecture)** - Understanding the unified API design
 - **[UPGRADE.md](UPGRADE.md)** - Migration guide from legacy APIs to modern interfaces
 - **[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)** - Comprehensive observability guide with correlation IDs, metrics, and logging
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes

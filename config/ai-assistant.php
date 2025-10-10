@@ -165,6 +165,138 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Audio Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure audio processing options including models, voices, file limits,
+    | and endpoint-specific timeouts for transcription, translation, and speech.
+    |
+    */
+    'audio' => [
+        /**
+         * Default models for different audio operations
+         */
+        'models' => [
+            'transcription' => env('OPENAI_AUDIO_TRANSCRIPTION_MODEL', 'whisper-1'),
+            'translation' => env('OPENAI_AUDIO_TRANSLATION_MODEL', 'whisper-1'),
+            'speech' => env('OPENAI_AUDIO_SPEECH_MODEL', 'tts-1'),
+        ],
+
+        /**
+         * Default voice options for text-to-speech
+         * Available voices: alloy, echo, fable, onyx, nova, shimmer
+         */
+        'voices' => [
+            'default' => env('OPENAI_AUDIO_DEFAULT_VOICE', 'alloy'),
+            'available' => ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
+        ],
+
+        /**
+         * File size limits for audio uploads (in megabytes)
+         * OpenAI limit: 25MB for transcription/translation
+         */
+        'file_size_limit_mb' => env('OPENAI_AUDIO_FILE_SIZE_LIMIT_MB', 25),
+
+        /**
+         * Supported audio file formats
+         */
+        'supported_formats' => ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'],
+
+        /**
+         * Timeout settings for audio endpoints (in seconds)
+         */
+        'timeouts' => [
+            'transcription' => env('OPENAI_AUDIO_TRANSCRIPTION_TIMEOUT', 120),
+            'translation' => env('OPENAI_AUDIO_TRANSLATION_TIMEOUT', 120),
+            'speech' => env('OPENAI_AUDIO_SPEECH_TIMEOUT', 60),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Image Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure image processing options including models, default sizes,
+    | file limits, and endpoint-specific timeouts for generation, editing,
+    | and variations.
+    |
+    */
+    'image' => [
+        /**
+         * Default models for different image operations
+         */
+        'models' => [
+            'generation' => env('OPENAI_IMAGE_GENERATION_MODEL', 'dall-e-3'),
+            'edit' => env('OPENAI_IMAGE_EDIT_MODEL', 'dall-e-2'),
+            'variation' => env('OPENAI_IMAGE_VARIATION_MODEL', 'dall-e-2'),
+        ],
+
+        /**
+         * Default image sizes for generation
+         * DALL-E 3: 1024x1024, 1792x1024, 1024x1792
+         * DALL-E 2: 256x256, 512x512, 1024x1024
+         */
+        'sizes' => [
+            'dall-e-3' => env('OPENAI_IMAGE_SIZE_DALLE3', '1024x1024'),
+            'dall-e-2' => env('OPENAI_IMAGE_SIZE_DALLE2', '1024x1024'),
+        ],
+
+        /**
+         * File size limits for image uploads (in megabytes)
+         * OpenAI limit: 4MB for image edits and variations
+         */
+        'file_size_limit_mb' => env('OPENAI_IMAGE_FILE_SIZE_LIMIT_MB', 4),
+
+        /**
+         * Supported image file formats
+         */
+        'supported_formats' => ['png', 'jpg', 'jpeg', 'webp'],
+
+        /**
+         * Timeout settings for image endpoints (in seconds)
+         */
+        'timeouts' => [
+            'generation' => env('OPENAI_IMAGE_GENERATION_TIMEOUT', 120),
+            'edit' => env('OPENAI_IMAGE_EDIT_TIMEOUT', 120),
+            'variation' => env('OPENAI_IMAGE_VARIATION_TIMEOUT', 120),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Adapter Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure adapter-specific options for request/response transformation
+    | and validation across different OpenAI endpoints.
+    |
+    */
+    'adapters' => [
+        /**
+         * Enable or disable adapter caching for improved performance
+         */
+        'cache_enabled' => env('AI_ADAPTERS_CACHE_ENABLED', true),
+
+        /**
+         * Validate requests before transformation
+         */
+        'validate_requests' => env('AI_ADAPTERS_VALIDATE_REQUESTS', true),
+
+        /**
+         * Validate responses after transformation
+         */
+        'validate_responses' => env('AI_ADAPTERS_VALIDATE_RESPONSES', true),
+
+        /**
+         * Maximum file upload size across all adapters (in megabytes)
+         * This serves as a global limit; endpoint-specific limits take precedence
+         */
+        'max_file_size_mb' => env('AI_ADAPTERS_MAX_FILE_SIZE_MB', 25),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Responses API Configuration
     |--------------------------------------------------------------------------
     |

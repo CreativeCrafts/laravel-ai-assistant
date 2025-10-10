@@ -16,3 +16,5 @@ CHANGELOG_OLD.md
 SCALING_VERIFICATION_REPORT.md
 validation_performance_test.php
 src/LaravelAiAssistantServiceProvider.php.backup
+tasks
+examples/output

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
+use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
 use CreativeCrafts\LaravelAiAssistant\Chat\ChatSession;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
@@ -19,8 +20,16 @@ use Psr\SimpleCache\InvalidArgumentException;
 
 final class AiManager
 {
-    public function __construct(public AssistantService $assistantService)
-    {
+    private readonly RequestRouter $router;
+    private readonly AdapterFactory $adapterFactory;
+
+    public function __construct(
+        public AssistantService $assistantService,
+        ?RequestRouter $router = null,
+        ?AdapterFactory $adapterFactory = null,
+    ) {
+        $this->router = $router ?? new RequestRouter();
+        $this->adapterFactory = $adapterFactory ?? new AdapterFactory();
     }
 
     /**
@@ -28,7 +37,11 @@ final class AiManager
      */
     public function responses(): ResponsesBuilder
     {
-        return new ResponsesBuilder($this->assistantService);
+        return new ResponsesBuilder(
+            $this->assistantService,
+            $this->router,
+            $this->adapterFactory
+        );
     }
 
     /**
@@ -36,7 +49,11 @@ final class AiManager
      */
     public function conversations(): ConversationsBuilder
     {
-        return new ConversationsBuilder($this->assistantService);
+        return new ConversationsBuilder(
+            $this->assistantService,
+            $this->router,
+            $this->adapterFactory
+        );
     }
 
     /**

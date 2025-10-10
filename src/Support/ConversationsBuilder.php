@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Support;
 
+use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
+use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
+use RuntimeException;
 
 /**
  * Fluent builder for Conversations operations with convenience to send turns.
@@ -14,10 +17,17 @@ final class ConversationsBuilder
 {
     private ?string $conversationId = null;
     private InputItemsBuilder $input;
+    private readonly RequestRouter $router;
+    private readonly AdapterFactory $adapterFactory;
 
-    public function __construct(private readonly AssistantService $service)
-    {
+    public function __construct(
+        private readonly AssistantService $service,
+        ?RequestRouter $router = null,
+        ?AdapterFactory $adapterFactory = null,
+    ) {
         $this->input = new InputItemsBuilder();
+        $this->router = $router ?? new RequestRouter();
+        $this->adapterFactory = $adapterFactory ?? new AdapterFactory();
     }
 
     /**
@@ -61,10 +71,19 @@ final class ConversationsBuilder
     public function send(): ChatResponseDto
     {
         $conv = $this->ensureConversationId();
-        $resp = (new ResponsesBuilder($this->service))
+        $resp = (new ResponsesBuilder($this->service, $this->router, $this->adapterFactory))
             ->inConversation($conv)
             ->withInput($this->input->list())
             ->send();
+
+        // ConversationsBuilder always uses legacy InputItemsBuilder, which returns ChatResponseDto
+        if (!$resp instanceof ChatResponseDto) {
+            throw new RuntimeException(
+                'Expected ChatResponseDto but received ' . get_class($resp) . '. ' .
+                'This indicates an internal routing error in the unified API.'
+            );
+        }
+
         return $resp;
     }
 
@@ -74,7 +93,8 @@ final class ConversationsBuilder
     public function responses(): ResponsesBuilder
     {
         $conv = $this->ensureConversationId();
-        return (new ResponsesBuilder($this->service))->inConversation($conv);
+        return (new ResponsesBuilder($this->service, $this->router, $this->adapterFactory))
+            ->inConversation($conv);
     }
 
     private function ensureConversationId(): string

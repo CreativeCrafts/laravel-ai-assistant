@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Providers;
 
+use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
 use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
@@ -19,8 +20,10 @@ use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesInputItemsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\NullOpenAiRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\OpenAiRepository;
+use CreativeCrafts\LaravelAiAssistant\Http\MultipartRequestBuilder;
 use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
 use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
+use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
 use CreativeCrafts\LaravelAiAssistant\Services\BackgroundJobService;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheBackedProgressTracker;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
@@ -29,6 +32,7 @@ use CreativeCrafts\LaravelAiAssistant\Services\LazyLoadingService;
 use CreativeCrafts\LaravelAiAssistant\Services\LoggingService;
 use CreativeCrafts\LaravelAiAssistant\Services\MemoryMonitoringService;
 use CreativeCrafts\LaravelAiAssistant\Services\MetricsCollectionService;
+use CreativeCrafts\LaravelAiAssistant\Services\OpenAiClient;
 use CreativeCrafts\LaravelAiAssistant\Services\ResponseStatusStore;
 use CreativeCrafts\LaravelAiAssistant\Services\SecurityService;
 use CreativeCrafts\LaravelAiAssistant\Services\StreamingService;
@@ -147,10 +151,35 @@ class CoreServiceProvider extends ServiceProvider
             );
         });
 
+        // Register RequestRouter as singleton for unified API routing
+        $this->app->singleton(RequestRouter::class, function ($app) {
+            return new RequestRouter();
+        });
+
+        // Register AdapterFactory as singleton for endpoint adapters
+        $this->app->singleton(AdapterFactory::class, function ($app) {
+            return new AdapterFactory();
+        });
+
+        // Register MultipartRequestBuilder as singleton for handling file uploads
+        $this->app->singleton(MultipartRequestBuilder::class, function ($app) {
+            return new MultipartRequestBuilder();
+        });
+
+        // Register OpenAiClient as singleton for making HTTP calls to OpenAI endpoints
+        $this->app->singleton(OpenAiClient::class, function ($app) {
+            return new OpenAiClient(
+                $app->make(Client::class),
+                $app->make(MultipartRequestBuilder::class)
+            );
+        });
+
         // Unified entrypoint service: AiManager
         $this->app->singleton(AiManager::class, function ($app) {
             return new AiManager(
-                $app->make(\CreativeCrafts\LaravelAiAssistant\Services\AssistantService::class)
+                $app->make(\CreativeCrafts\LaravelAiAssistant\Services\AssistantService::class),
+                $app->make(RequestRouter::class),
+                $app->make(AdapterFactory::class)
             );
         });
 

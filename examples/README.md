@@ -39,6 +39,10 @@ php examples/02-streaming.php
 php examples/03-cancellation.php
 php examples/04-complete-api.php
 php examples/05-observability.php
+php examples/05-audio-transcription.php
+php examples/06-audio-speech.php
+php examples/07-image-generation.php
+php examples/08-unified-api.php
 ```
 
 ## Examples Overview
@@ -166,6 +170,122 @@ Chunks: 42
 Duration: 3.45s
 All metrics logged successfully!
 ```
+
+---
+
+### 05. Audio Transcription (`05-audio-transcription.php`)
+
+**Purpose**: Transcribe audio files to text using the unified Response API.
+
+**What you'll learn**:
+- Transcribing audio files with `audio(['file' => ..., 'action' => 'transcribe'])`
+- Using language hints to improve accuracy
+- Providing context prompts for better results
+- Different response formats (json, text, srt, verbose_json, vtt)
+- Configuring temperature for deterministic output
+
+**Time**: ~2 minutes
+
+**Example output**:
+```
+=== Audio Transcription Example ===
+Audio File: test-audio.mp3
+Transcription: [transcribed text]
+Type: audio_transcription
+```
+
+**Note**: Supports mp3, mp4, mpeg, mpga, m4a, wav, webm formats up to 25MB.
+
+---
+
+### 06. Audio Speech (`06-audio-speech.php`)
+
+**Purpose**: Generate speech from text using text-to-speech (TTS).
+
+**What you'll learn**:
+- Converting text to speech with `audio(['text' => ..., 'action' => 'speech'])`
+- Using different voice options (alloy, echo, fable, onyx, nova, shimmer)
+- Adjusting speech speed (0.25 to 4.0)
+- Different audio formats (mp3, opus, aac, flac, wav, pcm)
+- Saving audio output to files
+- Using tts-1 vs tts-1-hd models
+
+**Time**: ~2 minutes
+
+**Example output**:
+```
+=== Audio Speech Generation Example ===
+Voice: alloy -> output/speech-alloy.mp3
+Voice: echo -> output/speech-echo.mp3
+...
+All audio files saved successfully!
+```
+
+**Note**: Generated audio files are saved to `examples/output/` directory.
+
+---
+
+### 07. Image Generation (`07-image-generation.php`)
+
+**Purpose**: Generate, edit, and create variations of images.
+
+**What you'll learn**:
+- Generating images from prompts with `image(['prompt' => ...])`
+- Editing images with `image(['image' => ..., 'prompt' => ...])`
+- Creating image variations with `image(['image' => ...])`
+- Using DALL-E 3 for high-quality images
+- Using DALL-E 2 for multiple images
+- Configuring size, quality, and style
+- Base64 vs URL response formats
+
+**Time**: ~3 minutes
+
+**Example output**:
+```
+=== Image Generation Example ===
+Prompt: A serene mountain landscape...
+Generated image saved to: output/image-basic.png
+
+Size: 1024x1024
+Quality: hd
+Style: vivid
+Generated image saved to: output/image-hd-vivid.png
+```
+
+**Note**: Generated images are saved to `examples/output/` directory.
+
+---
+
+### 08. Unified API (`08-unified-api.php`)
+
+**Purpose**: Demonstrate the Single Source of Truth (SSOT) unified API approach.
+
+**What you'll learn**:
+- Using one interface for all operations (text, audio, image)
+- How the API automatically routes to appropriate endpoints
+- Building multi-step AI workflows
+- Combining different AI capabilities seamlessly
+- Benefits of the unified API design
+- Consistent error handling across all operations
+
+**Time**: ~3 minutes
+
+**Example output**:
+```
+=== Unified API Example ===
+
+1. Text Conversation -> Routes to Response API
+2. Audio Transcription -> Routes to Audio API
+3. Text-to-Speech -> Routes to Audio Speech API
+4. Image Generation -> Routes to Image API
+
+Multi-Step Workflow:
+  Step 1: Generated tagline
+  Step 2: Audio saved to output/
+  Step 3: Image saved to output/
+```
+
+**Note**: This example showcases the SSOT architecture where a single API intelligently delegates to different OpenAI endpoints based on input type.
 
 ---
 
