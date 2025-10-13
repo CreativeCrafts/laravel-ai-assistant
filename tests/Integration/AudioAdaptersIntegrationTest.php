@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelAiAssistant\Adapters\AudioTranscriptionAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\AudioTranslationAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 
 /**
  * Integration tests for Audio Adapters with the new adapter architecture.
@@ -159,7 +160,7 @@ describe('AudioTranslationAdapter Integration', function () {
 
         // Act & Assert: Should throw validation exception before API call
         expect(fn () => $adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Audio file does not exist');
+            ->toThrow(FileValidationException::class, 'File not found');
     });
 });
 

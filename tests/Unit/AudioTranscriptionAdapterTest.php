@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AudioTranscriptionAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\AudioTranscriptionException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 
 beforeEach(function () {
     $this->adapter = new AudioTranscriptionAdapter();
@@ -63,34 +65,18 @@ describe('transformRequest', function () {
         unlink($tempFile);
     });
 
-    it('handles empty audio array', function () {
+    it('throws exception when audio array is empty', function () {
         $unifiedRequest = ['audio' => []];
 
-        $result = $this->adapter->transformRequest($unifiedRequest);
-
-        expect($result)->toBe([
-            'file' => null,
-            'model' => 'whisper-1',
-            'language' => null,
-            'prompt' => null,
-            'response_format' => 'json',
-            'temperature' => 0,
-        ]);
+        expect(fn () => $this->adapter->transformRequest($unifiedRequest))
+            ->toThrow(AudioTranscriptionException::class, 'Audio file is required for transcription');
     });
 
-    it('handles missing audio key', function () {
+    it('throws exception when audio key is missing', function () {
         $unifiedRequest = [];
 
-        $result = $this->adapter->transformRequest($unifiedRequest);
-
-        expect($result)->toBe([
-            'file' => null,
-            'model' => 'whisper-1',
-            'language' => null,
-            'prompt' => null,
-            'response_format' => 'json',
-            'temperature' => 0,
-        ]);
+        expect(fn () => $this->adapter->transformRequest($unifiedRequest))
+            ->toThrow(AudioTranscriptionException::class, 'Audio file is required for transcription');
     });
 
     it('throws exception when file path is not a string', function () {
@@ -101,7 +87,7 @@ describe('transformRequest', function () {
         ];
 
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Audio file path must be a string.');
+            ->toThrow(FileValidationException::class, 'File path must be a string');
     });
 
     it('throws exception when file does not exist', function () {
@@ -112,7 +98,7 @@ describe('transformRequest', function () {
         ];
 
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Audio file does not exist');
+            ->toThrow(FileValidationException::class, 'File not found');
     });
 
     it('throws exception when file is not readable', function () {
@@ -128,7 +114,7 @@ describe('transformRequest', function () {
 
         try {
             expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-                ->toThrow(InvalidArgumentException::class, 'Audio file is not readable');
+                ->toThrow(FileValidationException::class, 'not readable');
         } finally {
             chmod($tempFile, 0644);
             unlink($tempFile);
@@ -147,7 +133,7 @@ describe('transformRequest', function () {
 
         try {
             expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-                ->toThrow(InvalidArgumentException::class, 'Unsupported audio format');
+                ->toThrow(AudioTranscriptionException::class, 'Unsupported audio format');
         } finally {
             unlink($tempFile);
         }

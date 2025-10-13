@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Adapters;
 
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\AudioTranscriptionException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 
 /**
  * Adapter for OpenAI Audio Transcription endpoint.
  *
  * Transforms requests and responses between the unified Response API format
  * and the Audio Transcription endpoint format.
+ *
+ * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
+ * Do not use directly.
  */
 final class AudioTranscriptionAdapter implements EndpointAdapter
 {
@@ -21,16 +25,19 @@ final class AudioTranscriptionAdapter implements EndpointAdapter
      *
      * @param array<string, mixed> $unifiedRequest
      * @return array<string, mixed>
-     * @throws InvalidArgumentException If the audio file is invalid
+     * @throws AudioTranscriptionException If the audio file is invalid
+     * @throws FileValidationException If file validation fails
      */
     public function transformRequest(array $unifiedRequest): array
     {
         $audio = is_array($unifiedRequest['audio'] ?? null) ? $unifiedRequest['audio'] : [];
         $filePath = $audio['file'] ?? null;
 
-        if ($filePath !== null) {
-            $this->validateAudioFile($filePath);
+        if ($filePath === null) {
+            throw AudioTranscriptionException::missingFile();
         }
+
+        $this->validateAudioFile($filePath);
 
         return [
             'file' => $filePath,
@@ -80,29 +87,33 @@ final class AudioTranscriptionAdapter implements EndpointAdapter
      * Validate that the audio file exists, is readable, and has a supported format.
      *
      * @param mixed $filePath
-     * @throws InvalidArgumentException If the file is invalid
+     * @throws FileValidationException If the file is invalid
+     * @throws AudioTranscriptionException If the audio file validation fails
      */
     private function validateAudioFile(mixed $filePath): void
     {
         if (!is_string($filePath)) {
-            throw new InvalidArgumentException('Audio file path must be a string.');
+            throw FileValidationException::invalidPathType($filePath);
         }
 
         if (!file_exists($filePath)) {
-            throw new InvalidArgumentException("Audio file does not exist: {$filePath}");
+            throw FileValidationException::fileNotFound($filePath);
         }
 
         if (!is_readable($filePath)) {
-            throw new InvalidArgumentException("Audio file is not readable: {$filePath}");
+            throw FileValidationException::fileNotReadable($filePath);
         }
 
         $supportedFormats = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'];
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         if (!in_array($extension, $supportedFormats, true)) {
-            throw new InvalidArgumentException(
-                "Unsupported audio format: {$extension}. Supported formats: " . implode(', ', $supportedFormats)
-            );
+            throw AudioTranscriptionException::unsupportedFormat($filePath, $extension);
+        }
+
+        $fileSize = filesize($filePath);
+        if ($fileSize !== false && $fileSize > 25 * 1024 * 1024) {
+            throw AudioTranscriptionException::fileTooLarge($filePath, $fileSize);
         }
     }
 }

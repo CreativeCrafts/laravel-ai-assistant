@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
-use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ProgressTrackerContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
@@ -14,7 +13,6 @@ use Exception;
 use Generator;
 use Illuminate\Support\Str;
 use JsonException;
-use Throwable;
 
 /**
  * Streaming service for handling large API responses efficiently.
@@ -32,19 +30,16 @@ class StreamingService
     private LoggingService $loggingService;
     private MemoryMonitoringService $memoryMonitor;
     private ResponsesRepositoryContract $responses;
-    private OpenAiRepositoryContract $repository;
     private ProgressTrackerContract $progressTracker;
 
     public function __construct(
         ResponsesRepositoryContract $responses,
-        OpenAiRepositoryContract $repository,
         LoggingService $loggingService,
         MemoryMonitoringService $memoryMonitor,
         ProgressTrackerContract $progressTracker,
         array $config = []
     ) {
         $this->responses = $responses;
-        $this->repository = $repository;
         $this->loggingService = $loggingService;
         $this->memoryMonitor = $memoryMonitor;
         $this->progressTracker = $progressTracker;
@@ -66,36 +61,10 @@ class StreamingService
     {
         $payload = $request->toArray();
 
-        // For TEXT mode with legacy completions (prompt-based), prefer repository streaming
-        // This handles cases where only prompt is provided (no conversation_id or messages)
-        if ($mode === Mode::TEXT && isset($payload['prompt'])) {
-            // If conversation_id is present, it's a Responses API call, otherwise legacy
-            if (!isset($payload['conversation_id'])) {
-                $events = $this->streamLegacyCompletion($payload, $onEvent, $shouldStop);
-                foreach ($events as $evt) {
-                    yield $evt;
-                }
-                return;
-            }
-        }
-
-        // For CHAT mode or conversation-based requests, use Responses API streaming
-        try {
-            $sse = $this->responses->streamResponse($payload);
-            $events = $this->streamResponses($sse, $onEvent, $shouldStop);
-            foreach ($events as $evt) {
-                yield $evt;
-            }
-        } catch (Throwable $e) {
-            // If Responses API fails and we're in TEXT mode with prompt, fallback to legacy
-            if ($mode === Mode::TEXT && isset($payload['prompt'])) {
-                $events = $this->streamLegacyCompletion($payload, $onEvent, $shouldStop);
-                foreach ($events as $evt) {
-                    yield $evt;
-                }
-                return;
-            }
-            throw $e;
+        $sse = $this->responses->streamResponse($payload);
+        $events = $this->streamResponses($sse, $onEvent, $shouldStop);
+        foreach ($events as $evt) {
+            yield $evt;
         }
     }
 
@@ -420,103 +389,6 @@ class StreamingService
         ];
     }
 
-    /**
-     * Stream legacy text completions via repository with metrics and monitoring.
-     *
-     * @param array $payload
-     * @param callable|null $onEvent
-     * @param callable|null $shouldStop
-     * @return Generator
-     * @throws Exception
-     */
-    private function streamLegacyCompletion(array $payload, ?callable $onEvent = null, ?callable $shouldStop = null): Generator
-    {
-        $streamId = $this->initializeStream('legacy_completion');
-        $memoryCheckpoint = $this->memoryMonitor->startMonitoring('legacy_completion');
-
-        try {
-            $chunkCount = 0;
-            $totalSize = 0;
-            $stream = $this->repository->createStreamedCompletion($payload);
-
-            foreach ($stream as $chunk) {
-                $chunkCount++;
-                $serialized = json_encode($chunk, JSON_THROW_ON_ERROR);
-                $totalSize += strlen($serialized);
-
-                // Normalize chunk to event format
-                $choices = [];
-                if (is_array($chunk)) {
-                    $choices = $chunk['choices'] ?? [];
-                } elseif (is_object($chunk)) {
-                    $choices = $chunk->choices ?? [];
-                }
-
-                $first = $choices[0] ?? null;
-                $text = null;
-                if (is_array($first)) {
-                    $text = $first['text'] ?? null;
-                } elseif (is_object($first)) {
-                    $text = $first->text ?? null;
-                }
-
-                $evt = [
-                    'type' => 'response.output_text.delta',
-                    'data' => [
-                        'delta' => is_string($text) ? $text : '',
-                        'text' => is_string($text) ? $text : '',
-                    ],
-                    'isFinal' => false,
-                ];
-
-                if ($chunkCount % 10 === 0) {
-                    $this->memoryMonitor->updateMonitoring($memoryCheckpoint, "chunk_{$chunkCount}");
-                    $this->updateStreamProgress($streamId, $chunkCount, $totalSize);
-                }
-
-                if ($onEvent) {
-                    try {
-                        $onEvent($evt);
-                    } catch (Throwable $e) {
-                        // Ignore callback errors
-                    }
-                }
-
-                yield $evt;
-
-                if ($shouldStop && $shouldStop()) {
-                    $this->logStreamEvent($streamId, 'client_disconnected', [
-                        'chunks_processed' => $chunkCount,
-                        'size_processed' => $totalSize,
-                    ]);
-                    break;
-                }
-
-                if ($chunkCount % 100 === 0) {
-                    $this->performGarbageCollection($streamId);
-                }
-
-                // Legacy completions typically return first chunk only, break after
-                break;
-            }
-
-            // Emit completion event
-            yield [
-                'type' => 'response.completed',
-                'data' => [],
-                'isFinal' => true,
-            ];
-
-            $this->completeStream($streamId, $chunkCount, $totalSize);
-        } catch (Exception $e) {
-            $this->handleStreamError($streamId, $e);
-            throw $e;
-        } finally {
-            $this->cleanupStream($streamId);
-            $memoryReport = $this->memoryMonitor->endMonitoring($memoryCheckpoint);
-            $this->logStreamCompletion($streamId, $memoryReport);
-        }
-    }
 
     /**
      * Check if streaming is enabled.

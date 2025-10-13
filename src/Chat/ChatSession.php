@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Chat;
 
 use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\StreamingEventDto;
 use CreativeCrafts\LaravelAiAssistant\Support\FilesHelper;
@@ -21,10 +22,13 @@ final class ChatSession
 {
     private ChatOptions $options;
 
+    private ToolsBuilder $toolsBuilder;
+
     public function __construct(
         private readonly AiAssistant $core,
     ) {
         $this->options = ChatOptions::make();
+        $this->toolsBuilder = new ToolsBuilder();
     }
 
     /**
@@ -147,19 +151,16 @@ final class ChatSession
     }
 
     /**
-     * Get a FilesHelper instance for managing file operations within the chat session.
-     * This method provides access to a helper class that facilitates file-related
-     * operations for the AI assistant, such as uploading files, managing file
-     * attachments, or processing file content that can be used as context in
-     * the chat conversation.
+     * Get a FilesHelper instance for file upload operations within the chat session.
+     * This method provides access to a helper class that facilitates uploading files
+     * to the AI assistant service. Use the returned helper to upload files that can
+     * be used as attachments or context in the chat conversation.
      *
-     * @return FilesHelper A FilesHelper instance configured with the current chat session's
-     *                    core AiAssistant, allowing you to perform file operations
-     *                    and manage file-based interactions with the AI assistant
+     * @return FilesHelper A FilesHelper instance for performing file upload operations
      */
     public function files(): FilesHelper
     {
-        return new FilesHelper($this->core);
+        return new FilesHelper(app(FilesRepositoryContract::class));
     }
 
     /**
@@ -175,6 +176,7 @@ final class ChatSession
      */
     public function send(): ChatResponseDto
     {
+        $this->applyToolsConfiguration();
         return $this->core->sendChatMessageDto();
     }
 
@@ -214,6 +216,7 @@ final class ChatSession
      */
     public function stream(?callable $onEvent = null, ?callable $shouldStop = null): Generator
     {
+        $this->applyToolsConfiguration();
         $events = $this->core->streamEvents($onEvent, $shouldStop);
         foreach ($events as $evt) {
             yield StreamingEventDto::fromArray((array)$evt);
@@ -234,6 +237,7 @@ final class ChatSession
      */
     public function continueWithToolResults(array $toolResults): ChatResponseDto
     {
+        $this->applyToolsConfiguration();
         return $this->core->continueWithToolResultsDto($toolResults);
     }
 
@@ -328,12 +332,7 @@ final class ChatSession
      */
     public function includeFileSearchTool(array $vectorStoreIds = []): self
     {
-        if (method_exists($this->core, 'includeFileSearchTool')) {
-            $this->core->includeFileSearchTool($vectorStoreIds);
-        } else {
-            // Fallback to the typed ToolsBuilder; avoids class-string|object type on core->tools()
-            $this->tools()->includeFileSearchTool($vectorStoreIds);
-        }
+        $this->toolsBuilder->includeFileSearchTool($vectorStoreIds);
         return $this;
     }
 
@@ -344,13 +343,12 @@ final class ChatSession
      * assistant to perform actions like function calls, API requests, or other
      * operations beyond simple text generation.
      *
-     * @return ToolsBuilder A ToolsBuilder instance configured with the current chat session's
-     *                     core AiAssistant, allowing you to define and configure tools
+     * @return ToolsBuilder A ToolsBuilder instance for defining and configuring tools
      *                     using a fluent, chainable interface
      */
     public function tools(): ToolsBuilder
     {
-        return new ToolsBuilder($this->core);
+        return $this->toolsBuilder;
     }
 
     /**
@@ -368,22 +366,12 @@ final class ChatSession
         array $jsonSchema,
         bool $isStrict = true,
     ): self {
-        if (method_exists($this->core, 'includeFunctionCallTool')) {
-            $this->core->includeFunctionCallTool(
-                functionName: $name,
-                functionDescription: $description,
-                functionParameters: $jsonSchema,
-                isStrict: $isStrict
-            );
-        } else {
-            // Fallback to the typed ToolsBuilder (avoids class-string|object issues)
-            $this->tools()->includeFunctionCallTool(
-                $name,
-                $description,
-                $jsonSchema,
-                $isStrict
-            );
-        }
+        $this->toolsBuilder->includeFunctionCallTool(
+            $name,
+            $description,
+            $jsonSchema,
+            $isStrict
+        );
         return $this;
     }
 
@@ -392,9 +380,7 @@ final class ChatSession
      */
     public function setToolChoice(string|array $choice): self
     {
-        if (method_exists($this->core, 'setToolChoice')) {
-            $this->core->setToolChoice($choice);
-        }
+        $this->toolsBuilder->setToolChoice($choice);
         return $this;
     }
 
@@ -473,5 +459,58 @@ final class ChatSession
     {
         $this->core->addImageFromUploadedFile($file, $purpose);
         return $this;
+    }
+
+    /**
+     * Apply tool configurations from ToolsBuilder to the AiAssistant core.
+     */
+    private function applyToolsConfiguration(): void
+    {
+        $config = $this->toolsBuilder->getConfig();
+
+        if (isset($config['tools']) && is_array($config['tools'])) {
+            foreach ($config['tools'] as $tool) {
+                if (!is_array($tool) || !isset($tool['type'])) {
+                    continue;
+                }
+
+                $type = $tool['type'];
+                if ($type === 'function' && isset($tool['function'])) {
+                    $func = $tool['function'];
+                    if (method_exists($this->core, 'includeFunctionCallTool')) {
+                        $this->core->includeFunctionCallTool(
+                            $func['name'] ?? '',
+                            $func['description'] ?? '',
+                            [
+                                'properties' => $func['parameters']['properties'] ?? [],
+                                'required' => $func['parameters']['required'] ?? [],
+                                'additionalProperties' => $func['parameters']['additionalProperties'] ?? false,
+                            ],
+                            $func['strict'] ?? false
+                        );
+                    }
+                } elseif ($type === 'file_search' && method_exists($this->core, 'includeFileSearchTool')) {
+                    $vectorStoreIds = [];
+                    if (isset($config['tool_resources']['file_search']['vector_store_ids'])) {
+                        $vectorStoreIds = $config['tool_resources']['file_search']['vector_store_ids'];
+                    }
+                    $this->core->includeFileSearchTool($vectorStoreIds);
+                } elseif ($type === 'code_interpreter' && method_exists($this->core, 'includeCodeInterpreterTool')) {
+                    $fileIds = [];
+                    if (isset($config['tool_resources']['code_interpreter']['file_ids'])) {
+                        $fileIds = $config['tool_resources']['code_interpreter']['file_ids'];
+                    }
+                    $this->core->includeCodeInterpreterTool($fileIds);
+                }
+            }
+        }
+
+        if (isset($config['tool_choice']) && method_exists($this->core, 'setToolChoice')) {
+            $this->core->setToolChoice($config['tool_choice']);
+        }
+
+        if (isset($config['use_file_search']) && method_exists($this->core, 'useFileSearch')) {
+            $this->core->useFileSearch($config['use_file_search']);
+        }
     }
 }

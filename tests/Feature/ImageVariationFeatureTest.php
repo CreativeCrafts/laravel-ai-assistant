@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\ImageVariationAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\ImageVariationException;
 
 beforeEach(function () {
     $this->adapter = new ImageVariationAdapter();
@@ -113,7 +115,7 @@ describe('End-to-end image variation flow', function () {
 
         // Act & Assert: Should throw exception for unsupported format
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Unsupported image format');
+            ->toThrow(ImageVariationException::class, 'Image must be in PNG format');
     });
 
     it('validates image file existence', function () {
@@ -126,7 +128,7 @@ describe('End-to-end image variation flow', function () {
 
         // Act & Assert: Should throw exception for non-existent file
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Image file does not exist');
+            ->toThrow(FileValidationException::class, 'File not found');
     });
 
     it('validates image file is readable', function () {
@@ -148,7 +150,7 @@ describe('End-to-end image variation flow', function () {
 
         // Act & Assert: Should throw exception for unreadable file
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Image file is not readable');
+            ->toThrow(FileValidationException::class, 'not readable');
 
         // Cleanup: Restore permissions
         chmod($this->tempImageFile, 0644);
@@ -169,7 +171,7 @@ describe('End-to-end image variation flow', function () {
 
         // Act & Assert: Should throw exception for file too large
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Image file size must be less than 4MB');
+            ->toThrow(ImageVariationException::class, 'exceeds maximum allowed size (4MB)');
     });
 
     it('validates image file path is a string', function () {
@@ -182,7 +184,7 @@ describe('End-to-end image variation flow', function () {
 
         // Act & Assert: Should throw exception for non-string path
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Image file path must be a string');
+            ->toThrow(FileValidationException::class, 'File path must be a string');
     });
 
     it('handles base64 response format for variations', function () {
@@ -334,7 +336,7 @@ describe('End-to-end image variation flow', function () {
 
             // Act & Assert: Should throw exception for unsupported format
             expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-                ->toThrow(InvalidArgumentException::class, 'Unsupported image format');
+                ->toThrow(ImageVariationException::class, 'Image must be in PNG format');
 
             // Cleanup
             unlink($tempFile);

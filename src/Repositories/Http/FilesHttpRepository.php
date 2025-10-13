@@ -15,6 +15,10 @@ use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
+/**
+ * @internal This class is used internally by AssistantService.
+ * Do not use directly - use Ai::responses() or Ai::conversations() instead.
+ */
 final readonly class FilesHttpRepository implements FilesRepositoryContract
 {
     private OpenAITransport $transport;

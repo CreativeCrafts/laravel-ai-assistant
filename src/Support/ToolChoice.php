@@ -6,6 +6,10 @@ namespace CreativeCrafts\LaravelAiAssistant\Support;
 
 use InvalidArgumentException;
 
+/**
+ * @internal Used internally for tool choice configuration helpers.
+ * Do not use directly.
+ */
 final class ToolChoice
 {
     public static function auto(): string

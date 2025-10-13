@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
+/**
+ * @internal Low-level abstraction for responses operations. Do not use directly.
+ * Use ResponsesBuilder via Ai::responses() instead.
+ */
 interface ResponsesRepositoryContract
 {
     /**

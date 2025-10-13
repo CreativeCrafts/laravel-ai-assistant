@@ -2,11 +2,8 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use Illuminate\Support\Facades\Config;
-use Mockery\MockInterface;
 
 beforeEach(function () {
     // Reset config to ensure clean state for each test
@@ -14,38 +11,6 @@ beforeEach(function () {
         'ai-assistant.api_key' => 'test_api_key',
         'ai-assistant.organization' => 'test_organization',
     ]);
-});
-
-it('throws InvalidApiKeyException if api_key is missing or invalid', function () {
-    Config::set('ai-assistant.api_key', null);
-    Config::set('ai-assistant.organization', null);
-
-    expect(fn () => AppConfig::openAiClient())->toThrow(InvalidApiKeyException::class);
-});
-
-it('throws InvalidApiKeyException if api_key is set to placeholder value', function () {
-    Config::set('ai-assistant.api_key', 'YOUR_OPENAI_API_KEY');
-    Config::set('ai-assistant.organization', 'YOUR_OPENAI_ORGANIZATION');
-
-    expect(fn () => AppConfig::openAiClient())->toThrow(InvalidApiKeyException::class);
-});
-
-it('returns a custom client if provided', function () {
-    /** @var Client|MockInterface $clientMock */
-    $clientMock = Mockery::mock(Client::class);
-
-    $result = AppConfig::openAiClient($clientMock);
-
-    expect($result)->toBe($clientMock);
-});
-
-it('creates a new OpenAI client if no custom client is provided', function () {
-    Config::set('ai-assistant.api_key', 'valid-api-key');
-    Config::set('ai-assistant.organization', 'valid-organization');
-    $mockedClient = Mockery::mock(Client::class);
-    $client = AppConfig::openAiClient($mockedClient);
-
-    expect($client)->toBe($mockedClient);
 });
 
 it('returns correct text generator config', function () {

@@ -53,7 +53,7 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         return true;
     }
 
-    public function postMultipart(string $path, array $fields, array $headers = [], ?float $timeout = null, bool $idempotent = false): array
+    public function postMultipart(string $path, array $fields, array $headers = [], ?float $timeout = null, bool $idempotent = false, ?callable $progressCallback = null): array
     {
         // Build Accept header and Idempotency for multipart without forcing Content-Type
         $baseHeaders = [
@@ -194,6 +194,10 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
             'multipart' => $multipart,
             'timeout' => $timeout,
         ];
+
+        if ($progressCallback !== null) {
+            $options['progress'] = $progressCallback;
+        }
 
         $res = $this->requestWithRetry('POST', $path, $options, $idempotent);
         return $this->decodeOrFail($res);

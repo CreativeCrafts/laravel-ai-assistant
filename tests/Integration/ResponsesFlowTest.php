@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\ToolRegistry;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
@@ -14,30 +13,15 @@ use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeFilesRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\DataFactories\ResponsesFactory;
 
 beforeEach(function () {
-    // Ensure API key so Client can resolve if needed
     config()->set('ai-assistant.api_key', 'test_key_123');
 
-    // Create shared fake instances
     $fakeResponses = new FakeResponsesRepository();
     $fakeConversations = new FakeConversationsRepository();
     $fakeFiles = new FakeFilesRepository();
 
-    // Register as singletons/instances so all resolutions share same objects
     app()->instance(ResponsesRepositoryContract::class, $fakeResponses);
     app()->instance(ConversationsRepositoryContract::class, $fakeConversations);
     app()->instance(FilesRepositoryContract::class, $fakeFiles);
-
-    // Recreate facade singleton to point to fakes
-    app()->forgetInstance(OpenAIClientFacade::class);
-    app()->singleton(OpenAIClientFacade::class, function ($app) use ($fakeResponses, $fakeConversations, $fakeFiles) {
-        return new OpenAIClientFacade(
-            $fakeResponses,
-            $fakeConversations,
-            $fakeFiles,
-            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract::class),
-            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract::class),
-        );
-    });
 });
 
 it('handles one-turn sync text', function () {

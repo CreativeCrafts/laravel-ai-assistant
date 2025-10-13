@@ -9,6 +9,15 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ModelOptions;
 use CreativeCrafts\LaravelAiAssistant\Enums\Modality;
 use CreativeCrafts\LaravelAiAssistant\Factories\ModelConfigFactory;
 
+/**
+ * Adapter for converting between array configurations and typed ModelConfig objects.
+ *
+ * Provides utilities for transforming legacy array-based configurations into
+ * typed ModelConfig objects and vice versa.
+ *
+ * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
+ * Do not use directly.
+ */
 final class ArrayConfigAdapter
 {
     /**

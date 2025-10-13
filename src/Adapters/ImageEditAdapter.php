@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Adapters;
 
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\ImageEditException;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 
 /**
  * Adapter for OpenAI Image Edit endpoint.
  *
  * Transforms requests and responses between the unified Response API format
  * and the Image Edit endpoint format.
+ *
+ * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
+ * Do not use directly.
  */
 final class ImageEditAdapter implements EndpointAdapter
 {
@@ -21,25 +25,36 @@ final class ImageEditAdapter implements EndpointAdapter
      *
      * @param array<string, mixed> $unifiedRequest
      * @return array<string, mixed>
-     * @throws InvalidArgumentException If the image file is invalid
+     * @throws ImageEditException If validation fails
+     * @throws FileValidationException If file validation fails
      */
     public function transformRequest(array $unifiedRequest): array
     {
         $image = is_array($unifiedRequest['image'] ?? null) ? $unifiedRequest['image'] : [];
         $imagePath = $image['image'] ?? null;
         $maskPath = $image['mask'] ?? null;
+        $prompt = $image['prompt'] ?? null;
 
-        if ($imagePath !== null) {
-            $this->validateImageFile($imagePath);
+        // Validate required fields
+        if ($imagePath === null) {
+            throw ImageEditException::missingImage();
         }
 
+        if ($prompt === null || $prompt === '' || trim($prompt) === '') {
+            throw ImageEditException::missingPrompt();
+        }
+
+        // Validate image file
+        $this->validateImageFile($imagePath, false);
+
+        // Validate mask file if provided
         if ($maskPath !== null) {
-            $this->validateImageFile($maskPath);
+            $this->validateImageFile($maskPath, true);
         }
 
         return [
             'image' => $imagePath,
-            'prompt' => $image['prompt'] ?? null,
+            'prompt' => $prompt,
             'mask' => $maskPath,
             'model' => $image['model'] ?? 'dall-e-2',
             'n' => $image['n'] ?? 1,
@@ -82,38 +97,43 @@ final class ImageEditAdapter implements EndpointAdapter
      * Validate that the image file exists, is readable, and has a supported format.
      *
      * @param mixed $filePath
-     * @throws InvalidArgumentException If the file is invalid
+     * @param bool $isMask Whether this is a mask file
+     * @throws FileValidationException If the file is invalid
+     * @throws ImageEditException If the image validation fails
      */
-    private function validateImageFile(mixed $filePath): void
+    private function validateImageFile(mixed $filePath, bool $isMask): void
     {
         if (!is_string($filePath)) {
-            throw new InvalidArgumentException('Image file path must be a string.');
+            throw FileValidationException::invalidPathType($filePath);
         }
 
         if (!file_exists($filePath)) {
-            throw new InvalidArgumentException("Image file does not exist: {$filePath}");
+            throw FileValidationException::fileNotFound($filePath);
         }
 
         if (!is_readable($filePath)) {
-            throw new InvalidArgumentException("Image file is not readable: {$filePath}");
+            throw FileValidationException::fileNotReadable($filePath);
         }
 
         $supportedFormats = ['png'];
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         if (!in_array($extension, $supportedFormats, true)) {
-            throw new InvalidArgumentException(
-                "Unsupported image format: {$extension}. Image edit only supports PNG format."
-            );
+            if ($isMask) {
+                throw ImageEditException::invalidMask($filePath, "Mask must be in PNG format. Current format: {$extension}");
+            }
+            throw ImageEditException::unsupportedFormat($filePath, $extension);
         }
 
         $fileSize = filesize($filePath);
-        $maxSize = 4 * 1024 * 1024;
+        $maxSize = 4 * 1024 * 1024; // 4MB
 
-        if ($fileSize === false || $fileSize > $maxSize) {
-            throw new InvalidArgumentException(
-                "Image file size must be less than 4MB. Current size: " . ($fileSize !== false ? round($fileSize / 1024 / 1024, 2) . 'MB' : 'unknown')
-            );
+        if ($fileSize === false) {
+            throw FileValidationException::fileNotReadable($filePath);
+        }
+
+        if ($fileSize > $maxSize) {
+            throw ImageEditException::imageTooLarge($filePath, $fileSize);
         }
     }
 }

@@ -42,16 +42,10 @@ return [
     ],
 
     /**
-     * When true, the package will avoid real OpenAI calls and bind a NullOpenAiRepository.
+     * When true, the package will avoid real OpenAI calls.
      * Useful for local development and tests. Can also be toggled via overlays.
      */
     'mock_responses' => (bool)env('AI_ASSISTANT_MOCK', false),
-
-    /**
-     * Optional: override the repository class implementing OpenAiRepositoryContract.
-     * Provide a fully-qualified class name; must implement the contract.
-     */
-    'repository' => env('AI_ASSISTANT_REPOSITORY', null),
 
     /*
     |--------------------------------------------------------------------------

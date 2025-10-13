@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
+/**
+ * @internal Low-level abstraction for conversations operations. Do not use directly.
+ * Use ConversationsBuilder via Ai::conversations() instead.
+ */
 interface ConversationsRepositoryContract
 {
     /**

@@ -2,6 +2,659 @@
 
 This document provides comprehensive upgrade instructions for major version changes of the Laravel AI Assistant package.
 
+> **📖 Looking for detailed migration examples?** See [MIGRATION.md](MIGRATION.md) for comprehensive code examples showing how to migrate from legacy APIs to the SSOT API.
+
+---
+
+## v3.0 - Major API Cleanup (SSOT Architecture)
+
+### Overview
+
+Version 3.0 introduces a major cleanup to establish the **Single Source of Truth (SSOT)** architecture, where `Ai::responses()` becomes the unified entry point for all OpenAI operations. This release removes legacy components, deprecates old APIs, and marks internal implementation details appropriately.
+
+**⚠️ Important**: This is a **backward-compatible release**. All deprecated APIs continue to work in v3.0 and will only be removed in v4.0.
+
+### Changes Summary
+
+All changes are categorized into three groups:
+
+| Category | Status | Timeline | Action Required |
+|----------|--------|----------|-----------------|
+| **Deleted** | ❌ Removed in v3.0 | Now | Must migrate immediately |
+| **Deprecated** | ⚠️ Still works, will be removed in v4.0 | Before v4.0 | Plan migration |
+| **Internal** | 🔒 Marked as internal, still available | Ongoing | Avoid direct usage |
+
+### Timeline
+
+- **v3.0 (Current)**: Legacy code deleted, old APIs deprecated, internal classes marked
+- **v3.x**: Deprecation warnings help guide migration
+- **v4.0 (Future)**: All deprecated classes and methods will be removed
+
+### Breaking Changes
+
+**None**. Version 3.0 is backward compatible. The only breaking changes are for classes that were deleted (see "Deleted Classes" section below), which were legacy internal implementations not part of the public API.
+
+---
+
+## v3.0 - Deleted Classes and Components
+
+The following components have been **completely removed** in v3.0. These were legacy internal implementations that have been replaced by the SSOT architecture.
+
+### Compat Directory (Removed)
+
+**Path**: `/src/Compat/` - **Entire directory deleted**
+
+**Reason**: Legacy OpenAI client compatibility layer that predated the SSOT architecture.
+
+**Deleted Files**:
+- `OpenAI/Client.php` - Legacy OpenAI client wrapper
+- `OpenAI/ChatResource.php` - Old chat resource
+- `OpenAI/AudioResource.php` - Old audio resource  
+- `OpenAI/CompletionsResource.php` - Old completions resource
+- `OpenAI/Resources/Audio.php`
+- `OpenAI/Resources/Chat.php`
+- `OpenAI/Resources/Completions.php`
+- `OpenAI/Responses/Chat/CreateResponse.php`
+- `OpenAI/Responses/Completions/CreateResponse.php`
+- `OpenAI/Responses/Completions/StreamedCompletionResponse.php`
+- `OpenAI/Responses/Audio/TranscriptionResponse.php`
+- `OpenAI/Responses/Audio/TranslationResponse.php`
+- `OpenAI/Responses/StreamResponse.php`
+- `OpenAI/Responses/Meta/MetaInformation.php`
+- `OpenAI/aliases.php`
+
+**Migration**: Use `Ai::responses()` instead. See [MIGRATION.md](MIGRATION.md#from-compat-client) for examples.
+
+### Legacy Repository Classes (Removed)
+
+**Files Deleted**:
+- `/src/Repositories/OpenAiRepository.php`
+- `/src/Repositories/NullOpenAiRepository.php`
+
+**Reason**: These repositories directly called the legacy Compat Client. With SSOT, all operations go through `ResponsesBuilder` → `RequestRouter` → `AdapterFactory` → `OpenAiClient`.
+
+**Migration**: Use `Ai::responses()` instead. See [MIGRATION.md](MIGRATION.md#from-openairepository) for examples.
+
+### Legacy Contracts (Removed)
+
+**File Deleted**:
+- `/src/Contracts/OpenAiRepositoryContract.php`
+
+**Reason**: Contract for the removed OpenAiRepository.
+
+**Migration**: Use `Ai::responses()` or `Ai::conversations()` facades directly.
+
+---
+
+## v3.0 - Internal Classes (Not for Direct Use)
+
+The following classes are marked as **@internal** in v3.0. They are implementation details of the SSOT architecture and should not be used directly in your application code.
+
+### Adapter Classes
+
+**Path**: `/src/Adapters/`
+
+**Marked as Internal**:
+- `AdapterFactory.php` - Creates appropriate adapters based on request type
+- `AudioSpeechAdapter.php` - Handles text-to-speech operations
+- `AudioTranscriptionAdapter.php` - Handles audio transcription
+- `AudioTranslationAdapter.php` - Handles audio translation
+- `ChatCompletionAdapter.php` - Handles chat completions
+- `EndpointAdapter.php` - Adapter interface
+- `ImageEditAdapter.php` - Handles image editing
+- `ImageGenerationAdapter.php` - Handles image generation
+- `ImageVariationAdapter.php` - Handles image variations
+- `ResponseApiAdapter.php` - API response transformation
+- `ArrayConfigAdapter.php` - Configuration transformation
+
+**Reason**: Internal implementation details of request transformation. Users should interact through `ResponsesBuilder` only.
+
+**Usage**: Do not instantiate or call adapters directly. Use `Ai::responses()` instead.
+
+### Routing and HTTP Classes
+
+**Marked as Internal**:
+- `/src/Services/RequestRouter.php` - Routes requests to appropriate endpoints
+- `/src/Services/OpenAiClient.php` - Low-level HTTP client for OpenAI API
+- `/src/Http/MultipartRequestBuilder.php` - Builds multipart HTTP requests
+
+**Reason**: Internal routing logic and HTTP utilities.
+
+**Usage**: Do not use directly. Use `Ai::responses()` which handles routing automatically.
+
+### Repository Implementations
+
+**Marked as Internal**:
+- `/src/Repositories/Http/ResponsesHttpRepository.php`
+- `/src/Repositories/Http/ConversationsHttpRepository.php`
+- `/src/Repositories/Http/FilesHttpRepository.php`
+- `/src/Repositories/Http/ResponsesInputItemsHttpRepository.php`
+
+**Reason**: Low-level HTTP repositories used internally by `AssistantService`.
+
+**Usage**: Do not use directly. Use builders: `Ai::responses()` or `Ai::conversations()`.
+
+### Repository Contracts
+
+**Marked as Internal**:
+- `/src/Contracts/ResponsesRepositoryContract.php`
+- `/src/Contracts/ConversationsRepositoryContract.php`
+- `/src/Contracts/ResponsesInputItemsRepositoryContract.php`
+- `/src/Contracts/FilesRepositoryContract.php`
+
+**Reason**: Low-level abstractions. Users should use builders, not repositories.
+
+**Usage**: Do not implement or type-hint these contracts. Use `Ai::responses()` or `Ai::conversations()` instead.
+
+### Internal Facades
+
+**Marked as Internal**:
+- `/src/Facades/AiAssistantCache.php` - Internal caching facade
+- `/src/Facades/Observability.php` - Internal observability facade
+
+**Reason**: These are internal utilities for package functionality.
+
+**Usage**: Do not use in application code. These are for internal package operations only.
+
+---
+
+## v3.0 - AiAssistant Class Deprecation
+
+### Overview
+
+The `AiAssistant` class is **deprecated as of v3.0** and will be removed in **v4.0**. Users should migrate to the unified `Ai::responses()` API or `Ai::chat()` for chat sessions.
+
+### Why This Change?
+
+The SSOT (Single Source of Truth) architecture establishes `Ai::responses()` as the single public entry point for all OpenAI operations, providing a cleaner, more maintainable API surface.
+
+### Migration Path
+
+#### Basic Chat Completion
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+
+$assistant = AiAssistant::acceptPrompt('Hello, how are you?')
+    ->setModelName('gpt-4')
+    ->setTemperature(0.7);
+
+$response = $assistant->sendChatMessageDto();
+echo $response->content;
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$response = Ai::responses()
+    ->model('gpt-4')
+    ->temperature(0.7)
+    ->input('Hello, how are you?')
+    ->send();
+
+echo $response->text();
+```
+
+#### Using Chat Sessions
+
+**Before (Deprecated):**
+```php
+$assistant = AiAssistant::acceptPrompt('What is Laravel?')
+    ->setModelName('gpt-4')
+    ->startConversation();
+
+$response = $assistant->sendChatMessageDto();
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$chat = Ai::chat()
+    ->model('gpt-4')
+    ->start();
+
+$response = $chat->send('What is Laravel?');
+```
+
+#### With System Instructions
+
+**Before (Deprecated):**
+```php
+$assistant = AiAssistant::acceptPrompt('Explain dependency injection')
+    ->setSystemMessage('You are a helpful coding tutor')
+    ->setModelName('gpt-4');
+
+$response = $assistant->sendChatMessageDto();
+```
+
+**After (Recommended):**
+```php
+$response = Ai::responses()
+    ->model('gpt-4')
+    ->instructions('You are a helpful coding tutor')
+    ->input('Explain dependency injection')
+    ->send();
+```
+
+#### Streaming Responses
+
+**Before (Deprecated):**
+```php
+$assistant = AiAssistant::acceptPrompt('Tell me a story')
+    ->setModelName('gpt-4');
+
+foreach ($assistant->streamChatText() as $chunk) {
+    echo $chunk;
+}
+```
+
+**After (Recommended):**
+```php
+$stream = Ai::responses()
+    ->model('gpt-4')
+    ->input('Tell me a story')
+    ->stream();
+
+foreach ($stream as $chunk) {
+    echo $chunk;
+}
+```
+
+#### With Tools/Functions
+
+**Before (Deprecated):**
+```php
+$assistant = AiAssistant::acceptPrompt('What is the weather?')
+    ->includeFunctionCallTool(
+        'get_weather',
+        'Get current weather',
+        ['location' => ['type' => 'string']],
+        true
+    );
+
+$response = $assistant->sendChatMessageEnvelope();
+```
+
+**After (Recommended):**
+```php
+$response = Ai::responses()
+    ->input('What is the weather?')
+    ->tool([
+        'type' => 'function',
+        'function' => [
+            'name' => 'get_weather',
+            'description' => 'Get current weather',
+            'parameters' => [
+                'type' => 'object',
+                'properties' => [
+                    'location' => ['type' => 'string'],
+                ],
+            ],
+            'strict' => true,
+        ],
+    ])
+    ->send();
+```
+
+### Timeline
+
+- **v3.0**: AiAssistant deprecated (still functional)
+- **v4.0**: AiAssistant will be removed
+
+### Benefits of Migration
+
+- ✅ Cleaner, more intuitive API
+- ✅ Better IDE support and autocomplete
+- ✅ Unified approach for all OpenAI operations
+- ✅ Improved type safety
+- ✅ Future-proof architecture
+
+---
+
+## v3.0 - AiAssistant Facade Deprecation
+
+### Overview
+
+The `AiAssistant` facade is **deprecated as of v3.0** and will be removed in **v4.0**. Users should migrate to the `Ai` facade instead.
+
+### Why This Change?
+
+The `AiAssistant` facade provides access to the deprecated `AiAssistant` class. With the new SSOT architecture, the `Ai` facade is the recommended entry point for all AI operations.
+
+### Migration Path
+
+#### Basic Usage
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\AiAssistant;
+
+$response = AiAssistant::acceptPrompt('Hello, how are you?')
+    ->sendChatMessageDto();
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$response = Ai::chat('Hello, how are you?')->send();
+// Or using responses builder
+$response = Ai::responses()
+    ->input('Hello, how are you?')
+    ->send();
+```
+
+#### Chat Operations
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\AiAssistant;
+
+$response = AiAssistant::reply('What is Laravel?');
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$response = Ai::chat('What is Laravel?')->send();
+// Or use quick method for one-shot
+$response = Ai::quick('What is Laravel?');
+```
+
+#### Streaming
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\AiAssistant;
+
+$stream = AiAssistant::acceptPrompt('Tell me a story')
+    ->streamChatText(function($chunk) {
+        echo $chunk;
+    });
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$stream = Ai::stream('Tell me a story', function($chunk) {
+    echo $chunk;
+});
+// Or using responses builder
+foreach (Ai::responses()->input('Tell me a story')->stream() as $chunk) {
+    echo $chunk;
+}
+```
+
+#### Audio Operations
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\AiAssistant;
+
+$text = AiAssistant::transcribeTo('english', $audioFile);
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => $audioFile,
+        'action' => 'transcribe',
+        'language' => 'english',
+    ])
+    ->send();
+```
+
+#### Image Operations
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\AiAssistant;
+
+// Image generation through old methods
+$assistant = AiAssistant::init()
+    ->createImageGeneration($prompt);
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+$response = Ai::responses()
+    ->input()
+    ->image([
+        'prompt' => $prompt,
+        'action' => 'generate',
+    ])
+    ->send();
+```
+
+### Timeline
+
+- **v3.0**: AiAssistant facade deprecated (still functional, triggers deprecation warning)
+- **v4.0**: AiAssistant facade will be removed
+
+### Key Differences
+
+| AiAssistant Facade | Ai Facade |
+|-------------------|-----------|
+| `AiAssistant::acceptPrompt()` | `Ai::chat()` or `Ai::responses()->input()` |
+| `AiAssistant::reply()` | `Ai::chat()->send()` |
+| `AiAssistant::streamChatText()` | `Ai::stream()` |
+| `AiAssistant::transcribeTo()` | `Ai::responses()->input()->audio()` |
+| `AiAssistant::init()` | `Ai::responses()` |
+
+---
+
+## v3.0 - OpenAIClientFacade Deprecation
+
+### Overview
+
+The `OpenAIClientFacade` class is **deprecated as of v3.0** and will be removed in **v4.0**. Users should migrate to the `Ai` facade methods instead.
+
+### Why This Change?
+
+The `OpenAIClientFacade` was an internal abstraction that exposed repository contracts directly. With the SSOT (Single Source of Truth) architecture, the `Ai` facade provides a cleaner, more unified API through builders rather than repositories.
+
+### Migration Path
+
+#### Using Responses
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
+
+$facade = app(OpenAIClientFacade::class);
+$repository = $facade->responses();
+// Then use repository methods...
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Direct access to ResponsesBuilder
+$response = Ai::responses()
+    ->model('gpt-4')
+    ->input('Your prompt here')
+    ->send();
+```
+
+#### Using Conversations
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
+
+$facade = app(OpenAIClientFacade::class);
+$repository = $facade->conversations();
+// Then use repository methods...
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Direct access to ConversationsBuilder
+$chat = Ai::conversations()
+    ->create('My Conversation')
+    ->send('Hello!');
+```
+
+#### Using Files
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
+
+$facade = app(OpenAIClientFacade::class);
+$filesRepository = $facade->files();
+// Then use file repository methods...
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
+
+// Use Ai facade methods for file operations
+// (Refer to documentation for specific file operation methods)
+```
+
+### Timeline
+
+- **v3.0**: OpenAIClientFacade deprecated (still functional, triggers deprecation warning)
+- **v4.0**: OpenAIClientFacade will be removed
+
+### Benefits of Migration
+
+- ✅ Cleaner API through the unified `Ai` facade
+- ✅ Builder pattern instead of direct repository access
+- ✅ Better type safety and IDE support
+- ✅ Consistent with SSOT architecture
+- ✅ Reduced cognitive load with single entry point
+
+---
+
+## v3.0 - AppConfig Deprecation
+
+### Overview
+
+The `AppConfig` class is **deprecated as of v3.0** and will be removed in **v4.0**. Users should migrate to the `ModelConfigFactory` with `ModelOptions` instead.
+
+### Why This Change?
+
+The `AppConfig` class used static methods to retrieve configuration arrays for different modalities. The new `ModelConfigFactory` with `ModelOptions` provides a more flexible, type-safe, and testable approach to configuration management using the factory pattern and DTOs.
+
+### Migration Path
+
+#### Text Generator Configuration
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
+
+$config = AppConfig::textGeneratorConfig();
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Factories\ModelConfigFactory;
+use CreativeCrafts\LaravelAiAssistant\Enums\Modality;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ModelOptions;
+
+$config = ModelConfigFactory::for(
+    Modality::Text,
+    ModelOptions::fromConfig()
+);
+```
+
+#### Chat Text Generator Configuration
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
+
+$config = AppConfig::chatTextGeneratorConfig();
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Factories\ModelConfigFactory;
+use CreativeCrafts\LaravelAiAssistant\Enums\Modality;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ModelOptions;
+
+$config = ModelConfigFactory::for(
+    Modality::Chat,
+    ModelOptions::fromConfig()
+);
+```
+
+#### Edit Text Generator Configuration
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
+
+$config = AppConfig::editTextGeneratorConfig();
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Factories\ModelConfigFactory;
+use CreativeCrafts\LaravelAiAssistant\Enums\Modality;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ModelOptions;
+
+$config = ModelConfigFactory::for(
+    Modality::Edit,
+    ModelOptions::fromConfig()
+);
+```
+
+#### Audio to Text Generator Configuration
+
+**Before (Deprecated):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
+
+$config = AppConfig::audioToTextGeneratorConfig();
+```
+
+**After (Recommended):**
+```php
+use CreativeCrafts\LaravelAiAssistant\Factories\ModelConfigFactory;
+use CreativeCrafts\LaravelAiAssistant\Enums\Modality;
+use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ModelOptions;
+
+$config = ModelConfigFactory::for(
+    Modality::AudioToText,
+    ModelOptions::fromConfig()
+);
+```
+
+### Timeline
+
+- **v3.0**: AppConfig deprecated (still functional, triggers deprecation warning)
+- **v4.0**: AppConfig will be removed
+
+### Benefits of Migration
+
+- ✅ Type-safe configuration with DTOs
+- ✅ Factory pattern for better testability
+- ✅ Flexible configuration options
+- ✅ Better IDE support and autocompletion
+- ✅ Consistent with modern architecture patterns
+- ✅ Easier to mock and test
+
+---
+
 ## Modern Approach: Unified Completion API (Recommended)
 
 The **unified completion API** (`AiManager::complete()`) is the **modern, recommended approach** for all AI operations. It provides:

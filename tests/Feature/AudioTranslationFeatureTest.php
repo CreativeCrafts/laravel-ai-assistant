@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AudioTranslationAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\AudioTranslationException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 
 beforeEach(function () {
     $this->adapter = new AudioTranslationAdapter();
@@ -129,7 +131,7 @@ describe('End-to-end audio translation flow', function () {
 
         // Act & Assert: Should throw exception for unsupported format
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Unsupported audio format');
+            ->toThrow(AudioTranslationException::class, 'Unsupported audio format');
     });
 
     it('validates file existence in end-to-end flow', function () {
@@ -142,7 +144,7 @@ describe('End-to-end audio translation flow', function () {
 
         // Act & Assert: Should throw exception for non-existent file
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Audio file does not exist');
+            ->toThrow(FileValidationException::class, 'File not found');
     });
 
     it('validates file readability in end-to-end flow', function () {
@@ -160,7 +162,7 @@ describe('End-to-end audio translation flow', function () {
         try {
             // Act & Assert: Should throw exception for unreadable file
             expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-                ->toThrow(InvalidArgumentException::class, 'Audio file is not readable');
+                ->toThrow(FileValidationException::class, 'not readable');
         } finally {
             // Cleanup: Restore permissions before deletion
             chmod($this->tempFile, 0644);

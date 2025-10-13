@@ -27,9 +27,10 @@ interface OpenAITransport
      * @param array $headers Optional extra headers
      * @param float|null $timeout Per-call timeout override (seconds)
      * @param bool $idempotent Whether to enforce/provide Idempotency-Key and persist it over retries
+     * @param callable|null $progressCallback Optional callback for upload progress tracking (downloadTotal, downloadedBytes, uploadTotal, uploadedBytes)
      * @return array Decoded JSON response
      */
-    public function postMultipart(string $path, array $fields, array $headers = [], ?float $timeout = null, bool $idempotent = false): array;
+    public function postMultipart(string $path, array $fields, array $headers = [], ?float $timeout = null, bool $idempotent = false, ?callable $progressCallback = null): array;
 
     /**
      * Send a JSON POST request initiating an SSE stream and yield raw SSE lines.

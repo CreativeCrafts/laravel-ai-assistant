@@ -6,6 +6,10 @@ namespace CreativeCrafts\LaravelAiAssistant\Support;
 
 use Illuminate\Support\Facades\Config;
 
+/**
+ * @internal Used internally to emit deprecation warnings for legacy API usage.
+ * Do not use directly.
+ */
 final class Deprecation
 {
     /** @var array<string, true> */

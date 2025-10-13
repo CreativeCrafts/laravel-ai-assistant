@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
+/**
+ * @internal Low-level abstraction for response input items operations. Do not use directly.
+ * Use InputBuilder via ResponsesBuilder instead.
+ */
 interface ResponsesInputItemsRepositoryContract
 {
     /**

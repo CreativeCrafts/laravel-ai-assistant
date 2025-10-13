@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
+/**
+ * @internal Low-level abstraction for files operations. Do not use directly.
+ * Use Ai::responses() or other builder methods instead.
+ */
 interface FilesRepositoryContract
 {
     /**

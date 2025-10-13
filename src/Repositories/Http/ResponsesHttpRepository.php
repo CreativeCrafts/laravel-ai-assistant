@@ -13,6 +13,10 @@ use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Config;
 use JsonException;
 
+/**
+ * @internal This class is used internally by AssistantService.
+ * Do not use directly - use Ai::responses() or Ai::conversations() instead.
+ */
 final readonly class ResponsesHttpRepository implements ResponsesRepositoryContract
 {
     private OpenAITransport $transport;

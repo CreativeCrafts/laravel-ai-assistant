@@ -7,6 +7,10 @@ namespace CreativeCrafts\LaravelAiAssistant\Support;
 use Random\RandomException;
 use Throwable;
 
+/**
+ * @internal Used internally for retry logic with exponential backoff.
+ * Do not use directly.
+ */
 final class Retry
 {
     /**

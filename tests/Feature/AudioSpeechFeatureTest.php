@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AudioSpeechAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\AudioSpeechException;
 
 beforeEach(function () {
     $this->adapter = new AudioSpeechAdapter();
@@ -189,11 +190,9 @@ describe('End-to-end audio speech (TTS) flow', function () {
             ],
         ];
 
-        // Act: Transform request
-        $transformedRequest = $this->adapter->transformRequest($unifiedRequest);
-
-        // Assert: Empty string should be preserved
-        expect($transformedRequest['input'])->toBe('');
+        // Act & Assert: Should throw exception for empty text
+        expect(fn () => $this->adapter->transformRequest($unifiedRequest))
+            ->toThrow(AudioSpeechException::class, 'Text input is required');
     });
 
     it('handles API response without optional fields', function () {
@@ -256,34 +255,18 @@ describe('End-to-end audio speech (TTS) flow', function () {
             'audio' => [],
         ];
 
-        // Act: Transform request
-        $transformedRequest = $this->adapter->transformRequest($unifiedRequest);
-
-        // Assert: Should apply all defaults including empty input
-        expect($transformedRequest)->toBe([
-            'model' => 'tts-1',
-            'input' => '',
-            'voice' => 'alloy',
-            'response_format' => 'mp3',
-            'speed' => 1.0,
-        ]);
+        // Act & Assert: Should throw exception for missing text
+        expect(fn () => $this->adapter->transformRequest($unifiedRequest))
+            ->toThrow(AudioSpeechException::class, 'Text input is required');
     });
 
     it('handles missing audio key gracefully', function () {
         // Arrange: Request without audio key
         $unifiedRequest = [];
 
-        // Act: Transform request
-        $transformedRequest = $this->adapter->transformRequest($unifiedRequest);
-
-        // Assert: Should apply all defaults
-        expect($transformedRequest)->toBe([
-            'model' => 'tts-1',
-            'input' => '',
-            'voice' => 'alloy',
-            'response_format' => 'mp3',
-            'speed' => 1.0,
-        ]);
+        // Act & Assert: Should throw exception for missing text
+        expect(fn () => $this->adapter->transformRequest($unifiedRequest))
+            ->toThrow(AudioSpeechException::class, 'Text input is required');
     });
 
     it('handles long text input', function () {

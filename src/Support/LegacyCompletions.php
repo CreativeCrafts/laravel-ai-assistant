@@ -10,6 +10,9 @@ use InvalidArgumentException;
 /**
  * Backwards-compat shim object exposing legacy Chat/Text/Edits helpers.
  * All methods are deprecated and will be removed in a future version.
+ *
+ * @internal Used internally for legacy completions API compatibility.
+ * Do not use directly.
  */
 final readonly class LegacyCompletions
 {
@@ -34,12 +37,12 @@ final readonly class LegacyCompletions
 
     public function andRespond(): array
     {
-        throw new InvalidArgumentException('LegacyCompletions::andRespond is deprecated. Use AiAssistant::reply() or sendChatMessageDto().');
+        throw new InvalidArgumentException('LegacyCompletions::andRespond is deprecated. Use Ai::responses() facade or inject ResponsesRepositoryContract. See MIGRATION.md for details.');
     }
 
     public function withCustomFunction(CustomFunctionData $customFunctionData): array
     {
-        throw new InvalidArgumentException('LegacyCompletions::withCustomFunction is deprecated. Register tools and use AiAssistant::reply().');
+        throw new InvalidArgumentException('LegacyCompletions::withCustomFunction is deprecated. Use ResponsesBuilder with tools() method or register tools via service provider. See MIGRATION.md for details.');
     }
 
     public function spellingAndGrammarCorrection(): string

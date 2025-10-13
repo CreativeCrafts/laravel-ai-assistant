@@ -10,9 +10,7 @@ use CreativeCrafts\LaravelAiAssistant\Console\Commands\TestConnectionCommand;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AiAssistantContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
-use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
-use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
 use CreativeCrafts\LaravelAiAssistant\Providers\CoreServiceProvider;
 use CreativeCrafts\LaravelAiAssistant\Providers\HealthCheckServiceProvider;
@@ -54,22 +52,13 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
         $this->app->register(HealthCheckServiceProvider::class);
         $this->app->register(WebhookServiceProvider::class);
 
-        // Register main facade/client bindings
-        $this->app->singleton(OpenAIClientFacade::class, function ($app) {
-            return new OpenAIClientFacade(
-                $app->make(ResponsesRepositoryContract::class),
-                $app->make(ConversationsRepositoryContract::class),
-                $app->make(FilesRepositoryContract::class),
-                $app->make(OpenAiRepositoryContract::class),
-                $app->make(ResponsesInputItemsRepositoryContract::class)
-            );
-        });
-
-        // Register the AssistantService with repository and cache dependency injection
+        // Register the AssistantService with all required dependencies
         $this->app->bind(AssistantService::class, function ($app) {
             return new AssistantService(
-                $app->make(OpenAiRepositoryContract::class),
-                $app->make(CacheService::class)
+                $app->make(CacheService::class),
+                $app->make(ResponsesRepositoryContract::class),
+                $app->make(ConversationsRepositoryContract::class),
+                $app->make(FilesRepositoryContract::class)
             );
         });
 

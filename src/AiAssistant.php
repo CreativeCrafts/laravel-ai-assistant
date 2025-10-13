@@ -43,6 +43,12 @@ use Throwable;
  * - `audioToTextGeneratorConfig`: For audio transcription settings
  * The different naming convention from Assistant's `modelConfig` is intentional to reflect
  * the ephemeral, API-specific nature of these configurations versus persistent assistant setup.
+ *
+ * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+ *             This class will be removed in v4.0.
+ *
+ * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::responses()
+ * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::chat()
  */
 class AiAssistant implements AiAssistantContract
 {
@@ -91,10 +97,19 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Constructs a new AiAssistant instance.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function __construct(
         protected string $prompt = ''
     ) {
+        trigger_error(
+            'AiAssistant class is deprecated since v3.0 and will be removed in v4.0. ' .
+            'Use Ai::responses() for unified API or Ai::chat() for chat sessions.',
+            E_USER_DEPRECATED
+        );
+
         $this->textGeneratorConfig = AppConfig::textGeneratorConfig();
         $this->chatTextGeneratorConfig = AppConfig::chatTextGeneratorConfig();
         $this->turnOptions = $this->chatTextGeneratorConfig; // start in sync
@@ -108,6 +123,9 @@ class AiAssistant implements AiAssistantContract
      * Accepts a prompt and returns a new instance of the AiAssistant class.
      * This method is used to create a new AiAssistant instance with a given prompt.
      * It is a static method, allowing for a fluent interface when initializing the AiAssistant class.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public static function acceptPrompt(string $prompt): self
     {
@@ -115,6 +133,9 @@ class AiAssistant implements AiAssistantContract
     }
 
     /**
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
+     *
      * @throws BindingResolutionException
      */
     public static function init(?AssistantService $client = null): self
@@ -127,6 +148,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Sets the AssistantService client for making API requests.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function client(AssistantService $client): self
     {
@@ -137,6 +161,9 @@ class AiAssistant implements AiAssistantContract
     /**
      * Control auto-reset behavior. When true, resetTurn() is called after each send/stream.
      * Documented default is config('ai-assistant.reset_after_turn', true).
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function withAutoReset(bool $enabled): self
     {
@@ -146,6 +173,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Use an existing conversation id.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function useConversation(string $conversationId): self
     {
@@ -155,6 +185,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Alias for instructions(): set a system message mapping to instructions.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setSystemMessage(string $message): self
     {
@@ -163,6 +196,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Set developer/system instructions (assistant persona) to be sent per turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function instructions(string $systemOrPersona): self
     {
@@ -172,6 +208,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Alias for instructions(): set a developer message mapping to instructions.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setDeveloperMessage(string $message): self
     {
@@ -180,6 +219,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Set the model name for responses.create.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setModelName(string $model): self
     {
@@ -189,6 +231,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Set the sampling temperature for this turn (0.0 – 2.0).
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setTemperature(float $temperature): self
     {
@@ -203,6 +248,9 @@ class AiAssistant implements AiAssistantContract
      * Include the file_search tool.
      *
      * @param array $vectorStoreIds Optional vector store IDs to associate with the file search tool
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function includeFileSearchTool(array $vectorStoreIds = []): self
     {
@@ -238,6 +286,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Toggle auto file_search behavior for this turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function useFileSearch(bool $enabled = true): self
     {
@@ -248,6 +299,9 @@ class AiAssistant implements AiAssistantContract
     /**
      * Add the tool_choice option for this turn.
      * Accepts 'auto' | 'required' | 'none' | ['type' => 'function', 'name' => '...']
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setToolChoice(string|array $choice): self
     {
@@ -257,6 +311,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Set modalities for this turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setModalities(string|array $modalities): self
     {
@@ -266,6 +323,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Attach per-turn metadata.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function withMetadata(array $metadata): self
     {
@@ -276,6 +336,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Set an idempotency key for this turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setIdempotencyKey(string $key): self
     {
@@ -285,6 +348,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Explicitly set attachments array for this turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setAttachments(array $attachments): self
     {
@@ -320,6 +386,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Cancel an in-flight response.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function cancelResponse(string $responseId): bool
     {
@@ -332,6 +401,9 @@ class AiAssistant implements AiAssistantContract
      * Deduplicates internally; merges provided file_ids into tool_resources uniquely.
      *
      * @param array $fileIds Optional file IDs to associate with the code interpreter tool
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function includeCodeInterpreterTool(array $fileIds = []): self
     {
@@ -366,6 +438,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Set response_format to plain text.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setResponseFormatText(): self
     {
@@ -375,6 +450,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Set response_format to a JSON schema structure.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setResponseFormatJsonSchema(array $jsonSchema, ?string $name = 'response'): self
     {
@@ -410,6 +488,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Send the prepared user message and receive a typed envelope.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function sendChatMessageEnvelope(): ResponseEnvelope
     {
@@ -435,6 +516,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Get the current conversation id (if any).
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function conversationId(): ?string
     {
@@ -444,6 +528,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Start a new conversation and keep its id internally.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function startConversation(array $metadata = []): self
     {
@@ -457,6 +544,9 @@ class AiAssistant implements AiAssistantContract
      * Reset selected per-turn state keys to avoid unintended reuse.
      * Note: auto-reset after each send/stream is controlled by config('ai-assistant.reset_after_turn', true).
      * You can override this at runtime via withAutoReset(bool $enabled).
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function resetTurn(array $keys = ['user_message', 'file_ids', 'input_images', 'attachments']): self
     {
@@ -470,6 +560,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Send the prepared user message and receive a simplified typed DTO.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function sendChatMessageDto(): ChatResponseDto
     {
@@ -495,6 +588,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Set the user message (text) for the next turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function setUserMessage(string $text): self
     {
@@ -535,6 +631,9 @@ class AiAssistant implements AiAssistantContract
     /**
      * Stream the prepared user message as a series of events.
      * Returns a Generator yielding associative arrays describing stream events.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function streamEvents(?callable $onEvent = null, ?callable $shouldStop = null): Generator
     {
@@ -594,6 +693,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Continue a turn returning a typed ResponseEnvelope.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function continueWithToolResultsEnvelope(array $toolResults): ResponseEnvelope
     {
@@ -613,6 +715,9 @@ class AiAssistant implements AiAssistantContract
      * Canonical typed continue-with-tools.
      *
      * @param array<int, array{tool_call_id:string, output:string}> $toolResults
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function continueWithToolResultsDto(array $toolResults): ChatResponseDto
     {
@@ -629,6 +734,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Attach a Laravel UploadedFile to this turn (as file_reference / file_search attachment).
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function attachUploadedFile(UploadedFile $file, string $purpose = 'assistants'): self
     {
@@ -642,6 +750,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Upload a file to OpenAI and return the file_id.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function uploadFile(string $path, string $purpose = 'assistants'): string
     {
@@ -651,6 +762,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Attach file ids to the next turn (as file_reference blocks / file_search attachments).
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function attachFilesToTurn(array $fileIds, ?bool $useFileSearch = null): self
     {
@@ -687,6 +801,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Add an input_image from a Laravel UploadedFile for this turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function addImageFromUploadedFile(UploadedFile $file, string $purpose = 'assistants'): self
     {
@@ -707,6 +824,9 @@ class AiAssistant implements AiAssistantContract
     /**
      * Attach files from Laravel Storage disk paths to this turn.
      * Example: ['documents/report.pdf', 'invoices/2024-01.pdf']
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function attachFilesFromStorage(array $paths, string $purpose = 'assistants'): self
     {
@@ -729,6 +849,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Overload: include a function-calling tool using a typed parameters contract.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function includeFunctionCallToolFromContract(
         string $functionName,
@@ -746,6 +869,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Include a function-calling tool definition.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function includeFunctionCallTool(string $functionName, string $functionDescription = '', array $functionParameters = [], bool $isStrict = false): self
     {
@@ -855,6 +981,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Clarified helper name: add an input_image from a local file by uploading it.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function addInputImageFromFile(string $path, string $purpose = 'assistants'): self
     {
@@ -863,6 +992,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Upload an image file and attach it to the next turn as an input_image block.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function addImageFromFile(string $path, string $purpose = 'assistants'): self
     {
@@ -878,6 +1010,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Clarified helper name: add an input_image referencing a public URL.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function addInputImageFromUrl(string $url): self
     {
@@ -886,6 +1021,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Add an input_image block referencing a public URL for this turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function addImageFromUrl(string $url): self
     {
@@ -901,6 +1039,9 @@ class AiAssistant implements AiAssistantContract
 
     /**
      * Attach a file_id as a file_reference block for this turn.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function attachFileReference(string $fileId, ?bool $useFileSearch = null): self
     {
@@ -910,6 +1051,9 @@ class AiAssistant implements AiAssistantContract
     /**
      * Attach files specifically for file_search via attachments.
      * Accepts a single file_id or an array of file_ids.
+     *
+     * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
+     *             This class will be removed in v4.0.
      */
     public function attachForFileSearch(string|array $fileIds, ?bool $useFileSearch = null): self
     {

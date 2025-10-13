@@ -5,59 +5,250 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.20-beta] - 2025-10-13
+
+### Major Architecture Migration: SSOT (Single Source of Truth) API
+
+This release represents a significant architectural evolution, establishing `Ai::responses()` as the unified entry point for all OpenAI operations.
+
+#### Added
+
+**Core Architecture:**
+
+- Unified Response API with an adapter pattern for all OpenAI endpoints
+  - New `OpenAiClient` service with unified request/response handling
+  - New `RequestRouter` service for intelligent endpoint detection
+  - New `MultipartRequestBuilder` for audio/image file uploads
+- Endpoint routing enums: `OpenAiEndpoint`, `AudioAction`, `ImageAction`
+- Nine specialized adapters for different OpenAI endpoints:
+  - `ResponseApiAdapter` (default unified API)
+  - `ChatCompletionAdapter` (legacy chat endpoint)
+  - `AudioTranscriptionAdapter`, `AudioTranslationAdapter`, `AudioSpeechAdapter`
+  - `ImageGenerationAdapter`, `ImageEditAdapter`, `ImageVariationAdapter`
+  - `EndpointAdapter` (base adapter)
+
+**Exceptions:**
+
+- Domain-specific exception classes with detailed context:
+  - `AudioSpeechException`, `AudioTranscriptionException`, `AudioTranslationException`
+  - `ImageGenerationException`, `ImageEditException`, `ImageVariationException`
+  - `FileValidationException`
+
+**Observability:**
+
+- New `Observability` facade for unified telemetry access
+  - `ObservabilityContract` interface with 20 telemetry methods
+  - `ObservabilityService` with automatic correlation ID propagation
+  - Single import replaces direct service calls
+  - Automatic correlation ID threading across all operations
+
+**Documentation:**
+
+- Comprehensive migration guides:
+  - `MIGRATION.md` (1,952 lines) - Complete SSOT API migration guide
+  - `AUDIO_MIGRATION.md` (627 lines) - Audio operations migration
+  - `IMAGE_MIGRATION.md` (736 lines) - Image operations migration
+- Five runnable examples demonstrating key features:
+  - `01-hello-world.php` - Basic chat completion
+  - `02-streaming.php` - Real-time streaming responses
+  - `03-cancellation.php` - Request cancellation patterns
+  - `04-complete-api.php` - Unified completion API usage
+  - `05-observability.php` - Monitoring and observability
+- `examples/README.md` with detailed usage instructions
+- `examples/smoke-test.php` for verifying package setup
+
+**Configuration:**
+
+- Enhanced adapter-specific settings in `config/ai-assistant.php`
+- New configuration options for endpoint routing and adapter behavior
+
+**Testing:**
+
+- 18 new unit tests covering all adapters and core components
+- 7 new feature tests for end-to-end workflows
+- 3 new integration tests for real API interactions
+- `BackwardCompatibilityTest` ensuring smooth migration
+- `PerformanceOptimizationTest` for performance benchmarking
+- Test fixtures for audio and image file handling
+- Comprehensive integration tests for Conversations CRUD lifecycle
+- Enhanced `CacheBackedProgressTracker` with metadata merging tests
+
+#### Changed
+
+**Core Services:**
+
+- `AssistantService` refactored to use new adapter architecture (405 lines reduced)
+- `StreamingService` enhanced with improved chunk handling and progress tracking
+- `AiManager` now uses unified completion API as single entry point
+- `HealthCheckService` improved with better endpoint validation
+- `ChatSession` enhanced with better fluent API support
+- `FilesHelper` streamlined with fewer convenience methods (moved to ChatSession)
+
+**Repositories:**
+
+- All HTTP repositories now implement consistent contract interfaces
+- `ConversationsHttpRepository` improved with proper update handling
+- Better error handling and type safety across all repositories
+
+**Configuration & Providers:**
+
+- `CoreServiceProvider` refactored with new adapter bindings (68 lines modified)
+- `LaravelAiAssistantServiceProvider` updated to register new services
+- Improved configuration validation and adapter registration
+
+**Documentation:**
+
+- README.md significantly enhanced with improved quick start guide (≤5 minutes)
+  - Added sync vs stream comparison table
+  - Restructured for better onboarding
+  - Added unified completion API section
+- UPGRADE.md expanded with detailed migration guidance
+- Enhanced inline documentation and PHPDoc blocks
+
+#### Removed
+
+**Legacy Compatibility Layer (Breaking):**
+
+- Deleted entire `src/Compat/OpenAI/` directory structure:
+  - `AudioResource`, `ChatResource`, `CompletionsResource`
+  - `Client` (legacy compatibility client)
+  - `TranscriptionResponse`, `TranslationResponse`, `CreateResponse`
+  - `StreamedCompletionResponse`, `MetaInformation`, `StreamResponse`
+  - `aliases.php` (legacy alias mappings)
+
+**Legacy Repositories:**
+
+- `OpenAiRepository` - Direct OpenAI client wrapper (192 lines deleted)
+- `NullOpenAiRepository` - Null object pattern implementation (72 lines deleted)
+
+**Legacy Contracts:**
+
+- `OpenAiRepositoryContract` - Old repository interface (67 lines deleted)
+- `AppConfigContract` - Superseded by `ModelConfigFactory` (12 lines deleted)
+
+**Obsolete Tests:**
+
+- `AppConfigClientCreationTest`, `AppConfigTest`
+- `RepositoryBindingTest`, `ContractComplianceTest`
+- `NewAssistantResponseDataTest`
+- `AiManagerCompleteParityTest`
+- `ApiIntegrationTest`
+- `AssistantServicePerformanceTest`, `PerformanceTest`
+- `OpenAiRepositoryTest`, `AssistantServiceTest`
+
+#### Deprecated
+
+- The following classes are deprecated in v3.0 and will be removed in v4.0:
+  - **AiAssistant** (`src/AiAssistant.php`) - Use `Ai::responses()` or `Ai::chat()` instead
+  - **AiAssistant Facade** (`src/Facades/AiAssistant.php`) - Use `Ai` facade instead
+  - **OpenAIClientFacade** (`src/OpenAIClientFacade.php`) - Use `Ai` facade methods (`Ai::responses()`, `Ai::conversations()`) instead
+  - **AppConfig** (`src/Services/AppConfig.php`) - Use `ModelConfigFactory::for(Modality, ModelOptions)` instead
+- All deprecated classes trigger runtime deprecation warnings in development
+- See `UPGRADE.md` for detailed migration guides and examples
+
+#### Breaking Changes
+
+**API Changes:**
+
+- Legacy `OpenAiRepository` methods no longer available - migrate to `Ai::responses()`
+- Compat Client layer completely removed - use unified Response API
+- `FilesHelper` convenience methods removed - use `ChatSession` methods instead:
+  - Removed: `attachFilesToTurn`, `addImageFromFile`, `addImageFromUrl`, etc.
+  - Use: `ChatSession::attachFiles()`, `includeFileSearchTool()`, `attachUploadedFile()`, etc.
+
+**Architecture:**
+
+- Request routing now automatic based on input structure
+- Priority-based routing: audio > image > response API
+- Multipart form-data handling for file uploads now standardized
+
+#### Migration Notes
+
+- **Action Required:** Update all direct `OpenAiRepository` calls to use `Ai::responses()`
+- **Action Required:** Replace Compat Client usage with unified Response API
+- **Recommended:** Review `MIGRATION.md` for comprehensive migration paths
+- **Recommended:** Test audio/image operations with new adapter-based architecture
+- See `AUDIO_MIGRATION.md` and `IMAGE_MIGRATION.md` for specific migration guides
+
+#### Benefits of This Release
+
+- ✅ **Unified Interface:** One API for text, audio, and images
+- ✅ **Automatic Routing:** Request routing handled internally
+- ✅ **Type Safety:** Full IDE autocompletion and type hints
+- ✅ **Better DX:** Fluent, intuitive builder pattern
+- ✅ **Future-Proof:** Aligns with OpenAI's API evolution
+- ✅ **Cleaner Code:** Less boilerplate, improved maintainability
+- ✅ **Better Observability:** Unified telemetry with correlation ID threading
+- ✅ **Comprehensive Testing:** 28+ new tests ensuring stability
+
 ## [3.0.19-beta] - 2025-10-07
 
 Added
-• A Production-ready AI cache system:
-◦ New Facade AiAssistantCache with typed methods for config, responses, and completions (cache/remember/get/clear/purge; stats).
-◦ New PrefixedKeyIndexer to maintain per-prefix key indexes for stores without tag support (enables safe prefix purges).
-◦ New Artisan commands:
-▪ ai-cache:clear with options --area=config|response|completion, --key=..., and --prefix=config:|response:|completion: for safe, targeted clears.
-▪ ai-cache:stats to output JSON cache statistics.
-• New cache configuration (config/ai-assistant.php):
-◦ Store override, global_prefix, hash_algo.
-◦ TTLs for default/config/response/completion/lock/grace and max_ttl guardrail.
-◦ Safety: prevent_flush, prefix_clear_batch.
-◦ Performance: optional compression/encryption.
-◦ Stampede protection (lock_ttl, retry/backoff, max wait).
-◦ Tagging controls with logical groups (auto-disabled when unsupported).
-• Tests:
-◦ Console command coverage for cache clear/stats.
-◦ CacheService tests including encoding and core behaviors.
+
+- A Production-ready AI cache system:
+- New Facade AiAssistantCache with typed methods for config, responses, and completions (cache/remember/get/clear/purge; stats).
+- New PrefixedKeyIndexer to maintain per-prefix key indexes for stores without tag support (enables safe prefix purges).
+- New Artisan commands:
+- ai-cache:clear with options --area=config|response|completion, --key=..., and --prefix=config:|response:|completion: for safe, targeted clears.
+- ai-cache:stats to output JSON cache statistics.
+- New cache configuration (config/ai-assistant.php):
+- Store override, global_prefix, hash_algo.
+- TTLs for default/config/response/completion/lock/grace and max_ttl guardrail.
+- Safety: prevent_flush, prefix_clear_batch.
+- Performance: optional compression/encryption.
+- Stampede protection (lock_ttl, retry/backoff, max wait).
+- Tagging controls with logical groups (auto-disabled when unsupported).
+- Tests:
+- Console command coverage for cache clear/stats.
+- CacheService tests including encoding and core behaviors.
 
 Changed
-• CacheService: majorly refactor/expansion to support namespacing, hashed completion keys, targeted clears (config/response/completion), prefix-based purges, and stats reporting; improved safety and
+
+- CacheService: majorly refactor/expansion to support namespacing, hashed completion keys, targeted clears (config/response/completion), prefix-based purges, and stats reporting; improved safety and
 performance.
-• Service provider: registers cache bindings and new console commands.
-• README: updated docs to cover the cache system and new commands.
-• composer.json: small adjustments (metadata/autoload tweaks).
+- Service provider: registers cache bindings and new console commands.
+- README: updated docs to cover the cache system and new commands.
+- composer.json: small adjustments (metadata/autoload tweaks).
+
+Deprecated
+
+- The following classes are deprecated in v3.0 and will be removed in v4.0:
+  - **AiAssistant** (src/AiAssistant.php) - Use Ai::responses() or Ai::chat() instead
+  - **AiAssistant Facade** (src/Facades/AiAssistant.php) - Use Ai facade instead
+  - **OpenAIClientFacade** (src/OpenAIClientFacade.php) - Use Ai facade methods (Ai::responses(), Ai::conversations()) instead
+  - **AppConfig** (src/Services/AppConfig.php) - Use ModelConfigFactory::for(Modality, ModelOptions) instead
+- All deprecated classes trigger runtime deprecation warnings in development
+- See UPGRADE.md for detailed migration guides and examples
 
 Notes
-• Use ai-cache:clear for targeted deletion; avoid using Cache::flush() with this package.
-• Consider publishing the config to tune store, TTLs, prefixing, and safety features.
+
+- Use ai-cache:clear for targeted deletion; avoid using Cache::flush() with this package.
+- Consider publishing the config to tune store, TTLs, prefixing, and safety features.
 
 ## [3.0.18-beta] - 2025-09-25
 
 refactor: migrate error reporting to log-only; harden PII scrubbing
 
-• Remove external drivers (Sentry/Bugsnag) and route all reports to logs
-• Default driver forced to 'log' in ErrorReportingService
-• Update production configs/presets to default to 'log' (was 'sentry')
-• Expand sensitive field list (tokens, cookies, client_secret, etc.)
-• Redact sensitive query params and sanitize request URLs
-• Improve recursive scrubbing with JSON_THROW_ON_ERROR and better typing
-• Add helpers: sanitizeUrl, parseQueryParams, isSensitiveField
-• Strengthen method signatures (union types), use static closures, tidy internals
-• Simplify configuration validation for log-only mode
+- Remove external drivers (Sentry/Bugsnag) and route all reports to logs
+- Default driver forced to 'log' in ErrorReportingService
+- Update production configs/presets to default to 'log' (was 'sentry')
+- Expand sensitive field list (tokens, cookies, client_secret, etc.)
+- Redact sensitive query params and sanitize request URLs
+- Improve recursive scrubbing with JSON_THROW_ON_ERROR and better typing
+- Add helpers: sanitizeUrl, parseQueryParams, isSensitiveField
+- Strengthen method signatures (union types), use static closures, tidy internals
+- Simplify configuration validation for log-only mode
 
 Why:
-• Reduce external dependencies and ensure predictable behavior in restricted environments
-• Improve security by aggressively redacting sensitive data in context and URLs
+
+- Reduce external dependencies and ensure predictable behavior in restricted environments
+- Improve security by aggressively redacting sensitive data in context and URLs
 
 BREAKING CHANGE:
-• External trackers (Sentry/Bugsnag) support removed; the service now always logs.
-• Production default error_reporting.driver changed to 'log' and the service ignores non-log drivers.
-• If you rely on Sentry/Bugsnag, implement a custom driver/adapter.
+
+- External trackers (Sentry/Bugsnag) support removed; the service now always logs.
+- Production default error_reporting.driver changed to 'log' and the service ignores non-log drivers.
+- If you rely on Sentry/Bugsnag, implement a custom driver/adapter.
 
 ## [3.0.17-beta] - 2025-09-12
 
@@ -146,49 +337,49 @@ feat (data-factory): support array-based response_format with json_schema option
 
 feat: Improve GuzzleOpenAITransport: robust decode, idempotency key
 
-• Add generateIdempotencyKey() with secure random_bytes and layered fallbacks
-• Make decodeOrFail() content-type aware (handles text/plain) and validate JSON with JSON_THROW_ON_ERROR
-• Move endpoint() and delete() earlier; group retry helpers; reintroduce resolveSseTimeout()
-• Fix error detail assembly to only include fields when present
-• Tidy imports and minor formatting for readability
+- Add generateIdempotencyKey() with secure random_bytes and layered fallbacks
+- Make decodeOrFail() content-type aware (handles text/plain) and validate JSON with JSON_THROW_ON_ERROR
+- Move endpoint() and delete() earlier; group retry helpers; reintroduce resolveSseTimeout()
+- Fix error detail assembly to only include fields when present
+- Tidy imports and minor formatting for readability
 
 ## [3.0.11-beta] - 2025-09-08
 
 feat: add OpenAI transport layer and refactor clients/repositories
 
-• Introduce OpenAITransport interface and GuzzleOpenAITransport implementation
-• Unified JSON, multipart, DELETE and SSE streaming helpers
-• Built-in retries with exponential backoff and optional jitter
-• Idempotency-Key handling (configurable) and consistent error normalization
-• Centralized timeout resolution
-• Wire Compat OpenAI Client to real HTTP via transport
-• Keep legacy constructor signature for BC (HttpClientInterface arg ignored)
-• Support API key, organization header, base URI and per-call timeouts
-• Add Compat OpenAI resources backed by transport
-• Assistants, Chat (incl. streamed responses), Completions
-• Threads (+messages, +runs), Audio (transcribe/translate)
-• Refactor HTTP repositories to delegate network I/O to transport
-• Conversations: POST/GET/DELETE now via transport; simpler list query building
-• Responses: create/stream/get/cancel/delete now via transport; remove duplicated retry/decoder logic
-• Files: upload/retrieve/delete via transport; safer file handling and resource cleanup on errors
-• Update AppConfig to instantiate the compat Client with configured API key/org/timeout
-• Remove stray phpunit.xml.dist.bak
+- Introduce OpenAITransport interface and GuzzleOpenAITransport implementation
+- Unified JSON, multipart, DELETE and SSE streaming helpers
+- Built-in retries with exponential backoff and optional jitter
+- Idempotency-Key handling (configurable) and consistent error normalization
+- Centralized timeout resolution
+- Wire Compat OpenAI Client to real HTTP via transport
+- Keep legacy constructor signature for BC (HttpClientInterface arg ignored)
+- Support API key, organization header, base URI and per-call timeouts
+- Add Compat OpenAI resources backed by transport
+- Assistants, Chat (incl. streamed responses), Completions
+- Threads (+messages, +runs), Audio (transcribe/translate)
+- Refactor HTTP repositories to delegate network I/O to transport
+- Conversations: POST/GET/DELETE now via transport; simpler list query building
+- Responses: create/stream/get/cancel/delete now via transport; remove duplicated retry/decoder logic
+- Files: upload/retrieve/delete via transport; safer file handling and resource cleanup on errors
+- Update AppConfig to instantiate the compat Client with configured API key/org/timeout
+- Remove stray phpunit.xml.dist.bak
 
 ## [3.0.5-beta] - 2025-09-05
 
 "feat: make OpenAI SDK optional, add Compat aliases; default file purpose to "assistants"
 
-• Move openai-php/client from required dependency to a suggested package
-• Provide internal Compat classes with class_alias mappings so common OpenAI\Client and response types resolve when the SDK isn’t installed
-• Expand alias coverage (Client, Chat, Completions incl. streaming, Audio, Meta, StreamResponse, Threads messages/runs)
-• Align file upload defaults with OpenAI Files API
-• Change default purpose from "assistants/answers" to "assistants"
-• Validate and normalize purposes; allow: assistants, batch, fine-tune, vision, user_data
-• Propagate purpose parameter through AssistantService, AiAssistant, FilesHelper, Http repository, and tests
-• Internal refactors and polish
-• Add and normalize endpoint() helpers in HTTP repositories
-• Minor CS tweaks (casts/spacing), improved docblocks, consistent timeout casting
-• Docs: update README to explain optional SDK usage and client behavior
+- Move openai-php/client from required dependency to a suggested package
+- Provide internal Compat classes with class_alias mappings so common OpenAI\Client and response types resolve when the SDK isn’t installed
+- Expand alias coverage (Client, Chat, Completions incl. streaming, Audio, Meta, StreamResponse, Threads messages/runs)
+- Align file upload defaults with OpenAI Files API
+- Change default purpose from "assistants/answers" to "assistants"
+- Validate and normalize purposes; allow: assistants, batch, fine-tune, vision, user_data
+- Propagate purpose parameter through AssistantService, AiAssistant, FilesHelper, Http repository, and tests
+- Internal refactors and polish
+- Add and normalize endpoint() helpers in HTTP repositories
+- Minor CS tweaks (casts/spacing), improved docblocks, consistent timeout casting
+- Docs: update README to explain optional SDK usage and client behavior
 
 Files changed: README.md, composer.json, src/Compat/OpenAI/aliases.php, src/AiAssistant.php, src/Services/AssistantService.php, src/Support/FilesHelper.php, src/Contracts/FilesRepositoryContract.php,
 src/Repositories/Http/{ConversationsHttpRepository,FilesHttpRepository, ResponsesHttpRepository}.php, tests/Fakes/FakeFilesRepository.php

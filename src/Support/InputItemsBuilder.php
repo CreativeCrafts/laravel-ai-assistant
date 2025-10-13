@@ -7,6 +7,15 @@ namespace CreativeCrafts\LaravelAiAssistant\Support;
 /**
  * Builder for Responses API input items.
  * Maintains a list of input entries: [ { role: 'user'|'assistant'|'system', content: [blocks...] } ]
+ *
+ * @internal Used internally by ConversationsBuilder for managing conversation input items.
+ * Do not use directly. Use the public builder APIs instead:
+ * - For responses: Ai::responses()->input() returns InputBuilder (recommended)
+ * - For conversations: Ai::conversations()->input() returns this builder internally
+ *
+ * @see InputBuilder The recommended unified input builder for the SSOT API
+ * @see ResponsesBuilder::input() Public method to access InputBuilder
+ * @see ConversationsBuilder::input() Public method to access conversation inputs
  */
 final class InputItemsBuilder
 {

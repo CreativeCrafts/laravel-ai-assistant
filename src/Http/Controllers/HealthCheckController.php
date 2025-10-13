@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Http\Controllers;
 
 use CreativeCrafts\LaravelAiAssistant\Services\HealthCheckService;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Exception;
 
 /**
  * Health Check Controller for AI Assistant monitoring endpoints.
@@ -126,7 +126,7 @@ class HealthCheckController extends Controller
         try {
             $healthCheck = $this->healthCheckService->performHealthCheck();
 
-            // For readiness, we're more strict about what constitutes "ready"
+            // For readiness, we're stricter about what constitutes "ready"
             $criticalChecks = ['configuration', 'api_connectivity', 'cache'];
             $isReady = true;
             $failedChecks = [];

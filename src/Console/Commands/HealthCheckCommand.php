@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Console\Commands;
 
-use Artisan;
-use CreativeCrafts\LaravelAiAssistant\Contracts\AppConfigContract;
-use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Factories\ModelConfigFactory;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use JsonException;
 use RuntimeException;
 use Throwable;
 
@@ -38,6 +39,8 @@ class HealthCheckCommand extends Command
 
     /**
      * Execute the console command.
+     *
+     * @throws JsonException
      */
     public function handle(): int
     {
@@ -103,11 +106,19 @@ class HealthCheckCommand extends Command
 
     /**
      * Output JSON report
+     *
+     * @throws JsonException
      */
+
+
     private function outputJson(): void
     {
         $report = [
-            'status' => $this->hasErrors ? 'error' : ($this->hasWarnings ? 'warning' : 'healthy'),
+            'status' => match (true) {
+                $this->hasErrors => 'error',
+                $this->hasWarnings => 'warning',
+                default => 'healthy',
+            },
             'timestamp' => now()->toISOString(),
             'diagnostics' => $this->diagnostics,
             'summary' => [
@@ -117,7 +128,7 @@ class HealthCheckCommand extends Command
             ]
         ];
 
-        $json = json_encode($report, JSON_PRETTY_PRINT);
+        $json = json_encode($report, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
         $this->line($json ?: '{}');
     }
 
@@ -305,16 +316,23 @@ class HealthCheckCommand extends Command
     private function checkOpenAiConnection(): void
     {
         try {
-            $repository = app(OpenAiRepositoryContract::class);
+            $repository = app(ResponsesRepositoryContract::class);
 
-            // Try a simple API connectivity test via basic completion
+            // Try a simple API connectivity test using SSOT API
             $testParams = [
                 'model' => config('ai-assistant.models.chat', 'gpt-3.5-turbo'),
-                'messages' => [['role' => 'user', 'content' => 'test']],
-                'max_tokens' => 1,
+                'input' => [
+                    [
+                        'role' => 'user',
+                        'content' => [
+                            ['type' => 'input_text', 'text' => 'test']
+                        ]
+                    ]
+                ],
+                'max_output_tokens' => 1,
             ];
 
-            $response = $repository->createChatCompletion($testParams);
+            $response = $repository->createResponse($testParams);
 
             // API call completed successfully if we reach here
             $this->addDiagnostic('OpenAI Connection', 'success', 'API connection test successful');
@@ -330,8 +348,8 @@ class HealthCheckCommand extends Command
     {
         $services = [
             AssistantService::class,
-            AppConfigContract::class,
-            OpenAiRepositoryContract::class,
+            ModelConfigFactory::class,
+            ResponsesRepositoryContract::class,
         ];
 
         foreach ($services as $service) {

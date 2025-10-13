@@ -12,6 +12,9 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
  * This interface defines the contract for transforming requests and responses
  * between the unified Response API format and specific OpenAI endpoint formats
  * (audio, image, chat completion, etc.).
+ *
+ * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
+ * Do not use directly.
  */
 interface EndpointAdapter
 {

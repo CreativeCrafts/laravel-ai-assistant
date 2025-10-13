@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Support;
 
-use CreativeCrafts\LaravelAiAssistant\AiAssistant;
+use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
 
+/**
+ * @internal Used internally for file upload operations.
+ * Do not use directly. Use Ai::responses() or Ai::chat() for file operations.
+ */
 final readonly class FilesHelper
 {
-    public function __construct(private AiAssistant $core)
+    public function __construct(private FilesRepositoryContract $filesRepository)
     {
     }
 
@@ -20,24 +26,31 @@ final readonly class FilesHelper
      * @param string $path The file system path to the file that should be uploaded
      * @param string $purpose The purpose for which the file is being uploaded (default: 'assistants')
      * @return string The file identifier or reference returned by the AI service after successful upload
+     * @throws FileOperationException If the file is not readable
+     * @throws ApiResponseValidationException If no file ID is returned from upload
      */
     public function upload(string $path, string $purpose = 'assistants'): string
     {
-        return $this->core->uploadFile($path, $purpose);
-    }
+        if ($path === '' || !is_readable($path)) {
+            throw new FileOperationException("File not readable: {$path}");
+        }
 
-    /**
-     * Set file attachments for the AI assistant.
-     * This method configures file attachments that will be used by the AI assistant
-     * for processing or reference during assistant operations. The attachments are
-     * passed to the underlying AI core service.
-     *
-     * @param array $attachments An array of file attachments to be set for the AI assistant
-     * @return self Returns the current instance for method chaining
-     */
-    public function setAttachments(array $attachments): self
-    {
-        $this->core->setAttachments($attachments);
-        return $this;
+        $purpose = trim((string)$purpose);
+        if ($purpose === '' || $purpose === 'assistant') {
+            $purpose = 'assistants';
+        }
+
+        $allowed = ['assistants', 'batch', 'fine-tune', 'vision', 'user_data', 'responses'];
+        if (!in_array($purpose, $allowed, true)) {
+            $purpose = 'assistants';
+        }
+
+        $res = $this->filesRepository->upload($path, $purpose);
+        $id = (string)($res['id'] ?? ($res['data']['id'] ?? ''));
+        if ($id === '') {
+            throw new ApiResponseValidationException('Upload succeeded but no file id returned.');
+        }
+
+        return $id;
     }
 }

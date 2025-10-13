@@ -13,15 +13,32 @@ use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
  * This service analyzes input data and determines which OpenAI endpoint
  * (audio, image, chat completion, or response API) should handle the request.
  *
- * Routing Priority:
- * 1. Audio transcription (has audio file + transcribe action)
- * 2. Audio translation (has audio file + translate action)
- * 3. Audio speech (has audio text + speech action)
- * 4. Image generation (has image prompt, no existing image)
- * 5. Image edit (has image file + image prompt)
- * 6. Image variation (has image file, no prompt)
- * 7. Audio input in chat context (has audio input without specific action)
- * 8. Default: Response API (standard text/chat requests)
+ * ## Architecture Decision: Response API as Default
+ *
+ * Per OpenAI's official recommendation, this router uses the Response API as the
+ * default endpoint for all text-based chat and conversation operations. The Response
+ * API is the recommended approach for new projects as it provides:
+ * - Better conversation management with native conversation IDs
+ * - Built-in support for multi-turn dialogues
+ * - Improved streaming capabilities
+ * - More consistent response format
+ *
+ * ## Audio Input Exception
+ *
+ * The Chat Completions API is used ONLY for audio input in chat context (priority #7)
+ * because the Response API does not yet support audio input. This is a temporary
+ * limitation until OpenAI adds audio support to the Response API. For dedicated audio
+ * operations (transcription, translation, speech), we use the specialized Audio endpoints.
+ *
+ * ## Routing Priority:
+ * 1. Audio transcription (has audio file + transcribe action) → Audio Transcription endpoint
+ * 2. Audio translation (has audio file + translate action) → Audio Translation endpoint
+ * 3. Audio speech (has audio text + speech action) → Audio Speech endpoint
+ * 4. Image generation (has image prompt, no existing image) → Image Generation endpoint
+ * 5. Image edit (has image file + image prompt) → Image Edit endpoint
+ * 6. Image variation (has image file, no prompt) → Image Variation endpoint
+ * 7. Audio input in chat context → Chat Completions API (Response API limitation)
+ * 8. Default: Response API (recommended for all text/chat operations)
  *
  * Example usage:
  * ```php
@@ -31,6 +48,9 @@ use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
  * ]);
  * // Returns: OpenAiEndpoint::AudioTranscription
  * ```
+ *
+ * @internal Used internally by ResponsesBuilder to route requests to appropriate endpoints.
+ * Do not use directly - use Ai::responses() instead.
  */
 final class RequestRouter
 {
@@ -49,7 +69,11 @@ final class RequestRouter
             $this->hasImageGeneration($inputData) => OpenAiEndpoint::ImageGeneration,
             $this->hasImageEdit($inputData) => OpenAiEndpoint::ImageEdit,
             $this->hasImageVariation($inputData) => OpenAiEndpoint::ImageVariation,
+            // Exception: Use Chat Completions API for audio input in chat context
+            // because Response API does not yet support audio input (OpenAI limitation)
             $this->hasAudioInput($inputData) => OpenAiEndpoint::ChatCompletion,
+            // Default: Use Response API for all standard text/chat operations
+            // (recommended by OpenAI for all new projects)
             default => OpenAiEndpoint::ResponseApi,
         };
     }
@@ -124,6 +148,18 @@ final class RequestRouter
      *
      * This handles audio files that should be processed as part of
      * a chat conversation rather than standalone transcription/translation.
+     *
+     * ## Why This Routes to Chat Completions API
+     *
+     * When this returns true, the request is routed to Chat Completions API
+     * instead of the default Response API. This is because:
+     * - Response API does not yet support audio input (OpenAI limitation)
+     * - Chat Completions API supports audio input for conversational context
+     * - This is a temporary workaround until Response API adds audio support
+     *
+     * For standalone audio operations (transcribe, translate, speech), use
+     * the dedicated Audio endpoints instead (AudioTranscription, AudioTranslation,
+     * AudioSpeech) by setting the appropriate action.
      *
      * Requires: audio_input field (indicating audio in chat context)
      */

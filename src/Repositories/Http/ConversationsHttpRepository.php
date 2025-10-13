@@ -12,6 +12,10 @@ use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
 use JsonException;
 
+/**
+ * @internal This class is used internally by AssistantService.
+ * Do not use directly - use Ai::responses() or Ai::conversations() instead.
+ */
 final readonly class ConversationsHttpRepository implements ConversationsRepositoryContract
 {
     private OpenAITransport $transport;

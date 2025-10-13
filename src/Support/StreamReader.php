@@ -8,6 +8,10 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\StreamingEventDto;
 use Generator;
 use Traversable;
 
+/**
+ * @internal Used internally for converting streaming events into text chunks.
+ * Do not use directly.
+ */
 final class StreamReader
 {
     /**

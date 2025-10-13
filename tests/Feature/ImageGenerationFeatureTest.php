@@ -216,14 +216,36 @@ describe('End-to-end image generation flow', function () {
         }
     });
 
-    it('handles different image sizes', function () {
-        $sizes = ['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792'];
+    it('handles different image sizes for dall-e-2', function () {
+        $sizes = ['256x256', '512x512', '1024x1024'];
 
         foreach ($sizes as $size) {
-            // Arrange: Request with specific size
+            // Arrange: Request with specific size for dall-e-2
             $unifiedRequest = [
                 'image' => [
                     'prompt' => 'A test image',
+                    'model' => 'dall-e-2',
+                    'size' => $size,
+                ],
+            ];
+
+            // Act: Transform request
+            $transformedRequest = $this->adapter->transformRequest($unifiedRequest);
+
+            // Assert: Size should be preserved
+            expect($transformedRequest['size'])->toBe($size);
+        }
+    });
+
+    it('handles different image sizes for dall-e-3', function () {
+        $sizes = ['1024x1024', '1792x1024', '1024x1792'];
+
+        foreach ($sizes as $size) {
+            // Arrange: Request with specific size for dall-e-3
+            $unifiedRequest = [
+                'image' => [
+                    'prompt' => 'A test image',
+                    'model' => 'dall-e-3',
                     'size' => $size,
                 ],
             ];

@@ -10,7 +10,6 @@ use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeResponsesRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeConversationsRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeFilesRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\DataFactories\ResponsesFactory;
-use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 
 beforeEach(function () {
     config()->set('ai-assistant.api_key', 'test_key_123');
@@ -22,17 +21,6 @@ beforeEach(function () {
     app()->instance(ResponsesRepositoryContract::class, $fakeResponses);
     app()->instance(ConversationsRepositoryContract::class, $fakeConversations);
     app()->instance(FilesRepositoryContract::class, $fakeFiles);
-
-    app()->forgetInstance(OpenAIClientFacade::class);
-    app()->singleton(OpenAIClientFacade::class, function ($app) use ($fakeResponses, $fakeConversations, $fakeFiles) {
-        return new OpenAIClientFacade(
-            $fakeResponses,
-            $fakeConversations,
-            $fakeFiles,
-            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract::class),
-            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract::class),
-        );
-    });
 });
 
 it('auto-inserts file_search when attachments are provided', function () {

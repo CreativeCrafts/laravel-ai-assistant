@@ -13,6 +13,9 @@ use Illuminate\Support\Str;
  * Transforms requests and responses between the unified Response API format
  * and the Chat Completion endpoint format. Supports audio input in chat context,
  * tool calls, and function calling.
+ *
+ * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
+ * Do not use directly.
  */
 final class ChatCompletionAdapter implements EndpointAdapter
 {
@@ -150,7 +153,7 @@ final class ChatCompletionAdapter implements EndpointAdapter
             ];
         }
 
-        // Handle audio_input in chat context
+        // Handle audio_input in the chat context
         if (isset($unifiedRequest['audio_input']) && is_array($unifiedRequest['audio_input'])) {
             $audioMessage = $this->buildAudioInputMessage($unifiedRequest['audio_input']);
             if ($audioMessage !== null) {

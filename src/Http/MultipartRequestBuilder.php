@@ -12,6 +12,9 @@ use SplFileInfo;
  *
  * This class provides a fluent interface for constructing multipart requests
  * with comprehensive file validation and proper Content-Type management.
+ *
+ * @internal Internal utility for building multipart HTTP requests (used for file uploads).
+ * Do not use directly - use Ai::responses() instead.
  */
 final class MultipartRequestBuilder
 {
@@ -24,6 +27,11 @@ final class MultipartRequestBuilder
      * Maximum file size in bytes (default: 25MB)
      */
     private int $maxFileSize = 26214400;
+
+    /**
+     * Track total request size for performance monitoring
+     */
+    private int $totalRequestSize = 0;
 
     /**
      * @var array<string, array<string>>
@@ -169,8 +177,21 @@ final class MultipartRequestBuilder
     public function clear(): self
     {
         $this->parts = [];
+        $this->totalRequestSize = 0;
 
         return $this;
+    }
+
+    /**
+     * Get the total size of all files in the request.
+     *
+     * This is useful for performance monitoring and progress tracking.
+     *
+     * @return int Total size in bytes
+     */
+    public function getTotalRequestSize(): int
+    {
+        return $this->totalRequestSize;
     }
 
     /**
@@ -225,6 +246,9 @@ final class MultipartRequestBuilder
         if ($fileSize === 0) {
             throw new InvalidArgumentException("File is empty: {$filePath}");
         }
+
+        // Track file size for performance monitoring
+        $this->totalRequestSize += $fileSize;
 
         if ($fileType !== null && isset($this->allowedFormats[$fileType])) {
             $this->validateFileFormat($filePath, $fileType);

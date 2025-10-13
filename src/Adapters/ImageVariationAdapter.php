@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Adapters;
 
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\ImageVariationException;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 
 /**
  * Adapter for OpenAI Image Variation endpoint.
  *
  * Transforms requests and responses between the unified Response API format
  * and the Image Variation endpoint format.
+ *
+ * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
+ * Do not use directly.
  */
 final class ImageVariationAdapter implements EndpointAdapter
 {
@@ -21,22 +25,40 @@ final class ImageVariationAdapter implements EndpointAdapter
      *
      * @param array<string, mixed> $unifiedRequest
      * @return array<string, mixed>
-     * @throws InvalidArgumentException If the image file is invalid
+     * @throws ImageVariationException If validation fails
+     * @throws FileValidationException If file validation fails
      */
     public function transformRequest(array $unifiedRequest): array
     {
         $image = is_array($unifiedRequest['image'] ?? null) ? $unifiedRequest['image'] : [];
         $imagePath = $image['image'] ?? null;
+        $size = $image['size'] ?? '1024x1024';
+        $n = $image['n'] ?? 1;
 
-        if ($imagePath !== null) {
-            $this->validateImageFile($imagePath);
+        // Validate required image
+        if ($imagePath === null) {
+            throw ImageVariationException::missingImage();
+        }
+
+        // Validate image file
+        $this->validateImageFile($imagePath);
+
+        // Validate size
+        $validSizes = ['256x256', '512x512', '1024x1024'];
+        if (!in_array($size, $validSizes, true)) {
+            throw ImageVariationException::invalidSize($size);
+        }
+
+        // Validate variation count
+        if ($n < 1 || $n > 10) {
+            throw ImageVariationException::invalidVariationCount($n);
         }
 
         return [
             'image' => $imagePath,
             'model' => $image['model'] ?? 'dall-e-2',
-            'n' => $image['n'] ?? 1,
-            'size' => $image['size'] ?? '1024x1024',
+            'n' => $n,
+            'size' => $size,
             'response_format' => $image['response_format'] ?? 'url',
         ];
     }
@@ -75,38 +97,39 @@ final class ImageVariationAdapter implements EndpointAdapter
      * Validate that the image file exists, is readable, and has a supported format.
      *
      * @param mixed $filePath
-     * @throws InvalidArgumentException If the file is invalid
+     * @throws FileValidationException If the file is invalid
+     * @throws ImageVariationException If the image validation fails
      */
     private function validateImageFile(mixed $filePath): void
     {
         if (!is_string($filePath)) {
-            throw new InvalidArgumentException('Image file path must be a string.');
+            throw FileValidationException::invalidPathType($filePath);
         }
 
         if (!file_exists($filePath)) {
-            throw new InvalidArgumentException("Image file does not exist: {$filePath}");
+            throw FileValidationException::fileNotFound($filePath);
         }
 
         if (!is_readable($filePath)) {
-            throw new InvalidArgumentException("Image file is not readable: {$filePath}");
+            throw FileValidationException::fileNotReadable($filePath);
         }
 
         $supportedFormats = ['png'];
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         if (!in_array($extension, $supportedFormats, true)) {
-            throw new InvalidArgumentException(
-                "Unsupported image format: {$extension}. Image variation only supports PNG format."
-            );
+            throw ImageVariationException::mustBePng($filePath, $extension);
         }
 
         $fileSize = filesize($filePath);
-        $maxSize = 4 * 1024 * 1024;
+        $maxSize = 4 * 1024 * 1024; // 4MB
 
-        if ($fileSize === false || $fileSize > $maxSize) {
-            throw new InvalidArgumentException(
-                "Image file size must be less than 4MB. Current size: " . ($fileSize !== false ? round($fileSize / 1024 / 1024, 2) . 'MB' : 'unknown')
-            );
+        if ($fileSize === false) {
+            throw FileValidationException::fileNotReadable($filePath);
+        }
+
+        if ($fileSize > $maxSize) {
+            throw ImageVariationException::imageTooLarge($filePath, $fileSize);
         }
     }
 }

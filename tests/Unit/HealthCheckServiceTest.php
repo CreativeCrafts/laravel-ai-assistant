@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
 use CreativeCrafts\LaravelAiAssistant\Services\HealthCheckService;
 use CreativeCrafts\LaravelAiAssistant\Services\LoggingService;
@@ -16,7 +16,7 @@ use CreativeCrafts\LaravelAiAssistant\Services\SecurityService;
  */
 
 beforeEach(function () {
-    $this->repositoryMock = Mockery::mock(OpenAiRepositoryContract::class);
+    $this->repositoryMock = Mockery::mock(ResponsesRepositoryContract::class);
     $this->cacheServiceMock = Mockery::mock(CacheService::class);
     $this->loggingServiceMock = Mockery::mock(LoggingService::class);
     $this->securityServiceMock = Mockery::mock(SecurityService::class);
@@ -33,10 +33,10 @@ beforeEach(function () {
         // Use basic mocks as foundation, which handle all the complexity
         ($this->setupBasicHealthCheckMocks)();
 
-        // Add repository mock for API connectivity check
+        // Add repository mock for API connectivity check using SSOT API
         $this->repositoryMock
-            ->shouldReceive('chat')
-            ->andReturn(['choices' => [['message' => ['content' => 'test']]]])
+            ->shouldReceive('createResponse')
+            ->andReturn(['id' => 'test-response', 'output' => [['content' => [['text' => 'test']]]]])
             ->byDefault();
     };
 

@@ -9,6 +9,10 @@ use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
 
+/**
+ * @internal This class is used internally by AssistantService.
+ * Do not use directly - use Ai::responses() or Ai::conversations() instead.
+ */
 final readonly class ResponsesInputItemsHttpRepository implements ResponsesInputItemsRepositoryContract
 {
     private OpenAITransport $transport;

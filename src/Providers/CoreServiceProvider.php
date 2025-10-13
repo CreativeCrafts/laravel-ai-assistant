@@ -5,24 +5,19 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Providers;
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
-use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ProgressTrackerContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use CreativeCrafts\LaravelAiAssistant\Jobs\ExecuteToolCallJob;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ConversationsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\FilesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesInputItemsHttpRepository;
-use CreativeCrafts\LaravelAiAssistant\Repositories\NullOpenAiRepository;
-use CreativeCrafts\LaravelAiAssistant\Repositories\OpenAiRepository;
 use CreativeCrafts\LaravelAiAssistant\Http\MultipartRequestBuilder;
 use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
-use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
 use CreativeCrafts\LaravelAiAssistant\Services\BackgroundJobService;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheBackedProgressTracker;
@@ -38,6 +33,8 @@ use CreativeCrafts\LaravelAiAssistant\Services\SecurityService;
 use CreativeCrafts\LaravelAiAssistant\Services\StreamingService;
 use CreativeCrafts\LaravelAiAssistant\Services\ThreadsToConversationsMapper;
 use CreativeCrafts\LaravelAiAssistant\Services\ToolRegistry;
+use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
+use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
@@ -47,9 +44,36 @@ class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Register the OpenAI Client as a singleton
-        $this->app->singleton(Client::class, function ($app) {
-            return AppConfig::openAiClient();
+        // Register OpenAI Transport as a singleton
+        $this->app->singleton(OpenAITransport::class, function ($app) {
+            $apiKey = config('ai-assistant.api_key', '');
+            if (!is_string($apiKey) || $apiKey === '' || $apiKey === 'YOUR_OPENAI_API_KEY' || $apiKey === 'your-api-key-here') {
+                throw new InvalidApiKeyException();
+            }
+
+            $org = config('ai-assistant.organization');
+            $headers = [
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Accept' => 'application/json',
+            ];
+            if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
+                $headers['OpenAI-Organization'] = $org;
+            }
+
+            $timeout = config('ai-assistant.responses.timeout', 120);
+            if (!is_numeric($timeout)) {
+                $timeout = 120;
+            }
+
+            $guzzle = new GuzzleClient([
+                'base_uri' => 'https://api.openai.com',
+                'headers' => $headers,
+                'http_errors' => false,
+                'timeout' => (float)$timeout,
+                'connect_timeout' => 10,
+            ]);
+
+            return new GuzzleOpenAITransport($guzzle, '/v1');
         });
 
         // Register the Cache Service as a singleton
@@ -126,7 +150,6 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(StreamingService::class, function ($app) {
             return new StreamingService(
                 $app->make(ResponsesRepositoryContract::class),
-                $app->make(OpenAiRepositoryContract::class),
                 $app->make(LoggingService::class),
                 $app->make(MemoryMonitoringService::class),
                 $app->make(ProgressTrackerContract::class),
@@ -169,7 +192,7 @@ class CoreServiceProvider extends ServiceProvider
         // Register OpenAiClient as singleton for making HTTP calls to OpenAI endpoints
         $this->app->singleton(OpenAiClient::class, function ($app) {
             return new OpenAiClient(
-                $app->make(Client::class),
+                $app->make(OpenAITransport::class),
                 $app->make(MultipartRequestBuilder::class)
             );
         });
@@ -181,29 +204,6 @@ class CoreServiceProvider extends ServiceProvider
                 $app->make(RequestRouter::class),
                 $app->make(AdapterFactory::class)
             );
-        });
-
-        // Register the OpenAI Repository with dependency injection honoring config overrides
-        $this->app->bind(OpenAiRepository::class, function ($app) {
-            return new OpenAiRepository($app->make(Client::class));
-        });
-        $this->app->bind(OpenAiRepositoryContract::class, function ($app) {
-            $useMock = (bool)config('ai-assistant.mock_responses', false);
-            if ($useMock) {
-                return $app->make(NullOpenAiRepository::class);
-            }
-            $override = config('ai-assistant.repository');
-            if (is_string($override) && $override !== '') {
-                // Validate implements contract; if not, throw a clear configuration exception
-                if (!class_exists($override)) {
-                    throw new ConfigurationValidationException("Configured ai-assistant.repository class '{$override}' does not exist.");
-                }
-                if (!is_subclass_of($override, OpenAiRepositoryContract::class)) {
-                    throw new ConfigurationValidationException("Configured ai-assistant.repository class '{$override}' must implement " . OpenAiRepositoryContract::class);
-                }
-                return $app->make($override);
-            }
-            return $app->make(OpenAiRepository::class);
         });
 
         // Register new HTTP repositories for Responses, Conversations, and Files

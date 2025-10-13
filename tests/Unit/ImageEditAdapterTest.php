@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\ImageEditAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\ImageEditException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 
 beforeEach(function () {
     $this->adapter = new ImageEditAdapter();
@@ -70,58 +72,42 @@ describe('transformRequest', function () {
         unlink($imageFile);
     });
 
-    it('handles empty image array', function () {
+    it('throws exception when image array is empty', function () {
         $unifiedRequest = ['image' => []];
 
-        $result = $this->adapter->transformRequest($unifiedRequest);
-
-        expect($result)->toBe([
-            'image' => null,
-            'prompt' => null,
-            'mask' => null,
-            'model' => 'dall-e-2',
-            'n' => 1,
-            'size' => '1024x1024',
-            'response_format' => 'url',
-        ]);
+        expect(fn () => $this->adapter->transformRequest($unifiedRequest))
+            ->toThrow(ImageEditException::class, 'Source image is required for image editing');
     });
 
-    it('handles missing image key', function () {
+    it('throws exception when image key is missing', function () {
         $unifiedRequest = [];
 
-        $result = $this->adapter->transformRequest($unifiedRequest);
-
-        expect($result)->toBe([
-            'image' => null,
-            'prompt' => null,
-            'mask' => null,
-            'model' => 'dall-e-2',
-            'n' => 1,
-            'size' => '1024x1024',
-            'response_format' => 'url',
-        ]);
+        expect(fn () => $this->adapter->transformRequest($unifiedRequest))
+            ->toThrow(ImageEditException::class, 'Source image is required for image editing');
     });
 
     it('throws exception when image file path is not a string', function () {
         $unifiedRequest = [
             'image' => [
                 'image' => 123,
+                'prompt' => 'Test prompt',
             ],
         ];
 
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Image file path must be a string.');
+            ->toThrow(FileValidationException::class, 'File path must be a string');
     });
 
     it('throws exception when image file does not exist', function () {
         $unifiedRequest = [
             'image' => [
                 'image' => '/non/existent/path/image.png',
+                'prompt' => 'Test prompt',
             ],
         ];
 
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Image file does not exist');
+            ->toThrow(FileValidationException::class, 'File not found');
     });
 
     it('throws exception when image file is not readable', function () {
@@ -132,12 +118,13 @@ describe('transformRequest', function () {
         $unifiedRequest = [
             'image' => [
                 'image' => $tempFile,
+                'prompt' => 'Test prompt',
             ],
         ];
 
         try {
             expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-                ->toThrow(InvalidArgumentException::class, 'Image file is not readable');
+                ->toThrow(FileValidationException::class, 'not readable');
         } finally {
             chmod($tempFile, 0644);
             unlink($tempFile);
@@ -151,12 +138,13 @@ describe('transformRequest', function () {
         $unifiedRequest = [
             'image' => [
                 'image' => $tempFile,
+                'prompt' => 'Test prompt',
             ],
         ];
 
         try {
             expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-                ->toThrow(InvalidArgumentException::class, 'Unsupported image format');
+                ->toThrow(ImageEditException::class, 'Unsupported image format');
         } finally {
             unlink($tempFile);
         }
@@ -187,12 +175,13 @@ describe('transformRequest', function () {
         $unifiedRequest = [
             'image' => [
                 'image' => $tempFile,
+                'prompt' => 'Test prompt',
             ],
         ];
 
         try {
             expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-                ->toThrow(InvalidArgumentException::class, 'Image file size must be less than 4MB');
+                ->toThrow(ImageEditException::class, 'exceeds maximum allowed size (4MB)');
         } finally {
             unlink($tempFile);
         }
@@ -205,13 +194,14 @@ describe('transformRequest', function () {
         $unifiedRequest = [
             'image' => [
                 'image' => $imageFile,
+                'prompt' => 'Test prompt',
                 'mask' => '/non/existent/mask.png',
             ],
         ];
 
         try {
             expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-                ->toThrow(InvalidArgumentException::class, 'Image file does not exist');
+                ->toThrow(FileValidationException::class, 'File not found');
         } finally {
             unlink($imageFile);
         }

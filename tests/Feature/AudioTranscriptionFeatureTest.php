@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AudioTranscriptionAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\AudioTranscriptionException;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 
 beforeEach(function () {
     $this->adapter = new AudioTranscriptionAdapter();
@@ -109,7 +111,7 @@ describe('End-to-end audio transcription flow', function () {
 
         // Act & Assert: Should throw exception for unsupported format
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Unsupported audio format');
+            ->toThrow(AudioTranscriptionException::class, 'Unsupported audio format');
     });
 
     it('validates file existence in end-to-end flow', function () {
@@ -122,7 +124,7 @@ describe('End-to-end audio transcription flow', function () {
 
         // Act & Assert: Should throw exception for non-existent file
         expect(fn () => $this->adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Audio file does not exist');
+            ->toThrow(FileValidationException::class, 'File not found');
     });
 
     it('processes multiple supported audio formats', function () {

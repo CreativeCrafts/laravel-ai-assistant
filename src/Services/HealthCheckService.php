@@ -7,7 +7,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
-use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 
 /**
  * Service for health check operations.
@@ -17,13 +17,13 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract;
  */
 class HealthCheckService
 {
-    private OpenAiRepositoryContract $repository;
+    private ResponsesRepositoryContract $repository;
     private CacheService $cacheService;
     private LoggingService $loggingService;
     private SecurityService $securityService;
 
     public function __construct(
-        OpenAiRepositoryContract $repository,
+        ResponsesRepositoryContract $repository,
         CacheService $cacheService,
         LoggingService $loggingService,
         SecurityService $securityService
@@ -485,29 +485,22 @@ class HealthCheckService
             $maxTokens = $healthCheckConfig['api_connectivity']['max_tokens'] ?? 1;
 
             try {
-                // Make a minimal API call to test connectivity. Prefer createChatCompletion, but fall back
-                // to a generic chat() method if provided by tests/fakes.
+                // Make a minimal API call to test connectivity using SSOT API
                 $payload = [
                     'model' => $testModel,
-                    'messages' => [
-                        ['role' => 'user', 'content' => 'test']
+                    'input' => [
+                        [
+                            'role' => 'user',
+                            'content' => [
+                                ['type' => 'input_text', 'text' => 'test']
+                            ]
+                        ]
                     ],
-                    'max_tokens' => $maxTokens,
+                    'max_output_tokens' => $maxTokens,
                     'temperature' => 0.1,
                 ];
 
-                try {
-                    $response = $this->repository->createChatCompletion($payload);
-                } catch (Exception $primaryCallError) {
-                    // Fallback to a looser method name some fakes use
-                    try {
-                        /** @phpstan-ignore-next-line */
-                        $response = $this->repository->chat($payload);
-                    } catch (Exception $fallbackError) {
-                        // Re-throw the original error to preserve context
-                        throw $primaryCallError;
-                    }
-                }
+                $response = $this->repository->createResponse($payload);
 
                 $responseTime = (microtime(true) - $connectionTime) * 1000;
 

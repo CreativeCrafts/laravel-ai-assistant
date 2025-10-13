@@ -74,11 +74,11 @@ it('creates ResponseApiAdapter for ResponseApi endpoint', function () {
     expect($adapter)->toBeInstanceOf(EndpointAdapter::class);
 });
 
-it('creates new adapter instance on each call', function () {
+it('caches and reuses adapter instances for the same endpoint', function () {
     $adapter1 = $this->factory->make(OpenAiEndpoint::AudioTranscription);
     $adapter2 = $this->factory->make(OpenAiEndpoint::AudioTranscription);
 
-    expect($adapter1)->not->toBe($adapter2);
+    expect($adapter1)->toBe($adapter2);
     expect($adapter1)->toBeInstanceOf(AudioTranscriptionAdapter::class);
     expect($adapter2)->toBeInstanceOf(AudioTranscriptionAdapter::class);
 });

@@ -4,52 +4,28 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
-// SDK factory removed; using internal stub OpenAI\\Client only
-use CreativeCrafts\LaravelAiAssistant\Contracts\AppConfigContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ModelOptions;
 use CreativeCrafts\LaravelAiAssistant\Enums\Modality;
-use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
 use CreativeCrafts\LaravelAiAssistant\Factories\ModelConfigFactory;
 
-final class AppConfig implements AppConfigContract
+/**
+ * Legacy configuration class for OpenAI API settings.
+ *
+ * @deprecated Since v3.0. Use ModelConfigFactory::for(Modality, ModelOptions) instead.
+ *             This class will be removed in v4.0.
+ *
+ * Migration Guide:
+ * - Replace AppConfig::textGeneratorConfig() → ModelConfigFactory::for(Modality::Text, ModelOptions::fromConfig())
+ * - Replace AppConfig::chatTextGeneratorConfig() → ModelConfigFactory::for(Modality::Chat, ModelOptions::fromConfig())
+ * - Replace AppConfig::editTextGeneratorConfig() → ModelConfigFactory::for(Modality::Edit, ModelOptions::fromConfig())
+ * - Replace AppConfig::audioToTextGeneratorConfig() → ModelConfigFactory::for(Modality::AudioToText, ModelOptions::fromConfig())
+ *
+ * @see ModelConfigFactory
+ * @see ModelOptions
+ * @see Modality
+ */
+final class AppConfig
 {
-    /**
-     * Creates and returns an instance of the OpenAI client with optimized HTTP configuration.
-     * Organization is optional; only the API key is required.
-     * @throws InvalidApiKeyException If the API key is not set or appears to be a placeholder.
-     */
-    public static function openAiClient(Client $client = null): Client
-    {
-        /** @var string|null $apiKey */
-        $apiKey = config('ai-assistant.api_key');
-        /** @var string|null $organisation */
-        $organisation = config('ai-assistant.organization');
-
-        if ($apiKey === null || $apiKey === '' || $apiKey === 'YOUR_OPENAI_API_KEY' || $apiKey === 'your-api-key-here') {
-            throw new InvalidApiKeyException();
-        }
-
-        if ($client instanceof Client) {
-            return $client;
-        }
-
-        // Timeouts shared with HTTP repositories
-        $timeout = config('ai-assistant.responses.timeout', 120);
-        if (!is_numeric($timeout)) {
-            $timeout = 120;
-        }
-
-        // Instantiate our internal OpenAI client with real HTTP wiring for chat.completions
-        return new Client(
-            http: null,
-            apiKey: (string)$apiKey,
-            organization: is_string($organisation) ? $organisation : null,
-            baseUri: 'https://api.openai.com',
-            timeout: (float)$timeout,
-        );
-    }
-
     /**
      * Returns an array of configuration settings for the text generator.
      *

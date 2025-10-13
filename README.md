@@ -5,7 +5,26 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-ai-assistant/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-ai-assistant/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-ai-assistant.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-ai-assistant)
 
-Laravel AI Assistant is a modern, production-ready package for integrating OpenAI's powerful language models into your Laravel applications. Built on OpenAI's **Responses API** and **Conversations API**, it provides a clean, fluent interface with native support for streaming, tool calls, multimodal inputs, and stateful conversations.
+Laravel AI Assistant is a modern, production-ready package for integrating OpenAI's powerful language models into your Laravel applications. Built on a **Single Source of Truth (SSOT)** architecture, it provides `Ai::responses()` as the unified entry point for all OpenAI operations—chat, streaming, audio transcription/translation/speech, and image generation/editing/variations. This design eliminates API confusion while providing a clean, fluent interface with excellent IDE support.
+
+---
+
+## ✨ What's New in v3.0
+
+**SSOT Architecture**: Version 3.0 establishes `Ai::responses()` as the single, unified entry point for all OpenAI operations. This architectural shift provides:
+
+- **🎯 Single Entry Point**: One API to learn instead of multiple competing approaches
+- **🔧 Unified Interface**: Consistent builder pattern across chat, audio, and image operations
+- **📚 Better DX**: Excellent IDE autocompletion and type safety throughout
+- **🚀 Future-Proof**: Aligns with OpenAI's modern API design principles
+
+**Deprecated Components** (see [MIGRATION.md](MIGRATION.md) for migration guide):
+- ❌ `AiAssistant` class and facade → Use `Ai::responses()` or `Ai::chat()`
+- ❌ `OpenAIClientFacade` → Use `Ai` facade methods
+- ❌ `OpenAiRepository` → Use `Ai::responses()` with adapters
+- ❌ Compat directory (`/src/Compat/`) → Use SSOT API
+
+**Migration Path**: All deprecated components will be removed in v4.0. See the [Migration Guide](#-migration-guide) section below for detailed examples.
 
 ---
 
@@ -82,33 +101,34 @@ $response->saveImages(storage_path('images'));
 
 ## 📖 Core Concepts
 
-### Why Responses API?
+### Why SSOT Architecture?
 
-This package uses OpenAI's modern **Responses API** and **Conversations API**, which provide:
+Version 3.0 introduces a **Single Source of Truth (SSOT)** design where `Ai::responses()` serves as the unified entry point for all OpenAI operations:
 
-- **Better structure**: Clean separation between single-turn responses and multi-turn conversations
-- **Enhanced features**: Native support for tool calls, streaming, and multimodal inputs
-- **Improved ergonomics**: Fluent builder pattern with excellent IDE autocompletion
-- **Future-proof**: Aligns with OpenAI's direction — see the official migration guide: https://platform.openai.com/docs/guides/migrating-from-chat-completions-to-responses
+- **🎯 Single Entry Point**: One consistent API for chat, audio, and image operations
+- **🔧 Intelligent Routing**: Automatically routes requests to the correct OpenAI endpoint based on input type
+- **📚 Better DX**: Fluent builder pattern with excellent IDE autocompletion across all operations
+- **🚀 Simplified Learning**: Master one API instead of juggling multiple interfaces
+- **Future-proof**: Built on OpenAI's modern Responses API and Conversations API
 
-> **Note**: The legacy Assistant API (`Ai::assistant()`) is **deprecated in 1.x** and will be removed in a future version. See [UPGRADE.md](UPGRADE.md) for migration instructions.
+> **Note**: Legacy APIs like `AiAssistant`, `OpenAIClientFacade`, and `OpenAiRepository` are **deprecated in v3.0** and will be removed in v4.0. See [MIGRATION.md](MIGRATION.md) for migration instructions.
 
 ### Available Methods
 
 ```php
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 
-// Unified completion API (recommended)
-$ai->complete(Mode::TEXT, Transport::SYNC, $request);
+// SSOT API - Primary entry point (recommended)
+Ai::responses();                         // Unified API for all operations (chat, audio, images)
+Ai::conversations();                     // Stateful conversation management
 
-// Convenience methods
+// Convenience methods built on SSOT
 Ai::quick('Your prompt here');           // One-off requests
-Ai::chat('System instructions');         // Stateful conversations
+Ai::chat('System instructions');         // Multi-turn conversations
 Ai::stream('Your prompt here');          // Streaming responses
 
-// Direct API access
-Ai::responses();                         // Single-turn responses
-Ai::conversations();                     // Multi-turn threads
+// Low-level completion API (advanced)
+$ai->complete(Mode::TEXT, Transport::SYNC, $request);
 ```
 
 ### Comparison: Sync vs Stream
@@ -1495,9 +1515,19 @@ $responses = Promise\Utils::unwrap($promises);
 
 ## 🔄 Migration Guide
 
-### Upgrading from Assistant API (Deprecated)
+### Migrating to SSOT API (v3.0)
 
-If you're using the legacy `Ai::assistant()` or `Assistant` class, please see [UPGRADE.md](UPGRADE.md) for comprehensive migration instructions.
+If you're using legacy APIs like `OpenAiRepository`, `AiAssistant`, or the Compat Client, please see **[MIGRATION.md](MIGRATION.md)** for comprehensive migration instructions to the new unified SSOT API (`Ai::responses()`).
+
+The migration guide includes:
+- Migration paths from all legacy APIs
+- 8+ detailed code examples (chat, streaming, audio, images)
+- Before/after comparisons for every operation
+- Troubleshooting common issues
+
+### Version Upgrades
+
+For general version upgrade information and breaking changes, see [UPGRADE.md](UPGRADE.md).
 
 
 ---
@@ -1543,7 +1573,8 @@ The MIT License (MIT). Please see [LICENSE](LICENSE.md) for more information.
   - **[Audio APIs](docs/API.md#audio-apis)** - Audio transcription, translation, and text-to-speech documentation
   - **[Image APIs](docs/API.md#image-apis)** - Image generation, editing, and variation documentation
   - **[SSOT Architecture](docs/API.md#ssot-architecture)** - Understanding the unified API design
-- **[UPGRADE.md](UPGRADE.md)** - Migration guide from legacy APIs to modern interfaces
+- **[MIGRATION.md](MIGRATION.md)** - Comprehensive migration guide to SSOT API from legacy components
+- **[UPGRADE.md](UPGRADE.md)** - Version upgrade guide and breaking changes
 - **[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)** - Comprehensive observability guide with correlation IDs, metrics, and logging
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
 

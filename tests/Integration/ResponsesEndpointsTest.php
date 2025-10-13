@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
@@ -22,17 +21,6 @@ beforeEach(function () {
     app()->instance(ResponsesRepositoryContract::class, $fakeResponses);
     app()->instance(ConversationsRepositoryContract::class, $fakeConversations);
     app()->instance(FilesRepositoryContract::class, $fakeFiles);
-
-    app()->forgetInstance(OpenAIClientFacade::class);
-    app()->singleton(OpenAIClientFacade::class, function ($app) use ($fakeResponses, $fakeConversations, $fakeFiles) {
-        return new OpenAIClientFacade(
-            $fakeResponses,
-            $fakeConversations,
-            $fakeFiles,
-            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract::class),
-            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract::class),
-        );
-    });
 });
 
 it('supports Responses list/get/cancel/delete and respects payload tools', function () {

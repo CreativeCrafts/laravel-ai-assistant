@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
-use CreativeCrafts\LaravelAiAssistant\Compat\OpenAI\Client;
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
 use CreativeCrafts\LaravelAiAssistant\Http\MultipartRequestBuilder;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use InvalidArgumentException;
-use ReflectionClass;
 use RuntimeException;
 use SplFileInfo;
 use Throwable;
@@ -24,6 +22,9 @@ use Throwable;
  * - Endpoint-specific timeout configuration
  * - Error handling with endpoint context
  * - Retry logic (delegated to transport layer)
+ *
+ * @internal Low-level HTTP client used by adapters.
+ * Do not use directly - use Ai::responses() instead.
  */
 final class OpenAiClient
 {
@@ -31,25 +32,10 @@ final class OpenAiClient
     private const AUDIO_SPEECH_TIMEOUT = 120.0;
     private const IMAGE_TIMEOUT = 180.0;
 
-    private OpenAITransport $transport;
-
     public function __construct(
-        private readonly Client $client,
+        private readonly OpenAITransport $transport,
         private readonly MultipartRequestBuilder $multipartBuilder,
     ) {
-        // Access the transport from the client's audio resource
-        // This ensures we use the same configured transport
-        $audioResource = $this->client->audio();
-        $reflection = new ReflectionClass($audioResource);
-        $transportProperty = $reflection->getProperty('transport');
-        $transportProperty->setAccessible(true);
-        $transport = $transportProperty->getValue($audioResource);
-
-        if (!$transport instanceof OpenAITransport) {
-            throw new RuntimeException('Failed to extract OpenAITransport from client');
-        }
-
-        $this->transport = $transport;
     }
 
     /**
@@ -57,11 +43,12 @@ final class OpenAiClient
      *
      * @param OpenAiEndpoint $endpoint The endpoint to call
      * @param array<string,mixed> $data The request data
+     * @param callable|null $progressCallback Optional callback for upload progress tracking (downloadTotal, downloadedBytes, uploadTotal, uploadedBytes)
      * @return array<string,mixed> The API response
      * @throws InvalidArgumentException If endpoint or data is invalid
      * @throws RuntimeException If the API call fails
      */
-    public function callEndpoint(OpenAiEndpoint $endpoint, array $data): array
+    public function callEndpoint(OpenAiEndpoint $endpoint, array $data, ?callable $progressCallback = null): array
     {
         try {
             $url = $endpoint->url();
@@ -74,7 +61,7 @@ final class OpenAiClient
 
             // Determine if this endpoint requires multipart encoding
             if ($endpoint->requiresMultipart()) {
-                return $this->makeMultipartRequest($endpoint, $url, $data, $timeout);
+                return $this->makeMultipartRequest($endpoint, $url, $data, $timeout, $progressCallback);
             }
 
             // Standard JSON request
@@ -145,9 +132,10 @@ final class OpenAiClient
      * @param string $url
      * @param array<string,mixed> $data
      * @param float $timeout
+     * @param callable|null $progressCallback
      * @return array<string,mixed>
      */
-    private function makeMultipartRequest(OpenAiEndpoint $endpoint, string $url, array $data, float $timeout): array
+    private function makeMultipartRequest(OpenAiEndpoint $endpoint, string $url, array $data, float $timeout, ?callable $progressCallback = null): array
     {
         try {
             $this->multipartBuilder->clear();
@@ -194,7 +182,7 @@ final class OpenAiClient
             $multipartData = $this->multipartBuilder->build();
 
             // Multipart endpoints don't support idempotency in the same way
-            return $this->transport->postMultipart($url, $multipartData, [], $timeout, false);
+            return $this->transport->postMultipart($url, $multipartData, [], $timeout, false, $progressCallback);
         } catch (Throwable $e) {
             throw new RuntimeException(
                 "Multipart request to '{$endpoint->value}' failed: {$e->getMessage()}",

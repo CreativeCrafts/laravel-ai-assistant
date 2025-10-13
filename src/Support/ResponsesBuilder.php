@@ -172,15 +172,15 @@ final class ResponsesBuilder
             // Step 2: Determine which endpoint to use
             $endpoint = $this->router->determineEndpoint($unifiedRequest);
 
-            // Step 3: Get appropriate adapter
+            // Step 3: Get the appropriate adapter
             $adapter = $this->adapterFactory->make($endpoint);
 
             // Step 4: Transform request for specific endpoint
             $endpointRequest = $adapter->transformRequest($unifiedRequest);
 
-            // Step 5: Make API call (placeholder - will be implemented with actual HTTP client)
-            // For now, we'll use the service for Response API endpoint
-            // TODO: Implement actual endpoint-specific API calls
+            // Step 5: Make API call to the determined endpoint
+            // Uses Response API for text/chat operations (via service)
+            // Uses OpenAI client for audio, image, and chat completion endpoints
             $apiResponse = $this->makeApiCall($endpoint, $endpointRequest);
 
             // Step 6: Transform response to unified format

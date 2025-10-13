@@ -3,23 +3,24 @@
 declare(strict_types=1);
 
 /**
- * Example 05: Audio Transcription
+ * Example 05: Audio Transcription & Translation
  *
- * This example demonstrates audio transcription using the unified Response API.
+ * This example demonstrates audio transcription and translation using the unified Response API.
  * You'll learn:
  * - Transcribing audio files to text
+ * - Translating audio to English
  * - Using different audio models (Whisper)
  * - Configuring language, prompt, and response format
- * - Handling transcription errors
+ * - Handling transcription and translation errors
  *
- * Time: ~2 minutes
+ * Time: ~3 minutes
  */
 
 require __DIR__ . '/../vendor/autoload.php';
 
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 
-echo "=== Laravel AI Assistant: Audio Transcription ===\n\n";
+echo "=== Laravel AI Assistant: Audio Transcription & Translation ===\n\n";
 
 // Check if sample audio file exists
 $audioFile = __DIR__ . '/fixtures/test-audio.mp3';
@@ -130,15 +131,84 @@ try {
     echo "Model: whisper-1\n";
     echo "Transcription: " . $response->text . "\n\n";
 
-    echo "✅ Audio transcription examples completed successfully!\n\n";
+    // Example 6: Audio Translation (Translates to English)
+    echo "6. Audio Translation (Any Language to English)\n";
+    echo str_repeat('-', 50) . "\n";
+
+    $response = Ai::responses()
+        ->input()
+        ->audio([
+            'file' => $audioFile,
+            'action' => 'translate',
+        ])
+        ->send();
+
+    echo "Audio File: " . basename($audioFile) . "\n";
+    echo "Action: translate (converts any language to English)\n";
+    echo "Translation: " . $response->text . "\n";
+    echo "Type: " . $response->type . "\n\n";
+
+    // Example 7: Translation with Custom Model
+    echo "7. Translation with Model Configuration\n";
+    echo str_repeat('-', 50) . "\n";
+
+    $response = Ai::responses()
+        ->model('whisper-1')
+        ->input()
+        ->audio([
+            'file' => $audioFile,
+            'action' => 'translate',
+            'response_format' => 'text',
+        ])
+        ->send();
+
+    echo "Audio File: " . basename($audioFile) . "\n";
+    echo "Model: whisper-1\n";
+    echo "Response Format: text\n";
+    echo "Translation: " . $response->text . "\n\n";
+
+    // Example 8: Translation with Verbose JSON
+    echo "8. Translation with Verbose JSON Format\n";
+    echo str_repeat('-', 50) . "\n";
+
+    $response = Ai::responses()
+        ->input()
+        ->audio([
+            'file' => $audioFile,
+            'action' => 'translate',
+            'response_format' => 'verbose_json',
+        ])
+        ->send();
+
+    echo "Audio File: " . basename($audioFile) . "\n";
+    echo "Action: translate\n";
+    echo "Response Format: verbose_json\n";
+    echo "Translation: " . $response->text . "\n";
+
+    if (!empty($response->metadata)) {
+        echo "Metadata:\n";
+        foreach ($response->metadata as $key => $value) {
+            if (is_array($value)) {
+                echo "  {$key}: " . json_encode($value) . "\n";
+            } else {
+                echo "  {$key}: {$value}\n";
+            }
+        }
+    }
+    echo "\n";
+
+    echo "✅ Audio transcription and translation examples completed successfully!\n\n";
 
     echo "💡 Tips:\n";
     echo "  - Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm\n";
     echo "  - Maximum file size: 25 MB\n";
-    echo "  - Use 'language' parameter to improve accuracy\n";
-    echo "  - Use 'prompt' to provide context and improve accuracy\n";
+    echo "  - Transcription: Use 'language' parameter to improve accuracy\n";
+    echo "  - Transcription: Use 'prompt' to provide context and improve accuracy\n";
+    echo "  - Translation: Automatically translates any language to English\n";
+    echo "  - Translation: Does not support language or prompt parameters\n";
     echo "  - Temperature range: 0.0 to 1.0 (lower = more deterministic)\n";
     echo "  - Response formats: json, text, srt, verbose_json, vtt\n";
+    echo "  - Both actions use the unified Ai::responses() API\n";
 
 } catch (Exception $e) {
     echo "\n❌ Error: " . $e->getMessage() . "\n";

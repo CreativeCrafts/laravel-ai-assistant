@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Adapters;
 
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\AudioSpeechException;
 use Illuminate\Support\Str;
 
 /**
@@ -12,6 +13,9 @@ use Illuminate\Support\Str;
  *
  * Transforms requests and responses between the unified Response API format
  * and the Audio Speech (text-to-speech) endpoint format.
+ *
+ * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
+ * Do not use directly.
  */
 final class AudioSpeechAdapter implements EndpointAdapter
 {
@@ -22,17 +26,35 @@ final class AudioSpeechAdapter implements EndpointAdapter
      *
      * @param array<string, mixed> $unifiedRequest
      * @return array<string, mixed>
+     * @throws AudioSpeechException If text is missing or empty
      */
     public function transformRequest(array $unifiedRequest): array
     {
         $audio = is_array($unifiedRequest['audio'] ?? null) ? $unifiedRequest['audio'] : [];
 
+        $text = $audio['text'] ?? null;
+        $voice = $audio['voice'] ?? 'alloy';
+        $speed = $audio['speed'] ?? 1.0;
+
+        // Validate text - only check for missing or empty, not length
+        if ($text === null || $text === '') {
+            throw AudioSpeechException::missingText();
+        }
+
+        if (!is_string($text)) {
+            $text = (string) $text;
+        }
+
+        if (trim($text) === '') {
+            throw AudioSpeechException::emptyText();
+        }
+
         return [
             'model' => $audio['model'] ?? 'tts-1',
-            'input' => $audio['text'] ?? '',
-            'voice' => $audio['voice'] ?? 'alloy',
+            'input' => $text,
+            'voice' => $voice,
             'response_format' => $audio['response_format'] ?? $audio['format'] ?? 'mp3',
-            'speed' => $audio['speed'] ?? 1.0,
+            'speed' => $speed,
         ];
     }
 

@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelAiAssistant\Adapters\ImageGenerationAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\ImageVariationAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 
 /**
  * Integration tests for Image Adapters with the new adapter architecture.
@@ -187,7 +188,7 @@ describe('ImageEditAdapter Integration', function () {
 
         // Act & Assert: Should throw validation exception before API call
         expect(fn () => $adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Image file does not exist');
+            ->toThrow(FileValidationException::class, 'File not found');
     });
 });
 
@@ -265,7 +266,7 @@ describe('ImageVariationAdapter Integration', function () {
 
         // Act & Assert: Should throw validation exception
         expect(fn () => $adapter->transformRequest($unifiedRequest))
-            ->toThrow(InvalidArgumentException::class, 'Image file does not exist');
+            ->toThrow(FileValidationException::class, 'File not found');
     });
 });
 

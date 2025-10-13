@@ -45,10 +45,7 @@
     "psr-4": {
       "CreativeCrafts\\LaravelAiAssistant\\": "src/",
       "CreativeCrafts\\LaravelAiAssistant\\Database\\Factories\\": "database/factories/"
-    },
-    "files": [
-      "src/Compat/OpenAI/aliases.php"
-    ]
+    }
   },
   "autoload-dev": {
     "psr-4": {

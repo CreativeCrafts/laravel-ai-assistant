@@ -13,6 +13,9 @@ use Illuminate\Support\Str;
  * Transforms requests and responses between the unified Response API format
  * and the Response API endpoint format. The Response API is OpenAI's unified
  * endpoint that handles standard text/chat requests with multimodal support.
+ *
+ * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
+ * Do not use directly.
  */
 final class ResponseApiAdapter implements EndpointAdapter
 {

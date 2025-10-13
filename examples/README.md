@@ -173,28 +173,34 @@ All metrics logged successfully!
 
 ---
 
-### 05. Audio Transcription (`05-audio-transcription.php`)
+### 05. Audio Transcription & Translation (`05-audio-transcription.php`)
 
-**Purpose**: Transcribe audio files to text using the unified Response API.
+**Purpose**: Transcribe and translate audio files using the unified Response API.
 
 **What you'll learn**:
 - Transcribing audio files with `audio(['file' => ..., 'action' => 'transcribe'])`
-- Using language hints to improve accuracy
-- Providing context prompts for better results
+- Translating audio to English with `audio(['file' => ..., 'action' => 'translate'])`
+- Using language hints to improve transcription accuracy
+- Providing context prompts for better transcription results
 - Different response formats (json, text, srt, verbose_json, vtt)
 - Configuring temperature for deterministic output
+- Using the unified API for both transcription and translation
 
-**Time**: ~2 minutes
+**Time**: ~3 minutes
 
 **Example output**:
 ```
-=== Audio Transcription Example ===
+=== Audio Transcription & Translation Example ===
 Audio File: test-audio.mp3
 Transcription: [transcribed text]
 Type: audio_transcription
+
+Audio File: test-audio.mp3
+Translation: [translated text in English]
+Type: audio_translation
 ```
 
-**Note**: Supports mp3, mp4, mpeg, mpga, m4a, wav, webm formats up to 25MB.
+**Note**: Supports mp3, mp4, mpeg, mpga, m4a, wav, webm formats up to 25MB. Translation automatically converts any language to English.
 
 ---
 

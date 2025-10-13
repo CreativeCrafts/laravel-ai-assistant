@@ -9,6 +9,9 @@ use Illuminate\Contracts\Cache\Repository;
 /**
  * Maintains an index of cache keys per logical prefix, to enable prefix purges
  * on stores that do not support tags.
+ *
+ * @internal Used internally for cache key indexing.
+ * Do not use directly.
  */
 final readonly class PrefixedKeyIndexer
 {

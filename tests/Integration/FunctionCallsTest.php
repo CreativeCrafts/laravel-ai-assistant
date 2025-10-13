@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\OpenAIClientFacade;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\ToolRegistry;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
@@ -14,7 +13,6 @@ use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeFilesRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\DataFactories\ResponsesFactory;
 
 beforeEach(function () {
-    // Ensure API key present
     config()->set('ai-assistant.api_key', 'test_key_123');
 
     $fakeResponses = new FakeResponsesRepository();
@@ -24,17 +22,6 @@ beforeEach(function () {
     app()->instance(ResponsesRepositoryContract::class, $fakeResponses);
     app()->instance(ConversationsRepositoryContract::class, $fakeConversations);
     app()->instance(FilesRepositoryContract::class, $fakeFiles);
-
-    app()->forgetInstance(OpenAIClientFacade::class);
-    app()->singleton(OpenAIClientFacade::class, function ($app) use ($fakeResponses, $fakeConversations, $fakeFiles) {
-        return new OpenAIClientFacade(
-            $fakeResponses,
-            $fakeConversations,
-            $fakeFiles,
-            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\OpenAiRepositoryContract::class),
-            $app->make(CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract::class),
-        );
-    });
 });
 
 it('executes multiple tool calls in a single turn and continues to final text', function () {
