@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Services;
 
 use InvalidArgumentException;
+use JsonException;
 
 /**
  * Backward-compatibility mapper from legacy thread_id to new conversation_id.
@@ -42,6 +43,8 @@ final class ThreadsToConversationsMapper
 
     /**
      * Get a mapped conversation id if available.
+     *
+     * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     public function get(string $threadId): ?string
     {
@@ -61,6 +64,8 @@ final class ThreadsToConversationsMapper
 
     /**
      * Persist a mapping between a legacy thread id and a conversation id.
+     *
+     * @throws JsonException
      */
     public function map(string $threadId, string $conversationId, int $ttl = 86400): void
     {

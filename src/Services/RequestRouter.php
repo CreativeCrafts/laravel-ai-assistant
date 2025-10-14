@@ -7,8 +7,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 use CreativeCrafts\LaravelAiAssistant\Enums\AudioAction;
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\EndpointRoutingException;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * Routes unified API requests to the appropriate OpenAI endpoint.
@@ -58,28 +57,6 @@ use Illuminate\Support\Facades\Log;
 final class RequestRouter
 {
     /**
-     * Endpoint priority order from configuration.
-     *
-     * @var array<int, string>
-     */
-    private array $endpointPriority;
-
-    /**
-     * Whether to validate for conflicts.
-     */
-    private bool $validateConflicts;
-
-    /**
-     * Conflict behavior: 'error', 'warn', or 'silent'.
-     */
-    private string $conflictBehavior;
-
-    /**
-     * Whether to validate endpoint names.
-     */
-    private bool $validateEndpointNames;
-
-    /**
      * Mapping of endpoint names to checker methods.
      *
      * @var array<string, string>
@@ -111,27 +88,29 @@ final class RequestRouter
         'response_api' => OpenAiEndpoint::ResponseApi,
     ];
 
-    public function __construct()
-    {
-        $configuredPriority = config('ai-assistant.routing.endpoint_priority');
-
-        $this->endpointPriority = is_array($configuredPriority) && count($configuredPriority) > 0
-            ? $configuredPriority
-            : [
-                'audio_transcription',
-                'audio_translation',
-                'audio_speech',
-                'image_generation',
-                'image_edit',
-                'image_variation',
-                'chat_completion',
-                'response_api',
-            ];
-
-        $this->validateConflicts = Config::boolean(key: 'ai-assistant.routing.validate_conflicts', default: true);
-        $this->conflictBehavior = Config::string(key: 'ai-assistant.routing.conflict_behavior', default: 'error');
-        $this->validateEndpointNames = Config::boolean(key: 'ai-assistant.routing.validate_endpoint_names', default: true);
-
+    /**
+     * @param array<int, string> $endpointPriority Endpoint matching priority order
+     * @param bool $validateConflicts Whether to validate for conflicts
+     * @param string $conflictBehavior Conflict validation behavior: 'error', 'warn', or 'silent'
+     * @param bool $validateEndpointNames Whether to validate endpoint names
+     * @param LoggerInterface $logger Logger for warnings and debugging
+     */
+    public function __construct(
+        private readonly array $endpointPriority = [
+            'audio_transcription',
+            'audio_translation',
+            'audio_speech',
+            'image_generation',
+            'image_edit',
+            'image_variation',
+            'chat_completion',
+            'response_api',
+        ],
+        private readonly bool $validateConflicts = true,
+        private readonly string $conflictBehavior = 'error',
+        private readonly bool $validateEndpointNames = true,
+        private readonly LoggerInterface $logger = new \Psr\Log\NullLogger(),
+    ) {
         $this->validateConfiguration();
     }
 
@@ -365,7 +344,7 @@ final class RequestRouter
         }
 
         if ($this->conflictBehavior === 'warn') {
-            Log::warning('Endpoint routing conflict detected', [
+            $this->logger->warning('Endpoint routing conflict detected', [
                 'matching_endpoints' => $conflictingEndpoints,
                 'reasoning' => $reasoning,
                 'selected_endpoint' => $conflictingEndpoints[0],

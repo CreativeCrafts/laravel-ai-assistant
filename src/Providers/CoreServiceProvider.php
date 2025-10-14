@@ -176,7 +176,42 @@ class CoreServiceProvider extends ServiceProvider
 
         // Register RequestRouter as singleton for unified API routing
         $this->app->singleton(RequestRouter::class, function ($app) {
-            return new RequestRouter();
+            $configuredPriority = config('ai-assistant.routing.endpoint_priority');
+            $endpointPriority = is_array($configuredPriority) && count($configuredPriority) > 0
+                ? $configuredPriority
+                : [
+                    'audio_transcription',
+                    'audio_translation',
+                    'audio_speech',
+                    'image_generation',
+                    'image_edit',
+                    'image_variation',
+                    'chat_completion',
+                    'response_api',
+                ];
+
+            $validateConflicts = config('ai-assistant.routing.validate_conflicts', true);
+            if (!is_bool($validateConflicts)) {
+                $validateConflicts = true;
+            }
+
+            $conflictBehavior = config('ai-assistant.routing.conflict_behavior', 'error');
+            if (!is_string($conflictBehavior) || !in_array($conflictBehavior, ['error', 'warn', 'silent'], true)) {
+                $conflictBehavior = 'error';
+            }
+
+            $validateEndpointNames = config('ai-assistant.routing.validate_endpoint_names', true);
+            if (!is_bool($validateEndpointNames)) {
+                $validateEndpointNames = true;
+            }
+
+            return new RequestRouter(
+                endpointPriority: $endpointPriority,
+                validateConflicts: $validateConflicts,
+                conflictBehavior: $conflictBehavior,
+                validateEndpointNames: $validateEndpointNames,
+                logger: Log::channel()
+            );
         });
 
         // Register AdapterFactory as singleton for endpoint adapters

@@ -71,7 +71,7 @@ final class ResponsesBuilder
     ) {
         $this->inputItems = new InputItemsBuilder();
         $this->unifiedInput = InputBuilder::make($this);
-        $this->router = $router ?? new RequestRouter();
+        $this->router = $router ?? app(RequestRouter::class);
         $this->adapterFactory = $adapterFactory ?? new AdapterFactory();
         $this->openAiClient = $openAiClient ?? app(OpenAiClient::class);
     }

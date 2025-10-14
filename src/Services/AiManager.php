@@ -28,7 +28,7 @@ final class AiManager
         ?RequestRouter $router = null,
         ?AdapterFactory $adapterFactory = null,
     ) {
-        $this->router = $router ?? new RequestRouter();
+        $this->router = $router ?? app(RequestRouter::class);
         $this->adapterFactory = $adapterFactory ?? new AdapterFactory();
     }
 

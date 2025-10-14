@@ -31,7 +31,7 @@ final class ConversationsBuilder
         ?AdapterFactory $adapterFactory = null,
     ) {
         $this->input = new InputItemsBuilder();
-        $this->router = $router ?? new RequestRouter();
+        $this->router = $router ?? app(RequestRouter::class);
         $this->adapterFactory = $adapterFactory ?? new AdapterFactory();
     }
 

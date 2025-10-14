@@ -121,8 +121,9 @@ describe('determineEndpoint', function () {
 
 describe('routing priority', function () {
     it('prioritizes audio transcription over chat completion', function () {
-        config(['ai-assistant.routing.validate_conflicts' => false]);
-        $router = new RequestRouter();
+        $router = new RequestRouter(
+            validateConflicts: false
+        );
 
         $inputData = [
             'audio' => [
@@ -343,15 +344,13 @@ describe('configurable routing priorities', function () {
 
 describe('invalid endpoint configuration', function () {
     it('throws exception for invalid endpoint names when validation enabled', function () {
-        config([
-            'ai-assistant.routing.endpoint_priority' => [
+        expect(fn () => new RequestRouter(
+            endpointPriority: [
                 'invalid_endpoint',
                 'audio_transcription',
             ],
-            'ai-assistant.routing.validate_endpoint_names' => true,
-        ]);
-
-        expect(fn () => new RequestRouter())
+            validateEndpointNames: true
+        ))
             ->toThrow(
                 CreativeCrafts\LaravelAiAssistant\Exceptions\EndpointRoutingException::class,
                 'Invalid endpoint priority configuration'
@@ -359,16 +358,14 @@ describe('invalid endpoint configuration', function () {
     });
 
     it('includes reasoning in invalid endpoint exception', function () {
-        config([
-            'ai-assistant.routing.endpoint_priority' => [
-                'fake_endpoint',
-                'another_invalid',
-            ],
-            'ai-assistant.routing.validate_endpoint_names' => true,
-        ]);
-
         try {
-            new RequestRouter();
+            new RequestRouter(
+                endpointPriority: [
+                    'fake_endpoint',
+                    'another_invalid',
+                ],
+                validateEndpointNames: true
+            );
             expect(false)->toBeTrue('Exception should have been thrown');
         } catch (CreativeCrafts\LaravelAiAssistant\Exceptions\EndpointRoutingException $e) {
             expect($e->getMessage())
@@ -380,15 +377,13 @@ describe('invalid endpoint configuration', function () {
     });
 
     it('skips validation when validate_endpoint_names is disabled', function () {
-        config([
-            'ai-assistant.routing.endpoint_priority' => [
+        $router = new RequestRouter(
+            endpointPriority: [
                 'invalid_endpoint',
                 'audio_transcription',
             ],
-            'ai-assistant.routing.validate_endpoint_names' => false,
-        ]);
-
-        $router = new RequestRouter();
+            validateEndpointNames: false
+        );
 
         expect($router)->toBeInstanceOf(RequestRouter::class);
     });
@@ -396,16 +391,14 @@ describe('invalid endpoint configuration', function () {
 
 describe('conflict detection', function () {
     it('throws exception when multiple endpoints match and behavior is error', function () {
-        config([
-            'ai-assistant.routing.endpoint_priority' => [
+        $router = new RequestRouter(
+            endpointPriority: [
                 'audio_transcription',
                 'audio_translation',
             ],
-            'ai-assistant.routing.validate_conflicts' => true,
-            'ai-assistant.routing.conflict_behavior' => 'error',
-        ]);
-
-        $router = new RequestRouter();
+            validateConflicts: true,
+            conflictBehavior: 'error'
+        );
 
         $inputData = [
             'audio' => [
@@ -419,16 +412,14 @@ describe('conflict detection', function () {
     });
 
     it('includes reasoning in conflict exception message', function () {
-        config([
-            'ai-assistant.routing.endpoint_priority' => [
+        $router = new RequestRouter(
+            endpointPriority: [
                 'image_generation',
                 'image_edit',
             ],
-            'ai-assistant.routing.validate_conflicts' => true,
-            'ai-assistant.routing.conflict_behavior' => 'error',
-        ]);
-
-        $router = new RequestRouter();
+            validateConflicts: true,
+            conflictBehavior: 'error'
+        );
 
         $inputData = [
             'image' => [
@@ -442,16 +433,14 @@ describe('conflict detection', function () {
     });
 
     it('allows routing when conflict behavior is warn', function () {
-        config([
-            'ai-assistant.routing.endpoint_priority' => [
+        $router = new RequestRouter(
+            endpointPriority: [
                 'audio_transcription',
                 'audio_translation',
             ],
-            'ai-assistant.routing.validate_conflicts' => true,
-            'ai-assistant.routing.conflict_behavior' => 'warn',
-        ]);
-
-        $router = new RequestRouter();
+            validateConflicts: true,
+            conflictBehavior: 'warn'
+        );
 
         $inputData = [
             'audio' => [
@@ -466,16 +455,14 @@ describe('conflict detection', function () {
     });
 
     it('allows routing when conflict behavior is silent', function () {
-        config([
-            'ai-assistant.routing.endpoint_priority' => [
+        $router = new RequestRouter(
+            endpointPriority: [
                 'audio_transcription',
                 'audio_translation',
             ],
-            'ai-assistant.routing.validate_conflicts' => true,
-            'ai-assistant.routing.conflict_behavior' => 'silent',
-        ]);
-
-        $router = new RequestRouter();
+            validateConflicts: true,
+            conflictBehavior: 'silent'
+        );
 
         $inputData = [
             'audio' => [
@@ -490,15 +477,13 @@ describe('conflict detection', function () {
     });
 
     it('skips conflict detection when validate_conflicts is disabled', function () {
-        config([
-            'ai-assistant.routing.endpoint_priority' => [
+        $router = new RequestRouter(
+            endpointPriority: [
                 'audio_transcription',
                 'audio_translation',
             ],
-            'ai-assistant.routing.validate_conflicts' => false,
-        ]);
-
-        $router = new RequestRouter();
+            validateConflicts: false
+        );
 
         $inputData = [
             'audio' => [
