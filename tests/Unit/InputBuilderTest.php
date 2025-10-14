@@ -320,6 +320,422 @@ describe('InputBuilder', function () {
         });
     });
 
+    describe('imageInput()', function () {
+        it('adds valid image input for chat context with URL', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'What is in this image?',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            $builder = InputBuilder::make()->imageInput($imageInput);
+
+            expect($builder->toArray())->toBe([
+                'input' => $imageInput,
+            ]);
+        });
+
+        it('adds valid image input with base64 data URL', function () {
+            $base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Analyze this image',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => $base64Image,
+                    ],
+                ],
+            ];
+
+            $builder = InputBuilder::make()->imageInput($imageInput);
+
+            expect($builder->toArray()['input']['content'][1]['image_url'])->toBe($base64Image);
+        });
+
+        it('adds valid image input with plain base64 string', function () {
+            $base64String = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'What do you see?',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => $base64String,
+                    ],
+                ],
+            ];
+
+            $builder = InputBuilder::make()->imageInput($imageInput);
+
+            expect($builder->toArray()['input']['content'][1]['image_url'])->toBe($base64String);
+        });
+
+        it('validates role is required', function () {
+            $imageInput = [
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class, 'role field is required');
+        });
+
+        it('validates role must be user', function () {
+            $imageInput = [
+                'role' => 'assistant',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class);
+        });
+
+        it('validates content is required', function () {
+            $imageInput = [
+                'role' => 'user',
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class, 'content field is required');
+        });
+
+        it('validates content must be an array', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => 'not an array',
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(TypeError::class);
+        });
+
+        it('validates content must have exactly 2 items', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class, 'Content must contain exactly two items');
+        });
+
+        it('validates content items must have type field', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class);
+        });
+
+        it('validates type must be input_text or input_image', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'invalid_type',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class);
+        });
+
+        it('validates must have exactly one input_text and one input_image', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test 1',
+                    ],
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test 2',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class, 'Content must have exactly one item of type "input_text" and one item of type "input_image"');
+        });
+
+        it('validates input_text must have non-empty text field', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => '',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class, 'text is required and must be a non-empty string');
+        });
+
+        it('validates input_text text must be a string', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 123,
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class);
+        });
+
+        it('validates input_text text cannot be whitespace only', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => '   ',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class);
+        });
+
+        it('validates input_image must have image_url field', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class, 'image_url must be a fully qualified URL or a base64-encoded image');
+        });
+
+        it('validates image_url must be valid URL or base64', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'not-a-valid-url-or-base64',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class, 'image_url must be a fully qualified URL or a base64-encoded image');
+        });
+
+        it('validates image_url must be a string', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 12345,
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class);
+        });
+
+        it('accepts various base64 image formats', function () {
+            $formats = [
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+                'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCgAAA=',
+                'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+                'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=',
+            ];
+
+            foreach ($formats as $format) {
+                $imageInput = [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'input_text',
+                            'text' => 'Test',
+                        ],
+                        [
+                            'type' => 'input_image',
+                            'image_url' => $format,
+                        ],
+                    ],
+                ];
+
+                $builder = InputBuilder::make()->imageInput($imageInput);
+                expect($builder->toArray()['input']['content'][1]['image_url'])->toBe($format);
+            }
+        });
+
+        it('accepts HTTPS URLs', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://cdn.example.com/images/photo.jpg',
+                    ],
+                ],
+            ];
+
+            $builder = InputBuilder::make()->imageInput($imageInput);
+            expect($builder->toArray()['input']['content'][1]['image_url'])->toBe('https://cdn.example.com/images/photo.jpg');
+        });
+
+        it('accepts HTTP URLs', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'http://example.com/image.png',
+                    ],
+                ],
+            ];
+
+            $builder = InputBuilder::make()->imageInput($imageInput);
+            expect($builder->toArray()['input']['content'][1]['image_url'])->toBe('http://example.com/image.png');
+        });
+
+        it('rejects invalid base64 strings', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'Test',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'data:image/png;base64,not-valid-base64!!!',
+                    ],
+                ],
+            ];
+
+            expect(fn () => InputBuilder::make()->imageInput($imageInput))
+                ->toThrow(InvalidArgumentException::class);
+        });
+
+        it('can chain with other builder methods', function () {
+            $imageInput = [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'What is in this image?',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ];
+
+            $builder = InputBuilder::make()
+                ->message('Analyze this')
+                ->imageInput($imageInput);
+
+            $result = $builder->toArray();
+            expect($result)->toHaveKeys(['message', 'input']);
+            expect($result['message'])->toBe('Analyze this');
+            expect($result['input'])->toBe($imageInput);
+        });
+    });
+
     describe('toArray()', function () {
         it('returns all configured data', function () {
             $builder = InputBuilder::make()
