@@ -354,6 +354,7 @@ return [
                 'image_edit',
                 'image_variation',
                 'chat_completion',
+                'response_api_image_input',
                 'response_api',
             ],
 

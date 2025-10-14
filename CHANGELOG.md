@@ -5,6 +5,29 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.28-beta] - 2025-10-14
+
+### Changed
+
+- **Enhanced `ResponseApiAdapter` with automatic message wrapping**
+  - Automatically wraps single message objects in an array when passed to Response API
+  - Detects message format: checks for `role` and `content` keys
+  - Ensures compliance with OpenAI Response API input requirements
+  - Improves developer experience by handling both formats transparently:
+    - Single message object: `{ role: 'user', content: [...] }` → wrapped in array
+    - Array of messages: passed through as-is
+  - No breaking changes: backward compatible with existing code
+
+### Technical Details
+
+- The adapter now intelligently detects single message objects vs. message arrays
+- Single message objects are automatically wrapped: `[$input]`
+- Arrays are passed through without modification
+- Complies with OpenAI's Response API specification for input parameter
+- Works seamlessly with `InputBuilder::imageInput()` output
+
+**Reference:** https://platform.openai.com/docs/api-reference/responses/create
+
 ## [3.0.27-beta] - 2025-10-14
 
 ### Added

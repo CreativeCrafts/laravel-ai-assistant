@@ -36,7 +36,15 @@ final class ResponseApiAdapter implements TextEndpointAdapter
 
         // Handle input/message content
         if (isset($unifiedRequest['input'])) {
-            $request['input'] = $unifiedRequest['input'];
+            $input = $unifiedRequest['input'];
+
+            // Check if input is a message object (has 'role' and 'content' keys)
+            // If so, wrap it in an array as required by OpenAI Response API
+            if (is_array($input) && isset($input['role'], $input['content'])) {
+                $request['input'] = [$input];
+            } else {
+                $request['input'] = $input;
+            }
         }
 
         if (isset($unifiedRequest['messages'])) {
