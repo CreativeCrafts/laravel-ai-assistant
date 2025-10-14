@@ -80,6 +80,9 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
                     'name' => (string)$name,
                     'contents' => $value['contents'],
                 ];
+                if (is_string($value['contents']) && is_readable($value['contents'])) {
+                    $part['contents'] = fopen($value['contents'], 'rb');
+                }
                 if (isset($value['filename']) && is_string($value['filename']) && $value['filename'] !== '') {
                     $part['filename'] = $value['filename'];
                 }
