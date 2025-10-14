@@ -5,6 +5,39 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.27-beta] - 2025-10-14
+
+### Added
+
+- **Image input routing support for Response API with vision models**
+  - New `response_api_image_input` route configuration in `RequestRouter`
+  - New `hasImageInput()` method to detect image input in Response API format
+  - Validates image input structure: requires `input` field with `role` and `content` array
+  - Automatically routes vision model requests with image input to Response API endpoint
+  - Supports `imageInput()` method from `InputBuilder` for vision model processing
+
+### Changed
+
+- **Enhanced `RequestRouter` with image input detection**
+  - Added `response_api_image_input` to endpoint priorities and mappings
+  - Comprehensive PHPDoc documentation for `hasImageInput()` method with API reference
+  - Routes requests to Response API when image input structure is detected
+
+- **Updated `InputBuilder` documentation**
+  - Clarified that `imageInput()` method is for Response API context (not chat context)
+  - Improved method documentation for better developer experience
+  - Updated validation comments to reflect Response API usage
+
+### Technical Details
+
+- The image input detection checks for the presence of `input` field with proper structure
+- Structure must conform to: `role: 'user'` and `content` as an array with image/text items
+- Routes to `OpenAiEndpoint::ResponseApi` when image input is detected
+- Falls back to default Response API routing when image input is not present
+- Full test coverage added for image input routing scenarios
+
+**Reference:** https://platform.openai.com/docs/api-reference/responses/create
+
 ## [3.0.26-beta] - 2025-10-14
 
 ### Added

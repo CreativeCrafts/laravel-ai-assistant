@@ -144,8 +144,8 @@ final class InputBuilder
     }
 
     /**
-     * Add image input in the chat message context.
-     * This is used when an image is part of a chat conversation, typically for vision models.
+     * Add image input in the Response input context.
+     * This is used when an image is part of a Response API conversation, typically for vision models.
      * The image input must contain exactly one text item and one image item.
      *
      * @param array<string,mixed> $imageInput Image input configuration with structure:
@@ -268,7 +268,7 @@ final class InputBuilder
     }
 
     /**
-     * Validate the image input configuration for the chat message context.
+     * Validate the image input configuration for the Response input context.
      * Ensures the image input array conforms to the required structure for vision models:
      * - Must have a role set to 'user'
      * - Must contain exactly 2 content items

@@ -69,6 +69,7 @@ final class RequestRouter
         'image_edit' => 'hasImageEdit',
         'image_variation' => 'hasImageVariation',
         'chat_completion' => 'hasAudioInput',
+        'response_api_image_input' => 'hasImageInput',
         'response_api' => 'isDefaultEndpoint',
     ];
 
@@ -85,6 +86,7 @@ final class RequestRouter
         'image_edit' => OpenAiEndpoint::ImageEdit,
         'image_variation' => OpenAiEndpoint::ImageVariation,
         'chat_completion' => OpenAiEndpoint::ChatCompletion,
+        'response_api_image_input' => OpenAiEndpoint::ResponseApi,
         'response_api' => OpenAiEndpoint::ResponseApi,
     ];
 
@@ -104,6 +106,7 @@ final class RequestRouter
             'image_edit',
             'image_variation',
             'chat_completion',
+            'response_api_image_input',
             'response_api',
         ],
         private readonly bool $validateConflicts = true,
@@ -233,6 +236,30 @@ final class RequestRouter
     private function hasAudioInput(array $data): bool
     {
         return isset($data['audio_input']);
+    }
+
+    /**
+     * Check if request has image input for Response API.
+     * This handles image input that should be processed by the Response API,
+     * which supports vision models through the input parameter.
+     * The image input structure must conform to:
+     * - role: 'user'
+     * - content: array with 'input_text' and 'input_image' items
+     * This is used when calling imageInput() method from the InputBuilder,
+     * and routes the request to Response API for vision model processing.
+     * Requires: input field as an array with role and content structure
+     *
+     * @see https://platform.openai.com/docs/api-reference/responses/create
+     */
+    private function hasImageInput(array $data): bool
+    {
+        if (!isset($data['input']) || !is_array($data['input'])) {
+            return false;
+        }
+
+        $input = $data['input'];
+
+        return isset($input['role'], $input['content']) && is_array($input['content']);
     }
 
     /**

@@ -100,6 +100,28 @@ describe('determineEndpoint', function () {
         expect($endpoint)->toBe(OpenAiEndpoint::ChatCompletion);
     });
 
+    it('routes to response API for image input with vision models', function () {
+        $inputData = [
+            'input' => [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'input_text',
+                        'text' => 'What is in this image?',
+                    ],
+                    [
+                        'type' => 'input_image',
+                        'image_url' => 'https://example.com/image.jpg',
+                    ],
+                ],
+            ],
+        ];
+
+        $endpoint = $this->router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::ResponseApi);
+    });
+
     it('defaults to response API for standard text requests', function () {
         $inputData = [
             'message' => 'Hello, how are you?',
