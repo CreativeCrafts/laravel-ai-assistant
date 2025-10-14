@@ -6,6 +6,9 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 
 use CreativeCrafts\LaravelAiAssistant\Enums\AudioAction;
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\EndpointRoutingException;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Routes unified API requests to the appropriate OpenAI endpoint.
@@ -55,27 +58,112 @@ use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
 final class RequestRouter
 {
     /**
+     * Endpoint priority order from configuration.
+     *
+     * @var array<int, string>
+     */
+    private array $endpointPriority;
+
+    /**
+     * Whether to validate for conflicts.
+     */
+    private bool $validateConflicts;
+
+    /**
+     * Conflict behavior: 'error', 'warn', or 'silent'.
+     */
+    private string $conflictBehavior;
+
+    /**
+     * Whether to validate endpoint names.
+     */
+    private bool $validateEndpointNames;
+
+    /**
+     * Mapping of endpoint names to checker methods.
+     *
+     * @var array<string, string>
+     */
+    private array $endpointCheckers = [
+        'audio_transcription' => 'hasAudioTranscription',
+        'audio_translation' => 'hasAudioTranslation',
+        'audio_speech' => 'hasAudioSpeech',
+        'image_generation' => 'hasImageGeneration',
+        'image_edit' => 'hasImageEdit',
+        'image_variation' => 'hasImageVariation',
+        'chat_completion' => 'hasAudioInput',
+        'response_api' => 'isDefaultEndpoint',
+    ];
+
+    /**
+     * Mapping of endpoint names to OpenAiEndpoint enum cases.
+     *
+     * @var array<string, OpenAiEndpoint>
+     */
+    private array $endpointMapping = [
+        'audio_transcription' => OpenAiEndpoint::AudioTranscription,
+        'audio_translation' => OpenAiEndpoint::AudioTranslation,
+        'audio_speech' => OpenAiEndpoint::AudioSpeech,
+        'image_generation' => OpenAiEndpoint::ImageGeneration,
+        'image_edit' => OpenAiEndpoint::ImageEdit,
+        'image_variation' => OpenAiEndpoint::ImageVariation,
+        'chat_completion' => OpenAiEndpoint::ChatCompletion,
+        'response_api' => OpenAiEndpoint::ResponseApi,
+    ];
+
+    public function __construct()
+    {
+        $configuredPriority = config('ai-assistant.routing.endpoint_priority');
+
+        $this->endpointPriority = is_array($configuredPriority) && count($configuredPriority) > 0
+            ? $configuredPriority
+            : [
+                'audio_transcription',
+                'audio_translation',
+                'audio_speech',
+                'image_generation',
+                'image_edit',
+                'image_variation',
+                'chat_completion',
+                'response_api',
+            ];
+
+        $this->validateConflicts = Config::boolean(key: 'ai-assistant.routing.validate_conflicts', default: true);
+        $this->conflictBehavior = Config::string(key: 'ai-assistant.routing.conflict_behavior', default: 'error');
+        $this->validateEndpointNames = Config::boolean(key: 'ai-assistant.routing.validate_endpoint_names', default: true);
+
+        $this->validateConfiguration();
+    }
+
+    /**
      * Determine which OpenAI endpoint should handle the request.
+     * Uses configured endpoint priorities to determine routing.
+     * Implements reasoning-first approach: checks for conflicts,
+     * then evaluates endpoints in priority order.
      *
      * @param array<string, mixed> $inputData The unified request data
      * @return OpenAiEndpoint The appropriate endpoint for this request
+     * @throws EndpointRoutingException When conflicts are detected and conflict_behavior is 'error'
      */
     public function determineEndpoint(array $inputData): OpenAiEndpoint
     {
-        return match (true) {
-            $this->hasAudioTranscription($inputData) => OpenAiEndpoint::AudioTranscription,
-            $this->hasAudioTranslation($inputData) => OpenAiEndpoint::AudioTranslation,
-            $this->hasAudioSpeech($inputData) => OpenAiEndpoint::AudioSpeech,
-            $this->hasImageGeneration($inputData) => OpenAiEndpoint::ImageGeneration,
-            $this->hasImageEdit($inputData) => OpenAiEndpoint::ImageEdit,
-            $this->hasImageVariation($inputData) => OpenAiEndpoint::ImageVariation,
-            // Exception: Use Chat Completions API for audio input in chat context
-            // because Response API does not yet support audio input (OpenAI limitation)
-            $this->hasAudioInput($inputData) => OpenAiEndpoint::ChatCompletion,
-            // Default: Use Response API for all standard text/chat operations
-            // (recommended by OpenAI for all new projects)
-            default => OpenAiEndpoint::ResponseApi,
-        };
+        if ($this->validateConflicts) {
+            $this->detectAndHandleConflicts($inputData);
+        }
+
+        foreach ($this->endpointPriority as $endpointName) {
+            if (!isset($this->endpointCheckers[$endpointName])) {
+                continue;
+            }
+
+            $checkerMethod = $this->endpointCheckers[$endpointName];
+
+            if ($this->{$checkerMethod}($inputData)) {
+                return $this->endpointMapping[$endpointName];
+            }
+        }
+
+        return OpenAiEndpoint::ResponseApi;
     }
 
     /**
@@ -166,5 +254,184 @@ final class RequestRouter
     private function hasAudioInput(array $data): bool
     {
         return isset($data['audio_input']);
+    }
+
+    /**
+     * Check if request should use default endpoint (Response API).
+     * This always returns true and serves as the fallback endpoint
+     * when no other specific endpoint matches the request.
+     */
+    private function isDefaultEndpoint(array $data): bool
+    {
+        return true;
+    }
+
+    /**
+     * Validate the routing configuration.
+     * Implements reasoning-first approach: analyzes configuration,
+     * identifies issues, explains reasoning, then throws exception if needed.
+     *
+     * @throws EndpointRoutingException When configuration is invalid
+     */
+    private function validateConfiguration(): void
+    {
+        if (!$this->validateEndpointNames) {
+            return;
+        }
+
+        $invalidEndpoints = [];
+
+        foreach ($this->endpointPriority as $endpointName) {
+            if (!isset($this->endpointMapping[$endpointName])) {
+                $invalidEndpoints[] = $endpointName;
+            }
+        }
+
+        if (count($invalidEndpoints) === 0) {
+            return;
+        }
+
+        $validEndpoints = implode(', ', array_keys($this->endpointMapping));
+        $invalidList = implode(', ', $invalidEndpoints);
+
+        $reasoning = "The routing configuration contains invalid endpoint names that are not recognized by the system.\n" .
+            "- Invalid endpoints: {$invalidList}\n" .
+            "- Valid endpoints: {$validEndpoints}\n" .
+            "- These invalid endpoints will be skipped during routing, which may lead to unexpected behavior.\n" .
+            "- The configuration should only reference supported endpoint types.";
+
+        throw EndpointRoutingException::invalidPriorityConfiguration($reasoning);
+    }
+
+    /**
+     * Detect and handle routing conflicts based on input data.
+     * Implements reasoning-first approach: analyzes input, detects all
+     * matching endpoints, reasons about conflicts, then handles based
+     * on configured behavior.
+     * A conflict exists when multiple endpoints within the SAME category
+     * match the input data, indicating ambiguous intent. Cross-category
+     * matches (e.g., audio + image) are NOT conflicts - they are handled
+     * by the priority system.
+     *
+     * @param array<string, mixed> $inputData The request data to analyze
+     * @throws EndpointRoutingException When conflicts detected and behavior is 'error'
+     */
+    private function detectAndHandleConflicts(array $inputData): void
+    {
+        $matchingEndpoints = [];
+
+        foreach ($this->endpointPriority as $endpointName) {
+            if (!isset($this->endpointCheckers[$endpointName])) {
+                continue;
+            }
+
+            $checkerMethod = $this->endpointCheckers[$endpointName];
+
+            if ($endpointName === 'response_api') {
+                continue;
+            }
+
+            if ($this->{$checkerMethod}($inputData)) {
+                $matchingEndpoints[] = $endpointName;
+            }
+        }
+
+        if (count($matchingEndpoints) <= 1) {
+            return;
+        }
+
+        $audioEndpoints = array_intersect($matchingEndpoints, ['audio_transcription', 'audio_translation', 'audio_speech', 'chat_completion']);
+        $imageEndpoints = array_intersect($matchingEndpoints, ['image_generation', 'image_edit', 'image_variation']);
+
+        $hasAudioConflict = count($audioEndpoints) > 1;
+        $hasImageConflict = count($imageEndpoints) > 1;
+
+        if (!$hasAudioConflict && !$hasImageConflict) {
+            return;
+        }
+
+        $conflictingEndpoints = [];
+        if ($hasAudioConflict) {
+            $conflictingEndpoints = array_merge($conflictingEndpoints, array_values($audioEndpoints));
+        }
+        if ($hasImageConflict) {
+            $conflictingEndpoints = array_merge($conflictingEndpoints, array_values($imageEndpoints));
+        }
+
+        $reasoning = $this->buildConflictReasoning($conflictingEndpoints, $inputData);
+
+        if ($this->conflictBehavior === 'error') {
+            throw EndpointRoutingException::conflictingEndpoints($conflictingEndpoints, $reasoning);
+        }
+
+        if ($this->conflictBehavior === 'warn') {
+            Log::warning('Endpoint routing conflict detected', [
+                'matching_endpoints' => $conflictingEndpoints,
+                'reasoning' => $reasoning,
+                'selected_endpoint' => $conflictingEndpoints[0],
+            ]);
+        }
+    }
+
+    /**
+     * Build detailed reasoning for detected conflicts.
+     *
+     * @param array<int, string> $matchingEndpoints List of conflicting endpoints
+     * @param array<string, mixed> $inputData The request data
+     * @return string Detailed reasoning about the conflict
+     */
+    private function buildConflictReasoning(array $matchingEndpoints, array $inputData): string
+    {
+        $reasoning = "Multiple endpoints match the provided input data, creating an ambiguous routing situation.\n\n";
+
+        $reasoning .= "Matching endpoints (in priority order):\n";
+        foreach ($matchingEndpoints as $endpoint) {
+            $reasoning .= "- {$endpoint}: " . $this->explainEndpointMatch($endpoint, $inputData) . "\n";
+        }
+
+        $reasoning .= "\nAnalysis:\n";
+
+        $audioEndpoints = array_intersect($matchingEndpoints, ['audio_transcription', 'audio_translation', 'audio_speech', 'chat_completion']);
+        $imageEndpoints = array_intersect($matchingEndpoints, ['image_generation', 'image_edit', 'image_variation']);
+
+        if (count($audioEndpoints) > 1) {
+            $reasoning .= "- Multiple audio endpoints are matching simultaneously, indicating ambiguous audio processing intent.\n";
+        }
+
+        if (count($imageEndpoints) > 1) {
+            $reasoning .= "- Multiple image endpoints are matching simultaneously, indicating ambiguous image processing intent.\n";
+        }
+
+        if (count($audioEndpoints) > 0 && count($imageEndpoints) > 0) {
+            $reasoning .= "- Both audio and image endpoints are matching, which suggests conflicting input data types.\n";
+        }
+
+        $reasoning .= "\nRecommendation:\n";
+        $reasoning .= "- Review the input data to ensure it clearly specifies a single operation type.\n";
+        $reasoning .= "- Adjust the routing priority configuration if this is an expected scenario.\n";
+        $reasoning .= "- Consider setting conflict_behavior to 'warn' during development to allow first-match routing.";
+
+        return $reasoning;
+    }
+
+    /**
+     * Explain why a specific endpoint matches the input data.
+     *
+     * @param string $endpointName The endpoint name
+     * @param array<string, mixed> $inputData The request data
+     * @return string Explanation of the match
+     */
+    private function explainEndpointMatch(string $endpointName, array $inputData): string
+    {
+        return match ($endpointName) {
+            'audio_transcription' => 'Audio file present with transcribe action',
+            'audio_translation' => 'Audio file present with translate action',
+            'audio_speech' => 'Text present with speech generation action',
+            'image_generation' => 'Image prompt present without existing image file',
+            'image_edit' => 'Image file and prompt present for editing',
+            'image_variation' => 'Image file present without prompt for variations',
+            'chat_completion' => 'Audio input present in chat context',
+            default => 'Matches endpoint criteria',
+        };
     }
 }

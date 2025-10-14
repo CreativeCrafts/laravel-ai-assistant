@@ -13,6 +13,11 @@ use SplFileInfo;
  * This class provides a fluent interface for constructing multipart requests
  * with comprehensive file validation and proper Content-Type management.
  *
+ * This builder follows the mutable fluent pattern:
+ * - All methods modify internal state ($this->parts) and return $this
+ * - No cloning is performed; the same instance is modified throughout the chain
+ * - This ensures consistent behavior across all package builders
+ *
  * @internal Internal utility for building multipart HTTP requests (used for file uploads).
  * Do not use directly - use Ai::responses() instead.
  */

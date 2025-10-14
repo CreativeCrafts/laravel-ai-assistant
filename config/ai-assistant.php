@@ -291,6 +291,103 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Request Routing Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure how the RequestRouter determines which OpenAI endpoint should
+    | handle incoming requests. This system allows you to customize endpoint
+    | matching priorities and detect conflicting configurations.
+    |
+    | ## Routing Logic
+    |
+    | The router evaluates endpoint conditions in the order specified by
+    | 'endpoint_priority'. The first matching condition determines which
+    | endpoint handles the request. This implements a "first match wins"
+    | strategy that can be customized through configuration.
+    |
+    | ## Conflict Detection
+    |
+    | When 'validate_conflicts' is enabled, the router validates that your
+    | configuration doesn't have conflicting endpoint settings that could
+    | lead to ambiguous routing decisions. For example, enabling both audio
+    | transcription and audio translation with overlapping input conditions
+    | would be flagged as a conflict.
+    |
+    | ## Example Scenarios
+    |
+    | Simple Configuration (No Conflicts):
+    | - endpoint_priority: ['audio_transcription', 'image_generation', 'response_api']
+    | - Request with audio file and transcribe action
+    | - Reasoning: Audio transcription has highest priority and matches the request
+    | - Conclusion: Routes to audio_transcription endpoint
+    |
+    | Conflicting Configuration:
+    | - Both audio_transcription and audio_translation configured
+    | - Request with audio file but ambiguous action
+    | - Reasoning: Multiple audio endpoints match, creating ambiguity
+    | - Conclusion: Error raised to resolve configuration conflict
+    |
+    */
+    'routing' => [
+        /**
+         * Endpoint matching priority order.
+         * Defines the order in which endpoint conditions are evaluated.
+         * The router checks conditions in this order and uses the first match.
+         * Available endpoints:
+         * - audio_transcription: Audio file with transcribe action
+         * - audio_translation: Audio file with translate action
+         * - audio_speech: Text with speech generation action
+         * - image_generation: Image prompt without existing image
+         * - image_edit: Image file with prompt for editing
+         * - image_variation: Image file without prompt for variations
+         * - chat_completion: Audio input in chat context (Response API limitation workaround)
+         * - response_api: Default for all text/chat operations (recommended by OpenAI)
+         * Default order follows OpenAI best practices with Response API as default.
+         */
+        'endpoint_priority' => is_string($priority = env('AI_ROUTING_ENDPOINT_PRIORITY')) && !empty($priority)
+            ? explode(',', $priority)
+            : [
+                'audio_transcription',
+                'audio_translation',
+                'audio_speech',
+                'image_generation',
+                'image_edit',
+                'image_variation',
+                'chat_completion',
+                'response_api',
+            ],
+
+        /**
+         * Enable conflict detection validation.
+         * When true, the router validates that endpoint configurations don't
+         * conflict with each other. This helps catch configuration errors that
+         * could lead to unexpected routing behavior.
+         * Reasoning-first approach: The validator analyzes all active endpoints,
+         * identifies potential conflicts, explains the reasoning, and then
+         * raises an error with clear resolution steps.
+         */
+        'validate_conflicts' => env('AI_ROUTING_VALIDATE_CONFLICTS', true),
+
+        /**
+         * Conflict validation behavior.
+         * Determines how the router handles detected conflicts:
+         * - 'error': Throw exception and halt execution (recommended for production)
+         * - 'warn': Log warning but continue with first match (useful for development)
+         * - 'silent': Ignore conflicts and use first match (not recommended)
+         */
+        'conflict_behavior' => env('AI_ROUTING_CONFLICT_BEHAVIOR', 'error'),
+
+        /**
+         * Enable endpoint availability validation.
+         * When true, validates that endpoints in the priority list are valid
+         * and supported by the system. Invalid endpoint names will raise an error
+         * with reasoning about which endpoints are invalid and why.
+         */
+        'validate_endpoint_names' => env('AI_ROUTING_VALIDATE_ENDPOINT_NAMES', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Responses API Configuration
     |--------------------------------------------------------------------------
     |

@@ -8,6 +8,11 @@ namespace CreativeCrafts\LaravelAiAssistant\Support;
  * Builder for Responses API input items.
  * Maintains a list of input entries: [ { role: 'user'|'assistant'|'system', content: [blocks...] } ]
  *
+ * This builder follows the mutable fluent pattern:
+ * - All methods modify internal state ($this->items) and return $this
+ * - No cloning is performed; the same instance is modified throughout the chain
+ * - This ensures consistent behavior across all package builders
+ *
  * @internal Used internally by ConversationsBuilder for managing conversation input items.
  * Do not use directly. Use the public builder APIs instead:
  * - For responses: Ai::responses()->input() returns InputBuilder (recommended)

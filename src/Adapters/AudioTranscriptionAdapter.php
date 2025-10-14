@@ -41,7 +41,7 @@ final class AudioTranscriptionAdapter implements EndpointAdapter
 
         return [
             'file' => $filePath,
-            'model' => $audio['model'] ?? 'whisper-1',
+            'model' => $audio['model'] ?? 'gpt-4o-mini-transcribe',
             'language' => $audio['language'] ?? null,
             'prompt' => $audio['prompt'] ?? null,
             'response_format' => $audio['response_format'] ?? 'json',

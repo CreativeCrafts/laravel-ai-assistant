@@ -25,17 +25,6 @@ describe('InputBuilder', function () {
                 'message' => 'Hello, world!',
             ]);
         });
-
-        it('is immutable and returns a new instance', function () {
-            $original = InputBuilder::make();
-            $modified = $original->message('Test message');
-
-            expect($original->toArray())->toBe([]);
-            expect($modified->toArray())->toBe([
-                'message' => 'Test message',
-            ]);
-            expect($original)->not->toBe($modified);
-        });
     });
 
     describe('audio()', function () {
@@ -166,18 +155,6 @@ describe('InputBuilder', function () {
                 'temperature' => 1.1,
             ]))->toThrow(InvalidArgumentException::class, 'Temperature must be between 0 and 1');
         });
-
-        it('is immutable and returns a new instance', function () {
-            $original = InputBuilder::make();
-            $modified = $original->audio([
-                'file' => '/path/to/audio.mp3',
-                'action' => 'transcribe',
-            ]);
-
-            expect($original->toArray())->toBe([]);
-            expect($modified->toArray())->toHaveKey('audio');
-            expect($original)->not->toBe($modified);
-        });
     });
 
     describe('audioInput()', function () {
@@ -198,15 +175,6 @@ describe('InputBuilder', function () {
             expect(fn () => InputBuilder::make()->audioInput([
                 'format' => 'mp3',
             ]))->toThrow(InvalidArgumentException::class, 'Audio input requires a "file" parameter.');
-        });
-
-        it('is immutable and returns a new instance', function () {
-            $original = InputBuilder::make();
-            $modified = $original->audioInput(['file' => '/path/to/audio.mp3']);
-
-            expect($original->toArray())->toBe([]);
-            expect($modified->toArray())->toHaveKey('audio_input');
-            expect($original)->not->toBe($modified);
         });
     });
 
@@ -331,17 +299,6 @@ describe('InputBuilder', function () {
                 expect($builder->toArray()['image']['size'])->toBe($size);
             }
         });
-
-        it('is immutable and returns a new instance', function () {
-            $original = InputBuilder::make();
-            $modified = $original->image([
-                'prompt' => 'A beautiful sunset',
-            ]);
-
-            expect($original->toArray())->toBe([]);
-            expect($modified->toArray())->toHaveKey('image');
-            expect($original)->not->toBe($modified);
-        });
     });
 
     describe('fluent API', function () {
@@ -360,20 +317,6 @@ describe('InputBuilder', function () {
             expect($result['message'])->toBe('Describe this image');
             expect($result['image']['prompt'])->toBe('A sunset');
             expect($result['audio']['file'])->toBe('/path/to/audio.mp3');
-        });
-
-        it('each method returns a new instance maintaining immutability', function () {
-            $step1 = InputBuilder::make();
-            $step2 = $step1->message('Hello');
-            $step3 = $step2->audio(['file' => 'audio.mp3', 'action' => 'transcribe']);
-            $step4 = $step3->image(['prompt' => 'Test']);
-
-            expect($step1->toArray())->toBe([]);
-            expect($step2->toArray())->toHaveKey('message');
-            expect($step2->toArray())->not->toHaveKey('audio');
-            expect($step3->toArray())->toHaveKeys(['message', 'audio']);
-            expect($step3->toArray())->not->toHaveKey('image');
-            expect($step4->toArray())->toHaveKeys(['message', 'audio', 'image']);
         });
     });
 

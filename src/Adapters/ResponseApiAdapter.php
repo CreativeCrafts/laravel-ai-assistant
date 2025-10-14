@@ -176,7 +176,7 @@ final class ResponseApiAdapter implements EndpointAdapter
             return $response['output_text'];
         }
 
-        // Check for content field
+        // Check for the content field
         if (isset($response['content']) && is_string($response['content'])) {
             return $response['content'];
         }

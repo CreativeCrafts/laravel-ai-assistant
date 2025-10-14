@@ -91,7 +91,7 @@ describe('End-to-end audio transcription flow', function () {
 
         // Assert: Verify defaults are applied
         expect($transformedRequest['file'])->toBe($this->tempFile)
-            ->and($transformedRequest['model'])->toBe('whisper-1')
+            ->and($transformedRequest['model'])->toBe('gpt-4o-mini-transcribe')
             ->and($transformedRequest['language'])->toBeNull()
             ->and($transformedRequest['prompt'])->toBeNull()
             ->and($transformedRequest['response_format'])->toBe('json')

@@ -55,7 +55,7 @@ describe('transformRequest', function () {
 
         expect($result)->toBe([
             'file' => $tempFile,
-            'model' => 'whisper-1',
+            'model' => 'gpt-4o-mini-transcribe',
             'language' => null,
             'prompt' => null,
             'response_format' => 'json',

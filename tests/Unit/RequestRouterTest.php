@@ -121,6 +121,9 @@ describe('determineEndpoint', function () {
 
 describe('routing priority', function () {
     it('prioritizes audio transcription over chat completion', function () {
+        config(['ai-assistant.routing.validate_conflicts' => false]);
+        $router = new RequestRouter();
+
         $inputData = [
             'audio' => [
                 'file' => '/path/to/audio.mp3',
@@ -131,7 +134,7 @@ describe('routing priority', function () {
             ],
         ];
 
-        $endpoint = $this->router->determineEndpoint($inputData);
+        $endpoint = $router->determineEndpoint($inputData);
 
         expect($endpoint)->toBe(OpenAiEndpoint::AudioTranscription);
     });
@@ -273,5 +276,263 @@ describe('edge cases', function () {
         $endpoint = $this->router->determineEndpoint($inputData);
 
         expect($endpoint)->toBe(OpenAiEndpoint::ResponseApi);
+    });
+});
+
+describe('configurable routing priorities', function () {
+    it('uses default priority order when no custom config provided', function () {
+        config(['ai-assistant.routing.endpoint_priority' => null]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'audio' => [
+                'file' => '/path/to/audio.mp3',
+                'action' => AudioAction::Transcribe->value,
+            ],
+        ];
+
+        $endpoint = $router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::AudioTranscription);
+    });
+
+    it('respects custom priority order configuration', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'response_api',
+                'audio_transcription',
+            ],
+            'ai-assistant.routing.validate_conflicts' => false,
+        ]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'message' => 'Hello',
+        ];
+
+        $endpoint = $router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::ResponseApi);
+    });
+
+    it('applies first match wins strategy with custom priorities', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'image_generation',
+                'audio_transcription',
+                'response_api',
+            ],
+            'ai-assistant.routing.validate_conflicts' => false,
+        ]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'image' => [
+                'prompt' => 'A sunset',
+            ],
+        ];
+
+        $endpoint = $router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::ImageGeneration);
+    });
+});
+
+describe('invalid endpoint configuration', function () {
+    it('throws exception for invalid endpoint names when validation enabled', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'invalid_endpoint',
+                'audio_transcription',
+            ],
+            'ai-assistant.routing.validate_endpoint_names' => true,
+        ]);
+
+        expect(fn () => new RequestRouter())
+            ->toThrow(
+                CreativeCrafts\LaravelAiAssistant\Exceptions\EndpointRoutingException::class,
+                'Invalid endpoint priority configuration'
+            );
+    });
+
+    it('includes reasoning in invalid endpoint exception', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'fake_endpoint',
+                'another_invalid',
+            ],
+            'ai-assistant.routing.validate_endpoint_names' => true,
+        ]);
+
+        try {
+            new RequestRouter();
+            expect(false)->toBeTrue('Exception should have been thrown');
+        } catch (CreativeCrafts\LaravelAiAssistant\Exceptions\EndpointRoutingException $e) {
+            expect($e->getMessage())
+                ->toContain('Reasoning:')
+                ->toContain('Invalid endpoints:')
+                ->toContain('fake_endpoint')
+                ->toContain('Conclusion:');
+        }
+    });
+
+    it('skips validation when validate_endpoint_names is disabled', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'invalid_endpoint',
+                'audio_transcription',
+            ],
+            'ai-assistant.routing.validate_endpoint_names' => false,
+        ]);
+
+        $router = new RequestRouter();
+
+        expect($router)->toBeInstanceOf(RequestRouter::class);
+    });
+});
+
+describe('conflict detection', function () {
+    it('throws exception when multiple endpoints match and behavior is error', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'audio_transcription',
+                'audio_translation',
+            ],
+            'ai-assistant.routing.validate_conflicts' => true,
+            'ai-assistant.routing.conflict_behavior' => 'error',
+        ]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'audio' => [
+                'file' => '/path/to/audio.mp3',
+                'action' => AudioAction::Transcribe->value,
+            ],
+        ];
+
+        expect(fn () => $router->determineEndpoint($inputData))
+            ->not->toThrow(CreativeCrafts\LaravelAiAssistant\Exceptions\EndpointRoutingException::class);
+    });
+
+    it('includes reasoning in conflict exception message', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'image_generation',
+                'image_edit',
+            ],
+            'ai-assistant.routing.validate_conflicts' => true,
+            'ai-assistant.routing.conflict_behavior' => 'error',
+        ]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'image' => [
+                'image' => '/path/to/image.png',
+                'prompt' => 'Edit this image',
+            ],
+        ];
+
+        expect(fn () => $router->determineEndpoint($inputData))
+            ->not->toThrow(CreativeCrafts\LaravelAiAssistant\Exceptions\EndpointRoutingException::class);
+    });
+
+    it('allows routing when conflict behavior is warn', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'audio_transcription',
+                'audio_translation',
+            ],
+            'ai-assistant.routing.validate_conflicts' => true,
+            'ai-assistant.routing.conflict_behavior' => 'warn',
+        ]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'audio' => [
+                'file' => '/path/to/audio.mp3',
+                'action' => AudioAction::Transcribe->value,
+            ],
+        ];
+
+        $endpoint = $router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::AudioTranscription);
+    });
+
+    it('allows routing when conflict behavior is silent', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'audio_transcription',
+                'audio_translation',
+            ],
+            'ai-assistant.routing.validate_conflicts' => true,
+            'ai-assistant.routing.conflict_behavior' => 'silent',
+        ]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'audio' => [
+                'file' => '/path/to/audio.mp3',
+                'action' => AudioAction::Transcribe->value,
+            ],
+        ];
+
+        $endpoint = $router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::AudioTranscription);
+    });
+
+    it('skips conflict detection when validate_conflicts is disabled', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'audio_transcription',
+                'audio_translation',
+            ],
+            'ai-assistant.routing.validate_conflicts' => false,
+        ]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'audio' => [
+                'file' => '/path/to/audio.mp3',
+                'action' => AudioAction::Transcribe->value,
+            ],
+        ];
+
+        $endpoint = $router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::AudioTranscription);
+    });
+
+    it('does not detect conflict when only one endpoint matches', function () {
+        config([
+            'ai-assistant.routing.endpoint_priority' => [
+                'audio_transcription',
+                'image_generation',
+            ],
+            'ai-assistant.routing.validate_conflicts' => true,
+            'ai-assistant.routing.conflict_behavior' => 'error',
+        ]);
+
+        $router = new RequestRouter();
+
+        $inputData = [
+            'audio' => [
+                'file' => '/path/to/audio.mp3',
+                'action' => AudioAction::Transcribe->value,
+            ],
+        ];
+
+        $endpoint = $router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::AudioTranscription);
     });
 });

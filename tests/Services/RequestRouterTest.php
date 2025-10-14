@@ -293,7 +293,10 @@ describe('Audio Input in Chat Context Routing', function () {
     });
 
     it('prioritizes specific audio actions over audio_input', function () {
-        $endpoint = $this->router->determineEndpoint([
+        config(['ai-assistant.routing.validate_conflicts' => false]);
+        $router = new RequestRouter();
+
+        $endpoint = $router->determineEndpoint([
             'audio' => [
                 'file' => 'audio.mp3',
                 'action' => 'transcribe',

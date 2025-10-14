@@ -12,6 +12,11 @@ use RuntimeException;
 
 /**
  * Fluent builder for Conversations operations with convenience to send turns.
+ *
+ * This builder follows the mutable fluent pattern:
+ * - All methods modify internal state and return $this for method chaining
+ * - The InputItemsBuilder returned by input() is also mutable
+ * - No cloning is performed; the same instance is modified throughout the chain
  */
 final class ConversationsBuilder
 {

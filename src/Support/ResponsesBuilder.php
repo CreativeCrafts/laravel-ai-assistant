@@ -18,10 +18,12 @@ use Throwable;
 
 /**
  * Fluent builder for the unified Responses API.
- *
  * This builder supports multiple input types (text, audio, images) and internally
  * routes requests to the appropriate OpenAI endpoint (Response API, Audio, Image, Chat Completion).
- *
+ * This builder follows the mutable fluent pattern:
+ * - All methods modify internal state and return $this for method chaining
+ * - Child builders (InputBuilder, InputItemsBuilder) are also mutable
+ * - No cloning is performed; the same instance is modified throughout the chain
  * Usage examples:
  * ```php
  * // Audio transcription
@@ -29,13 +31,11 @@ use Throwable;
  *     ->input()
  *     ->audio(['file' => 'audio.mp3', 'action' => 'transcribe'])
  *     ->send();
- *
  * // Image generation
  * $response = Ai::responses()
  *     ->input()
  *     ->image(['prompt' => 'A sunset', 'size' => '1024x1024'])
  *     ->send();
- *
  * // Text chat (standard)
  * $response = Ai::responses()
  *     ->input()
@@ -70,7 +70,7 @@ final class ResponsesBuilder
         ?OpenAiClient $openAiClient = null,
     ) {
         $this->inputItems = new InputItemsBuilder();
-        $this->unifiedInput = InputBuilder::make();
+        $this->unifiedInput = InputBuilder::make($this);
         $this->router = $router ?? new RequestRouter();
         $this->adapterFactory = $adapterFactory ?? new AdapterFactory();
         $this->openAiClient = $openAiClient ?? app(OpenAiClient::class);
@@ -147,8 +147,24 @@ final class ResponsesBuilder
         $inputItemsList = $this->inputItems->list();
         $unifiedData = $this->unifiedInput->toArray();
 
+        // Runtime validation: Ensure at least one input method is used
+        if (empty($unifiedData) && empty($inputItemsList)) {
+            throw new InvalidArgumentException(
+                'No input provided. You must call either:' . "\n" .
+                '  1. ->input()->message($text), OR' . "\n" .
+                '  2. ->input()->audio($config), OR' . "\n" .
+                '  3. ->input()->image($config), OR' . "\n" .
+                '  4. ->inputItems()->appendUserText($text)' . "\n" .
+                'Current builder state: ' . json_encode([
+                    'unified_input' => $unifiedData,
+                    'legacy_input' => $inputItemsList,
+                ], JSON_PRETTY_PRINT)
+            );
+        }
+
         // If only using legacy input items (no unified input), use original behavior
-        if (empty($unifiedData) && !empty($inputItemsList)) {
+        // After validation above, if unifiedData is empty, inputItemsList must have data
+        if (empty($unifiedData)) {
             $conv = $this->conversationId ?? $this->service->createConversation();
             $arr = $this->service->sendTurn(
                 conversationId: $conv,
@@ -183,7 +199,7 @@ final class ResponsesBuilder
             // Uses OpenAI client for audio, image, and chat completion endpoints
             $apiResponse = $this->makeApiCall($endpoint, $endpointRequest);
 
-            // Step 6: Transform response to unified format
+            // Step 6: Transform response to a unified format
             return $adapter->transformResponse($apiResponse);
         } catch (InvalidArgumentException $e) {
             throw new InvalidArgumentException(

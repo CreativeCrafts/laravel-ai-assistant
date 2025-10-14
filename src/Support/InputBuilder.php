@@ -9,20 +9,29 @@ use InvalidArgumentException;
 /**
  * Builder for unified input requests that can be routed to different OpenAI endpoints.
  * Supports audio, image, and text inputs with validation.
+ *
+ * This builder follows the mutable fluent pattern:
+ * - All methods modify internal state ($this->data) and return $this
+ * - No cloning is performed; the same instance is modified throughout the chain
+ * - This ensures parent-child builder communication works correctly
+ *
+ * @see ResponsesBuilder::input() Returns this builder for method chaining
  */
 final class InputBuilder
 {
     /**
      * @param array<string,mixed> $data
+     * @param ResponsesBuilder|null $parent
      */
     private function __construct(
-        private array $data = []
+        private array $data = [],
+        private ?ResponsesBuilder $parent = null
     ) {
     }
 
-    public static function make(): self
+    public static function make(?ResponsesBuilder $parent = null): self
     {
-        return new self();
+        return new self(parent: $parent);
     }
 
     /**
@@ -30,9 +39,8 @@ final class InputBuilder
      */
     public function message(string $text): self
     {
-        $clone = clone $this;
-        $clone->data['message'] = $text;
-        return $clone;
+        $this->data['message'] = $text;
+        return $this;
     }
 
     /**
@@ -56,9 +64,8 @@ final class InputBuilder
     {
         $this->validateAudioConfig($config);
 
-        $clone = clone $this;
-        $clone->data['audio'] = $config;
-        return $clone;
+        $this->data['audio'] = $config;
+        return $this;
     }
 
     /**
@@ -75,9 +82,8 @@ final class InputBuilder
             throw new InvalidArgumentException('Audio input requires a "file" parameter.');
         }
 
-        $clone = clone $this;
-        $clone->data['audio_input'] = $config;
-        return $clone;
+        $this->data['audio_input'] = $config;
+        return $this;
     }
 
     /**
@@ -99,9 +105,8 @@ final class InputBuilder
     {
         $this->validateImageConfig($config);
 
-        $clone = clone $this;
-        $clone->data['image'] = $config;
-        return $clone;
+        $this->data['image'] = $config;
+        return $this;
     }
 
     /**
@@ -112,6 +117,25 @@ final class InputBuilder
     public function toArray(): array
     {
         return $this->data;
+    }
+
+    /**
+     * Send the request through the parent ResponsesBuilder.
+     * This allows method chaining like: Ai::responses()->input()->audio([...])->send()
+     *
+     * @return \CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto|\CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto
+     * @throws InvalidArgumentException if no parent ResponsesBuilder is set
+     */
+    public function send(): mixed
+    {
+        if ($this->parent === null) {
+            throw new InvalidArgumentException(
+                'Cannot call send() on InputBuilder without a parent ResponsesBuilder. ' .
+                'Use Ai::responses()->input()->...->send() instead of InputBuilder::make()->...->send()'
+            );
+        }
+
+        return $this->parent->send();
     }
 
     /**

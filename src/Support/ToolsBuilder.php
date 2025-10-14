@@ -15,6 +15,13 @@ use ReflectionNamedType;
 use stdClass;
 
 /**
+ * Builder for OpenAI function/tool configurations.
+ *
+ * This builder follows the mutable fluent pattern:
+ * - All methods modify internal state ($this->config) and return $this
+ * - No cloning is performed; the same instance is modified throughout the chain
+ * - This ensures consistent behavior across all package builders
+ *
  * @internal Used internally for building tool configurations.
  * Do not use directly.
  */
