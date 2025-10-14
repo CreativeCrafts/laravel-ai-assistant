@@ -5,6 +5,46 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.23-beta] - 2025-10-14
+
+### Added
+
+**API Request Control Parameters:**
+
+- **Temperature parameter support** across the assistant service and responses builder
+  - Added `temperature` parameter to `AssistantService::sendTurn()` and `sendTurnStreaming()` methods
+  - Added `ResponsesBuilder::temperature()` fluent builder method
+  - Validates temperature values between 0.0 and 2.0
+  - Allows fine-tuning response randomness and creativity
+
+- **Max completion tokens parameter support** for controlling response length
+  - Added `maxCompletionTokens` parameter to `AssistantService::sendTurn()` and `sendTurnStreaming()` methods
+  - Added `ResponsesBuilder::maxCompletionTokens()` fluent builder method
+  - Validates minimum value of 1 token
+  - Provides control over maximum response length
+
+- **Additional fluent builder methods** in `ResponsesBuilder`:
+  - `responseFormat()` - Set structured output format
+  - `toolChoice()` - Control tool/function calling behavior
+  - `modalities()` - Configure response modalities (text, audio, etc.)
+
+### Changed
+
+- **Parameter prioritization logic** in payload building
+  - Method parameters now take precedence over configuration values
+  - Enables per-request customization while maintaining sensible defaults
+  - Configuration values serve as fallbacks when parameters not provided
+
+- **Payload construction** in `AssistantService::buildResponsesCreatePayload()`
+  - Integrated temperature and maxCompletionTokens into request payload
+  - Added parameter validation before API submission
+  - Improved error messages for invalid parameter values
+
+### Fixed
+
+- Added missing `JsonException` import to `ResponsesBuilder` class
+- Removed redundant code comments for cleaner codebase
+
 ## [3.0.22-beta] - 2025-10-14
 
 ### Fixed
