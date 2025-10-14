@@ -5,6 +5,33 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.24-beta] - 2025-10-14
+
+### Fixed
+
+**OpenAI Responses API Compatibility:**
+
+- **Migrated `response_format` to `text.format` structure** to comply with OpenAI's latest API specification
+  - OpenAI deprecated the root-level `response_format` parameter in the Responses API
+  - The parameter must now be nested under `text.format` according to the API documentation
+  - Updated `ResponseApiAdapter` to transform `response_format` to `{ text: { format: ... } }` structure
+  - Updated `AssistantService::buildResponsesCreatePayload()` to use nested `text.format` parameter
+  - Prevents "Unsupported parameter: 'response_format'" errors when calling the Responses API
+
+**Breaking Change Note:**
+
+- This fix ensures compatibility with OpenAI's Responses API v1
+- No breaking changes to package API - the public `ResponsesBuilder::responseFormat()` method remains unchanged
+- Internal payload transformation now handles the new API structure automatically
+
+**Files Modified:**
+
+- `src/Adapters/ResponseApiAdapter.php` - Transform request to use `text.format`
+- `src/Services/AssistantService.php` - Build payload with nested `text.format` structure
+- `tests/Unit/ResponseApiAdapterTest.php` - Update test expectations for new format
+
+**Reference:** https://platform.openai.com/docs/api-reference/responses/create
+
 ## [3.0.23-beta] - 2025-10-14
 
 ### Added
