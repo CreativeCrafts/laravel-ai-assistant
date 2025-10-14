@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
  * Do not use directly.
  */
-final class ImageEditAdapter implements EndpointAdapter
+final class ImageEditAdapter implements ImageEndpointAdapter
 {
     /**
      * Transform unified request to OpenAI Image Edit format.

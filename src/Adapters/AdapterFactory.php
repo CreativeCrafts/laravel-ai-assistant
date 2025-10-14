@@ -14,6 +14,15 @@ use InvalidArgumentException;
  * implementation based on the target OpenAI endpoint. It uses a match expression
  * to map OpenAiEndpoint enum cases to their corresponding adapter instances.
  *
+ * The factory creates adapters implementing specialized interfaces that follow
+ * the Interface Segregation Principle:
+ * - TextEndpointAdapter for text-based endpoints (ResponseApi, ChatCompletion)
+ * - AudioEndpointAdapter for audio endpoints (AudioTranscription, AudioTranslation, AudioSpeech)
+ * - ImageEndpointAdapter for image endpoints (ImageGeneration, ImageEdit, ImageVariation)
+ *
+ * All specialized interfaces extend the base EndpointAdapter interface, ensuring
+ * backward compatibility while providing domain-specific type segregation.
+ *
  * Adapters are cached and reused within the same request lifecycle for optimal
  * performance, as they are stateless and can be safely shared.
  *

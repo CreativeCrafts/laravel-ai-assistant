@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
  * Do not use directly.
  */
-final class ResponseApiAdapter implements EndpointAdapter
+final class ResponseApiAdapter implements TextEndpointAdapter
 {
     /**
      * Transform unified request to OpenAI Response API format.

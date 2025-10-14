@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
  * Do not use directly.
  */
-final class ImageGenerationAdapter implements EndpointAdapter
+final class ImageGenerationAdapter implements ImageEndpointAdapter
 {
     /**
      * Transform unified request to OpenAI Image Generation format.

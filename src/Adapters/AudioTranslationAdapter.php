@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  * @internal Used internally by ResponsesBuilder to transform requests for specific endpoints.
  * Do not use directly.
  */
-final class AudioTranslationAdapter implements EndpointAdapter
+final class AudioTranslationAdapter implements AudioEndpointAdapter
 {
     /**
      * Transform unified request to OpenAI Audio Translation format.
