@@ -5,6 +5,49 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.21-beta] - 2025-10-14
+
+### Changed
+
+**Architecture Improvements:**
+
+- **RequestRouter refactored to use dependency injection** instead of accessing global config
+  - Constructor now accepts all configuration parameters (`endpointPriority`, `validateConflicts`, `conflictBehavior`, `validateEndpointNames`) with sensible defaults
+  - Added `LoggerInterface` dependency for proper logging without facade coupling
+  - Eliminates tight coupling to Laravel's configuration system
+  - Improves testability - can now be instantiated with custom configuration without modifying global state
+  - Follows Dependency Inversion Principle (SOLID)
+
+**Service Provider:**
+
+- Updated `CoreServiceProvider` to properly configure `RequestRouter` singleton
+  - Reads configuration values and validates them before injection
+  - Provides fallback defaults for missing or invalid configuration
+  - Injects logger instance for better observability
+
+**Service Layer:**
+
+- `AiManager` now resolves `RequestRouter` from container instead of direct instantiation
+- `ResponsesBuilder` and `ConversationsBuilder` updated to use container-resolved router
+- `ThreadsToConversationsMapper` added missing `@throws` annotations for `JsonException` and `InvalidArgumentException`
+
+**Testing:**
+
+- All `RequestRouter` tests refactored to use constructor parameters instead of config mocking
+  - Removed `config()` helper usage in test setup
+  - Tests are now isolated and don't modify global configuration state
+  - Improved test clarity and maintainability
+- Updated unit tests in `RequestRouterTest.php` (20+ test cases)
+- Updated service tests in `Services/RequestRouterTest.php` (10+ test cases)
+
+### Benefits
+
+- ✅ **Better Testability:** Router can be tested in isolation without global state
+- ✅ **Improved DX:** Constructor parameters provide clear configuration requirements
+- ✅ **SOLID Compliance:** Follows Dependency Inversion and Single Responsibility principles
+- ✅ **Type Safety:** All configuration parameters are properly typed
+- ✅ **Better Observability:** Proper logger injection for debugging and monitoring
+
 ## [3.0.20-beta] - 2025-10-13
 
 ### Major Architecture Migration: SSOT (Single Source of Truth) API
