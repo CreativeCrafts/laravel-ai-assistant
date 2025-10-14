@@ -5,6 +5,35 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.26-beta] - 2025-10-14
+
+### Added
+
+- **Preset input support for Single Source of Truth (SSOT) approach**
+  - New `presetInput` parameter in `AssistantService::sendTurn()` and `AssistantService::sendTurnStreaming()` methods
+  - New `presetInput` parameter in `AssistantService::buildResponsesCreatePayload()` method
+  - Allows input to be preset via `InputBuilder` and passed directly without further normalization
+  - When `presetInput` is provided, it takes precedence over `inputItems` parameter
+  - Enables unified input handling through `InputBuilder::toArray()['input']`
+
+### Changed
+
+- **Enhanced `ResponsesBuilder` to support preset input**
+  - `ResponsesBuilder::stream()` now extracts and passes preset input from `UnifiedInput`
+  - `ResponsesBuilder::execute()` now extracts and passes preset input from request data
+  - Improved input handling consistency across sync and streaming operations
+
+- **Updated `AssistantService::processAudioInput()` method signature**
+  - Added `presetInput` parameter for consistency with other turn-based methods
+  - All turn-based methods now share the same parameter signature
+
+### Technical Details
+
+- The SSOT approach eliminates duplicate input normalization logic
+- Input prepared by `InputBuilder` is now passed directly to the API
+- Backward compatible: falls back to `inputItems` when `presetInput` is not provided
+- Maintains existing input normalization for legacy code paths
+
 ## [3.0.25-beta] - 2025-10-14
 
 ### Added

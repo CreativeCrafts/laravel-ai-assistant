@@ -179,6 +179,7 @@ class AssistantService implements AudioProcessingContract
         array|string|null $toolChoice = null,
         ?float $temperature = null,
         ?int $maxCompletionTokens = null,
+        ?array $presetInput = null,
     ): array {
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
@@ -192,7 +193,8 @@ class AssistantService implements AudioProcessingContract
             $idempotencyKey,
             $toolChoice,
             $temperature,
-            $maxCompletionTokens
+            $maxCompletionTokens,
+            $presetInput
         );
         $__start = microtime(true);
         $resp = $this->responsesRepository->createResponse($payload);
@@ -339,7 +341,11 @@ class AssistantService implements AudioProcessingContract
             responseFormat: null,
             modalities: null,
             metadata: [],
-            idempotencyKey: $idempotencyKey
+            idempotencyKey: $idempotencyKey,
+            toolChoice: null,
+            temperature: null,
+            maxCompletionTokens: null,
+            presetInput: null
         );
         $__start = microtime(true);
         $resp = $this->responsesRepository->createResponse($payload);
@@ -493,6 +499,7 @@ class AssistantService implements AudioProcessingContract
         array|string|null $toolChoice = null,
         ?float $temperature = null,
         ?int $maxCompletionTokens = null,
+        ?array $presetInput = null,
     ): Generator {
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
@@ -506,7 +513,8 @@ class AssistantService implements AudioProcessingContract
             $idempotencyKey,
             $toolChoice,
             $temperature,
-            $maxCompletionTokens
+            $maxCompletionTokens,
+            $presetInput
         );
 
         $request = CompletionRequest::fromArray($payload);
@@ -767,6 +775,7 @@ class AssistantService implements AudioProcessingContract
         array|string|null $toolChoice = null,
         ?float $temperature = null,
         ?int $maxCompletionTokens = null,
+        ?array $presetInput = null,
     ): array {
         $payload = [];
         $defaultModel = config('ai-assistant.default_model', config('ai-assistant.chat_model', config('ai-assistant.model')));
@@ -784,7 +793,10 @@ class AssistantService implements AudioProcessingContract
         if (!empty($tools)) {
             $payload['tools'] = $tools;
         }
-        if (!empty($inputItems)) {
+        // If input is already set via InputBuilder (SSOT approach), use it directly
+        if (!empty($presetInput)) {
+            $payload['input'] = $presetInput;
+        } elseif (!empty($inputItems)) {
             // Ensure shape matches Responses API: input: [ { role, content: [ blocks... ] } ]
             // Backward-compat: convert legacy 'text' blocks to 'input_text' to satisfy Responses API schema
             $normalizedInput = [];
