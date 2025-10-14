@@ -5,6 +5,23 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.25-beta] - 2025-10-14
+
+### Added
+
+- **Image input support for vision models** in `InputBuilder`
+  - New `imageInput()` method for handling image inputs in chat contexts
+  - Validates image URLs and base64-encoded images
+  - Comprehensive validation with descriptive error messages
+  - Supports GPT-4 Vision and other vision-capable models
+  - 416 lines of test coverage for all validation scenarios
+
+### Changed
+
+- Improved type hints and return type declarations
+- Refactored validation logic for better readability
+- Enhanced error messages for developer experience
+
 ## [3.0.24-beta] - 2025-10-14
 
 ### Fixed
