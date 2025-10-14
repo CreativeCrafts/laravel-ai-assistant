@@ -176,7 +176,9 @@ class AssistantService implements AudioProcessingContract
         array|string|null $modalities = null,
         array $metadata = [],
         ?string $idempotencyKey = null,
-        array|string|null $toolChoice = null
+        array|string|null $toolChoice = null,
+        ?float $temperature = null,
+        ?int $maxCompletionTokens = null,
     ): array {
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
@@ -188,7 +190,9 @@ class AssistantService implements AudioProcessingContract
             $modalities,
             $metadata,
             $idempotencyKey,
-            $toolChoice
+            $toolChoice,
+            $temperature,
+            $maxCompletionTokens
         );
         $__start = microtime(true);
         $resp = $this->responsesRepository->createResponse($payload);
@@ -486,7 +490,9 @@ class AssistantService implements AudioProcessingContract
         ?callable $onEvent = null,
         ?callable $shouldStop = null,
         ?string $idempotencyKey = null,
-        array|string|null $toolChoice = null
+        array|string|null $toolChoice = null,
+        ?float $temperature = null,
+        ?int $maxCompletionTokens = null,
     ): Generator {
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
@@ -498,7 +504,9 @@ class AssistantService implements AudioProcessingContract
             $modalities,
             $metadata,
             $idempotencyKey,
-            $toolChoice
+            $toolChoice,
+            $temperature,
+            $maxCompletionTokens
         );
 
         $request = CompletionRequest::fromArray($payload);
@@ -756,7 +764,9 @@ class AssistantService implements AudioProcessingContract
         array|string|null $modalities,
         array $metadata,
         ?string $idempotencyKey,
-        array|string|null $toolChoice = null
+        array|string|null $toolChoice = null,
+        ?float $temperature = null,
+        ?int $maxCompletionTokens = null,
     ): array {
         $payload = [];
         $defaultModel = config('ai-assistant.default_model', config('ai-assistant.chat_model', config('ai-assistant.model')));
@@ -839,8 +849,16 @@ class AssistantService implements AudioProcessingContract
                 }
             }
         }
-        // Map legacy max_completion_tokens to Responses max_output_tokens if provided in config
-        $maxOut = config('ai-assistant.responses.max_output_tokens');
+        // Handle temperature parameter
+        if ($temperature !== null) {
+            $payload['temperature'] = $temperature;
+        }
+        // Map legacy max_completion_tokens to Responses max_output_tokens
+        // Prioritize parameter over config
+        $maxOut = $maxCompletionTokens;
+        if ($maxOut === null) {
+            $maxOut = config('ai-assistant.responses.max_output_tokens');
+        }
         if ($maxOut === null) {
             $maxOut = config('ai-assistant.max_completion_tokens');
         }

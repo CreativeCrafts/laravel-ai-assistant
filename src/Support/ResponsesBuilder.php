@@ -13,6 +13,7 @@ use CreativeCrafts\LaravelAiAssistant\Services\OpenAiClient;
 use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
 use Generator;
 use InvalidArgumentException;
+use JsonException;
 use RuntimeException;
 use Throwable;
 
@@ -63,6 +64,9 @@ final class ResponsesBuilder
     private readonly AdapterFactory $adapterFactory;
     private readonly OpenAiClient $openAiClient;
 
+    private ?float $temperature = null;
+    private ?int $maxCompletionTokens = null;
+
     public function __construct(
         private readonly AssistantService $service,
         ?RequestRouter $router = null,
@@ -91,6 +95,73 @@ final class ResponsesBuilder
     public function model(string $model): self
     {
         $this->model = $model;
+        return $this;
+    }
+
+    /**
+     * Set the response format for the API call.
+     * Supports text, JSON, or json_schema formats.
+     *
+     * @param array|string $format Response format configuration
+     * @return self
+     */
+    public function responseFormat(array|string $format): self
+    {
+        $this->responseFormat = is_string($format) ? ['type' => $format] : $format;
+        return $this;
+    }
+
+    /**
+     * Set the temperature to controlling randomness.
+     *
+     * @param float $temperature Value between 0 and 2
+     * @return self
+     */
+    public function temperature(float $temperature): self
+    {
+        if ($temperature < 0 || $temperature > 2) {
+            throw new InvalidArgumentException('Temperature must be between 0 and 2');
+        }
+        $this->temperature = $temperature;
+        return $this;
+    }
+
+    /**
+     * Set the maximum number of completion tokens.
+     *
+     * @param int $maxTokens Maximum tokens for completion
+     * @return self
+     */
+    public function maxCompletionTokens(int $maxTokens): self
+    {
+        if ($maxTokens < 1) {
+            throw new InvalidArgumentException('Max completion tokens must be >= 1');
+        }
+        $this->maxCompletionTokens = $maxTokens;
+        return $this;
+    }
+
+    /**
+     * Set the tool choice for the API call.
+     *
+     * @param array|string $toolChoice Tool choice configuration
+     * @return self
+     */
+    public function toolChoice(array|string $toolChoice): self
+    {
+        $this->toolChoice = $toolChoice;
+        return $this;
+    }
+
+    /**
+     * Set the modalities for the API call.
+     *
+     * @param array $modalities Modalities configuration
+     * @return self
+     */
+    public function modalities(array $modalities): self
+    {
+        $this->modalities = $modalities;
         return $this;
     }
 
@@ -128,7 +199,6 @@ final class ResponsesBuilder
 
     /**
      * Send a response using the unified API with automatic endpoint routing.
-     *
      * This method implements the SSOT (Single Source of Truth) pattern:
      * 1. Builds unified request from builder state
      * 2. Determines appropriate endpoint using RequestRouter
@@ -137,9 +207,10 @@ final class ResponsesBuilder
      * 5. Makes API call to correct endpoint
      * 6. Transforms response using adapter
      * 7. Returns unified ResponseDto
-     *
      * For backward compatibility, if using legacy InputItemsBuilder,
      * falls back to direct Response API call.
+     *
+     * @throws JsonException
      */
     public function send(): ResponseDto|ChatResponseDto
     {
@@ -158,7 +229,7 @@ final class ResponsesBuilder
                 'Current builder state: ' . json_encode([
                     'unified_input' => $unifiedData,
                     'legacy_input' => $inputItemsList,
-                ], JSON_PRETTY_PRINT)
+                ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT)
             );
         }
 
@@ -269,6 +340,14 @@ final class ResponsesBuilder
             $request['model'] = $this->model;
         }
 
+        if ($this->temperature !== null) {
+            $request['temperature'] = $this->temperature;
+        }
+
+        if ($this->maxCompletionTokens !== null) {
+            $request['max_completion_tokens'] = $this->maxCompletionTokens;
+        }
+
         if (!empty($this->tools)) {
             $request['tools'] = $this->tools;
         }
@@ -305,11 +384,9 @@ final class ResponsesBuilder
      */
     private function makeApiCall(OpenAiEndpoint $endpoint, array $request): array
     {
-        // For Response API endpoint, use existing service for backward compatibility
         if ($endpoint === OpenAiEndpoint::ResponseApi) {
             $conv = $this->conversationId ?? $this->service->createConversation();
 
-            // Extract and cast parameters with proper type safety
             $instructions = isset($request['instructions']) && is_string($request['instructions'])
                 ? $request['instructions']
                 : $this->instructions;
@@ -344,6 +421,13 @@ final class ResponsesBuilder
                     $toolChoice = $request['tool_choice'];
                 }
             }
+            $temperature = isset($request['temperature']) && is_float($request['temperature'])
+                ? $request['temperature']
+                : $this->temperature;
+
+            $maxCompletionTokens = isset($request['max_completion_tokens']) && is_int($request['max_completion_tokens'])
+                ? $request['max_completion_tokens']
+                : $this->maxCompletionTokens;
 
             return $this->service->sendTurn(
                 conversationId: $conv,
@@ -356,10 +440,11 @@ final class ResponsesBuilder
                 metadata: $metadata,
                 idempotencyKey: $this->idempotencyKey,
                 toolChoice: $toolChoice,
+                temperature: $temperature,
+                maxCompletionTokens: $maxCompletionTokens,
             );
         }
 
-        // For all other endpoints, use the OpenAiClient
         return $this->openAiClient->callEndpoint($endpoint, $request);
     }
 }
