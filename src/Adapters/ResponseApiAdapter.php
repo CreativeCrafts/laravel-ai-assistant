@@ -83,7 +83,9 @@ final class ResponseApiAdapter implements TextEndpointAdapter
         }
 
         if (isset($unifiedRequest['response_format'])) {
-            $request['response_format'] = $unifiedRequest['response_format'];
+            $request['text'] = [
+                'format' => $unifiedRequest['response_format'],
+            ];
         }
 
         if (isset($unifiedRequest['stream'])) {

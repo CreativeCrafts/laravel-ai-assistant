@@ -169,7 +169,7 @@ describe('transformRequest', function () {
 
         $result = $this->adapter->transformRequest($unifiedRequest);
 
-        expect($result['response_format'])->toBe(['type' => 'json_object']);
+        expect($result['text'])->toBe(['format' => ['type' => 'json_object']]);
     });
 
     it('includes stream parameter when provided', function () {

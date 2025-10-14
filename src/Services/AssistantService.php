@@ -827,7 +827,9 @@ class AssistantService implements AudioProcessingContract
             $payload['metadata'] = $metadata;
         }
         if ($responseFormat !== null) {
-            $payload['response_format'] = $responseFormat;
+            $payload['text'] = [
+                'format' => $responseFormat,
+            ];
         }
         if ($modalities !== null) {
             $payload['modalities'] = $modalities;
