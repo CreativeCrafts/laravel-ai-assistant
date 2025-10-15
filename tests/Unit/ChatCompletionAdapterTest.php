@@ -251,6 +251,146 @@ describe('transformRequest', function () {
         expect($result['messages'][1]['content'][0]['type'])->toBe('input_audio');
     });
 
+    it('handles multi-content message with text and audio in same message', function () {
+        $unifiedRequest = [
+            'messages' => [
+                [
+                    'role' => 'developer',
+                    'content' => 'You are a Swedish pronunciation checker.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => '{"correct_sentence":"Jag gillar att lära mig svenska","target_word":"gillar","language":"sv"}',
+                        ],
+                        [
+                            'type' => 'input_audio',
+                            'input_audio' => [
+                                'data' => 'base64_encoded_audio_data',
+                                'format' => 'mp3',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'model' => 'gpt-4o-audio-preview',
+        ];
+
+        $result = $this->adapter->transformRequest($unifiedRequest);
+
+        expect($result['model'])->toBe('gpt-4o-audio-preview');
+        expect($result['messages'])->toHaveCount(2);
+        expect($result['messages'][0])->toBe([
+            'role' => 'developer',
+            'content' => 'You are a Swedish pronunciation checker.',
+        ]);
+        expect($result['messages'][1]['role'])->toBe('user');
+        expect($result['messages'][1]['content'])->toBeArray();
+        expect($result['messages'][1]['content'])->toHaveCount(2);
+        expect($result['messages'][1]['content'][0]['type'])->toBe('text');
+        expect($result['messages'][1]['content'][1]['type'])->toBe('input_audio');
+    });
+
+    it('preserves multi-content message structure with modalities', function () {
+        $unifiedRequest = [
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'What is in this recording?',
+                        ],
+                        [
+                            'type' => 'input_audio',
+                            'input_audio' => [
+                                'data' => 'base64_audio_content',
+                                'format' => 'wav',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'model' => 'gpt-4o-audio-preview',
+            'modalities' => ['text'],
+            'temperature' => 0.0,
+        ];
+
+        $result = $this->adapter->transformRequest($unifiedRequest);
+
+        expect($result['model'])->toBe('gpt-4o-audio-preview');
+        expect($result['temperature'])->toBe(0.0);
+        expect($result['messages'][0]['content'])->toHaveCount(2);
+        expect($result['messages'][0]['content'][0])->toBe([
+            'type' => 'text',
+            'text' => 'What is in this recording?',
+        ]);
+        expect($result['messages'][0]['content'][1])->toBe([
+            'type' => 'input_audio',
+            'input_audio' => [
+                'data' => 'base64_audio_content',
+                'format' => 'wav',
+            ],
+        ]);
+    });
+
+    it('handles multiple multi-content messages', function () {
+        $unifiedRequest = [
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => 'You are a helpful assistant.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'First question with audio',
+                        ],
+                        [
+                            'type' => 'input_audio',
+                            'input_audio' => [
+                                'data' => 'first_audio_data',
+                                'format' => 'mp3',
+                            ],
+                        ],
+                    ],
+                ],
+                [
+                    'role' => 'assistant',
+                    'content' => 'Here is my response.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'Second question with audio',
+                        ],
+                        [
+                            'type' => 'input_audio',
+                            'input_audio' => [
+                                'data' => 'second_audio_data',
+                                'format' => 'wav',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $result = $this->adapter->transformRequest($unifiedRequest);
+
+        expect($result['messages'])->toHaveCount(4);
+        expect($result['messages'][1]['content'])->toHaveCount(2);
+        expect($result['messages'][3]['content'])->toHaveCount(2);
+        expect($result['messages'][1]['content'][1]['input_audio']['format'])->toBe('mp3');
+        expect($result['messages'][3]['content'][1]['input_audio']['format'])->toBe('wav');
+    });
+
     it('transforms all parameters together', function () {
         $unifiedRequest = [
             'model' => 'gpt-4',

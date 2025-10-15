@@ -180,6 +180,20 @@ final class ResponsesBuilder
     }
 
     /**
+     * Set complete messages array for the request.
+     * This allows passing pre-formatted OpenAI messages including multi-content messages
+     * with mixed content types (text + audio, text + image, etc.) within a single message.
+     *
+     * @param array<int, array<string, mixed>> $messages Array of OpenAI-formatted messages
+     * @return self
+     */
+    public function withMessages(array $messages): self
+    {
+        $this->unifiedInput->messages($messages);
+        return $this;
+    }
+
+    /**
      * Get the unified input builder for audio, image, and text inputs.
      * This is the recommended way to add inputs to the response builder.
      */

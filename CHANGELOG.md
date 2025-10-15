@@ -5,6 +5,40 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.29-beta] - 2025-10-15
+
+### Added
+
+- **Multi-content message support for mixed content types**
+  - New `messages()` method in `InputBuilder` to set complete pre-formatted OpenAI messages
+  - New `withMessages()` method in `ResponsesBuilder` for fluent API support
+  - Enables single messages with multiple content types (text + audio, text + image, etc.)
+  - Full support for OpenAI's multi-content message format within a single message object
+
+### Changed
+
+- **Enhanced message handling in builders**
+  - `InputBuilder::messages()` accepts array of pre-formatted OpenAI messages
+  - `ResponsesBuilder::withMessages()` delegates to `InputBuilder` for consistent behavior
+  - Both methods support complex message structures with mixed content arrays
+  - Maintains backward compatibility with existing single-content message methods
+
+### Technical Details
+
+- The `messages()` method allows passing complete OpenAI-formatted message arrays
+- Supports multi-content messages where a single message contains multiple content items:
+  - Text + audio in the same user message
+  - Text + image in the same user message
+  - Any combination of content types supported by OpenAI
+- Comprehensive test coverage added for:
+  - Single multi-content messages
+  - Multiple multi-content messages in conversation
+  - Multi-content messages with modalities
+  - Preservation of message structure through transformation
+- Compatible with `gpt-4o-audio-preview` and other vision/audio models
+
+**Reference:** https://platform.openai.com/docs/api-reference/chat/create
+
 ## [3.0.28-beta] - 2025-10-14
 
 ### Changed
