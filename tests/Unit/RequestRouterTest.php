@@ -100,6 +100,155 @@ describe('determineEndpoint', function () {
         expect($endpoint)->toBe(OpenAiEndpoint::ChatCompletion);
     });
 
+    it('routes to chat completion endpoint for multi-content message with audio', function () {
+        $inputData = [
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'What is in this recording?',
+                        ],
+                        [
+                            'type' => 'input_audio',
+                            'input_audio' => [
+                                'data' => 'base64_encoded_audio',
+                                'format' => 'mp3',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $endpoint = $this->router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::ChatCompletion);
+    });
+
+    it('routes to chat completion endpoint for multi-content message with developer and user roles', function () {
+        $inputData = [
+            'messages' => [
+                [
+                    'role' => 'developer',
+                    'content' => 'You are a Swedish pronunciation checker.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => '{"correct_sentence":"Jag gillar att lära mig svenska","target_word":"gillar","language":"sv"}',
+                        ],
+                        [
+                            'type' => 'input_audio',
+                            'input_audio' => [
+                                'data' => 'base64_encoded_audio_data',
+                                'format' => 'mp3',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'model' => 'gpt-4o-audio-preview',
+        ];
+
+        $endpoint = $this->router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::ChatCompletion);
+    });
+
+    it('routes to chat completion endpoint for conversation with multiple multi-content messages', function () {
+        $inputData = [
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => 'You are a helpful assistant.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'First question with audio',
+                        ],
+                        [
+                            'type' => 'input_audio',
+                            'input_audio' => [
+                                'data' => 'first_audio_data',
+                                'format' => 'mp3',
+                            ],
+                        ],
+                    ],
+                ],
+                [
+                    'role' => 'assistant',
+                    'content' => 'Here is my response.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'Second question with audio',
+                        ],
+                        [
+                            'type' => 'input_audio',
+                            'input_audio' => [
+                                'data' => 'second_audio_data',
+                                'format' => 'wav',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $endpoint = $this->router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::ChatCompletion);
+    });
+
+    it('routes to response API when messages have no audio content', function () {
+        $inputData = [
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => 'You are a helpful assistant.',
+                ],
+                [
+                    'role' => 'user',
+                    'content' => 'Hello, how are you?',
+                ],
+            ],
+        ];
+
+        $endpoint = $this->router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::ResponseApi);
+    });
+
+    it('routes to response API when messages have text-only multi-content', function () {
+        $inputData = [
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'What is the weather?',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $endpoint = $this->router->determineEndpoint($inputData);
+
+        expect($endpoint)->toBe(OpenAiEndpoint::ResponseApi);
+    });
+
     it('routes to response API for image input with vision models', function () {
         $inputData = [
             'input' => [

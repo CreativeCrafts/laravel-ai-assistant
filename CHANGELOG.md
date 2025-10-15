@@ -5,6 +5,42 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.30-beta] - 2025-10-15
+
+### Fixed
+
+- **Enhanced audio detection in `RequestRouter` for multi-content messages**
+  - `hasAudioInput()` now detects audio embedded within message content arrays
+  - Automatically routes to Chat Completions API when `input_audio` type is found in message content
+  - Previously only detected audio via dedicated `audio_input` field
+  - Ensures proper API routing for messages with mixed content (text + audio)
+
+### Changed
+
+- **Improved `hasAudioInput()` method documentation**
+  - Clarified that audio can be provided in two ways:
+    1. Via `audio_input` field (existing behavior)
+    2. Via audio embedded in messages array as multi-content (new detection)
+  - Enhanced inline documentation explaining routing behavior and API limitations
+
+### Technical Details
+
+- The router now iterates through message content arrays to detect `input_audio` type
+- Handles various message structures:
+  - Single multi-content messages with audio
+  - Conversations with multiple multi-content audio messages
+  - Messages with different roles (developer, user, assistant) containing audio
+- Maintains backward compatibility with existing `audio_input` field detection
+- Comprehensive test coverage added for:
+  - Multi-content message with audio routing
+  - Multi-role conversations with audio content
+  - Multiple multi-content messages in single request
+  - Verification that text-only messages still route to Response API
+
+**Why This Matters:** This fix ensures that audio embedded using OpenAI's multi-content message format (introduced in v3.0.29-beta) is correctly detected and routed to the Chat Completions API, which
+supports audio input.
+The Response API does not yet support audio input, making this routing critical for proper functionality.
+
 ## [3.0.29-beta] - 2025-10-15
 
 ### Added

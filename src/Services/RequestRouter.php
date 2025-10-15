@@ -214,28 +214,48 @@ final class RequestRouter
     }
 
     /**
-     * Check if request has audio input in chat context.
-     *
+     * Check if the request has audio input in the chat context.
      * This handles audio files that should be processed as part of
      * a chat conversation rather than standalone transcription/translation.
-     *
+     * The audio can be provided in two ways:
+     * 1. audio_input field
+     * 2. audio embedded in messages array as multi-content (OpenAI vision format)
      * ## Why This Routes to Chat Completions API
-     *
      * When this returns true, the request is routed to Chat Completions API
      * instead of the default Response API. This is because:
      * - Response API does not yet support audio input (OpenAI limitation)
      * - Chat Completions API supports audio input for conversational context
      * - This is a temporary workaround until Response API adds audio support
-     *
      * For standalone audio operations (transcribe, translate, speech), use
      * the dedicated Audio endpoints instead (AudioTranscription, AudioTranslation,
      * AudioSpeech) by setting the appropriate action.
-     *
-     * Requires: audio_input field (indicating audio in chat context)
+     * Requires: audio_input field OR audio in a messages content array
      */
     private function hasAudioInput(array $data): bool
     {
-        return isset($data['audio_input']);
+        if (isset($data['audio_input'])) {
+            return true;
+        }
+
+        if (isset($data['messages']) && is_array($data['messages'])) {
+            foreach ($data['messages'] as $message) {
+                if (!isset($message['content']) || !is_array($message['content'])) {
+                    continue;
+                }
+
+                foreach ($message['content'] as $contentItem) {
+                    if (!is_array($contentItem)) {
+                        continue;
+                    }
+
+                    if (isset($contentItem['type']) && $contentItem['type'] === 'input_audio') {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
