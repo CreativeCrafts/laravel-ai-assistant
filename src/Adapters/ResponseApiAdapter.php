@@ -51,6 +51,27 @@ final class ResponseApiAdapter implements TextEndpointAdapter
             $request['messages'] = $unifiedRequest['messages'];
         }
 
+        // If input is not set but messages are provided, convert messages to Response API input
+        if (!isset($request['input']) && isset($unifiedRequest['instructions']) && isset($request['messages']) && is_array($request['messages'])) {
+            $converted = $this->convertMessagesToInput($request['messages']);
+            if ($converted !== []) {
+                $request['input'] = $converted;
+                unset($request['messages']);
+            }
+        }
+
+        // If still no input but a simple text message is provided, convert it to a single user input block
+        if (!isset($request['input']) && isset($unifiedRequest['message']) && is_string($unifiedRequest['message'])) {
+            $request['input'] = [
+                [
+                    'role' => 'user',
+                    'content' => [
+                        ['type' => 'input_text', 'text' => $unifiedRequest['message']],
+                    ],
+                ],
+            ];
+        }
+
         // Handle conversation context
         if (isset($unifiedRequest['conversation_id'])) {
             $request['conversation_id'] = $unifiedRequest['conversation_id'];
@@ -202,5 +223,100 @@ final class ResponseApiAdapter implements TextEndpointAdapter
         }
 
         return null;
+    }
+
+    /**
+     * Convert Chat-style messages into Response API 'input' messages with content blocks.
+     *
+     * @param array<int, array<string, mixed>> $messages
+     * @return array<int, array<string, mixed>>
+     */
+    private function convertMessagesToInput(array $messages): array
+    {
+        $input = [];
+        foreach ($messages as $msg) {
+            if (!is_array($msg)) {
+                continue;
+            }
+            $role = isset($msg['role']) && is_string($msg['role']) ? $msg['role'] : 'user';
+            $content = $msg['content'] ?? '';
+            $blocks = $this->normalizeContentBlocks($content);
+            if ($blocks === []) {
+                continue;
+            }
+            $input[] = [
+                'role' => $role,
+                'content' => $blocks,
+            ];
+        }
+        return $input;
+    }
+
+    /**
+     * Normalize mixed content to Response API content blocks.
+     * Accepts strings, arrays of strings, or arrays of structured parts.
+     *
+     * @param mixed $content
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeContentBlocks(mixed $content): array
+    {
+        $blocks = [];
+        if (is_string($content)) {
+            return [ ['type' => 'input_text', 'text' => $content] ];
+        }
+        if (is_array($content)) {
+            $isAssoc = static fn (array $arr): bool => array_keys($arr) !== range(0, count($arr) - 1);
+            if ($isAssoc($content)) {
+                $content = [$content];
+            }
+            foreach ($content as $part) {
+                if (is_string($part)) {
+                    $blocks[] = ['type' => 'input_text', 'text' => $part];
+                    continue;
+                }
+                if (!is_array($part)) {
+                    continue;
+                }
+                $type = $part['type'] ?? null;
+                if ($type === 'text') {
+                    $blocks[] = ['type' => 'input_text', 'text' => (string)($part['text'] ?? '')];
+                    continue;
+                }
+                if ($type === 'input_text') {
+                    $blocks[] = ['type' => 'input_text', 'text' => (string)($part['text'] ?? '')];
+                    continue;
+                }
+                if ($type === 'image_url') {
+                    $blk = ['type' => 'input_image'];
+                    if (isset($part['image_url'])) {
+                        if (is_string($part['image_url'])) {
+                            $blk['image_url'] = $part['image_url'];
+                        } elseif (is_array($part['image_url']) && isset($part['image_url']['url'])) {
+                            $blk['image_url'] = $part['image_url']['url'];
+                        }
+                    } elseif (isset($part['url'])) {
+                        $blk['image_url'] = $part['url'];
+                    }
+                    $blocks[] = $blk;
+                    continue;
+                }
+                if ($type === 'input_image') {
+                    $blk = ['type' => 'input_image'];
+                    if (isset($part['image_url']) && is_string($part['image_url'])) {
+                        $blk['image_url'] = $part['image_url'];
+                    } elseif (isset($part['file_id']) && is_string($part['file_id'])) {
+                        $blk['file_id'] = $part['file_id'];
+                    }
+                    $blocks[] = $blk;
+                    continue;
+                }
+                // Fallback: if a 'text' field exists, treat as input_text
+                if (isset($part['text']) && is_string($part['text'])) {
+                    $blocks[] = ['type' => 'input_text', 'text' => $part['text']];
+                }
+            }
+        }
+        return $blocks;
     }
 }

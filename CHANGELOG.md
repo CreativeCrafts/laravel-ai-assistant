@@ -5,6 +5,24 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.31-beta] - 2025-10-21
+
+### Changed
+
+- Response API adapter automatically converts Chat-style `messages` to Response API `input` when `input` is not provided.
+  - Normalizes content into Response API blocks:
+    - Strings and `type: text|input_text` → `input_text`
+    - `type: image_url` (string or `{ url }`) → `input_image` with `image_url`
+    - `type: input_image` supports `image_url` or `file_id`
+  - Removes `messages` after conversion and preserves explicit `input` if already set
+  - Backwards compatible; no breaking changes
+
+- `InputBuilder::message()` now also sets `input` (single `user` message with `input_text`) while preserving the original `message` key for backward compatibility and tests.
+
+### Why this matters
+
+- Lets you pass chat-style payloads to the Responses API without manual transformation, improving developer experience and aligning builders across endpoints.
+
 ## [3.0.30-beta] - 2025-10-15
 
 ### Fixed

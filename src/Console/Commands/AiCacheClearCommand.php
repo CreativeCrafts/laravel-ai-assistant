@@ -10,23 +10,31 @@ use InvalidArgumentException;
 
 final class AiCacheClearCommand extends Command
 {
+    /** @var string */
     protected $signature = 'ai-cache:clear {--area=} {--key=} {--prefix=}';
+
+    /** @var string */
     protected $description = 'Clear AI Assistant cache safely by area, key, or prefix';
 
     public function handle(CacheService $cache): int
     {
-        $area = (string) ($this->option('area') ?? '');
-        $key = $this->option('key');
-        $prefix = $this->option('prefix');
+        $areaOption = $this->option('area');
+        $area = is_string($areaOption) ? $areaOption : '';
+
+        $keyOption = $this->option('key');
+        $key = is_string($keyOption) ? $keyOption : null;
+
+        $prefixOption = $this->option('prefix');
+        $prefix = is_string($prefixOption) ? $prefixOption : null;
 
         if ($key !== null) {
             if ($area === 'config') {
-                $ok = $cache->deleteConfig((string) $key);
+                $ok = $cache->deleteConfig($key);
                 $this->info($ok ? 'Deleted config key.' : 'Config key not found.');
                 return self::SUCCESS;
             }
             if ($area === 'response') {
-                $ok = $cache->deleteResponse((string) $key);
+                $ok = $cache->deleteResponse($key);
                 $this->info($ok ? 'Deleted response key.' : 'Response key not found.');
                 return self::SUCCESS;
             }
@@ -34,7 +42,7 @@ final class AiCacheClearCommand extends Command
             return self::INVALID;
         }
 
-        if (is_string($prefix) && $prefix !== '') {
+        if ($prefix !== null && $prefix !== '') {
             if (!in_array($prefix, ['config:', 'response:', 'completion:'], true)) {
                 $this->error('Invalid --prefix. Use one of: config:, response:, completion:');
                 return self::INVALID;
