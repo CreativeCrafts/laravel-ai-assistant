@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Adapters;
 
+use CreativeCrafts\LaravelAiAssistant\Contracts\Adapters\TextEndpointAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
 use Illuminate\Support\Str;
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Adapters;
 
+use CreativeCrafts\LaravelAiAssistant\Contracts\Adapters\AudioEndpointAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\AudioSpeechException;
 use Illuminate\Support\Str;

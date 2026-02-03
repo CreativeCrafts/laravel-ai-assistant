@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
+use JsonException;
 use RuntimeException;
 
 /**
@@ -72,6 +73,8 @@ final class ConversationsBuilder
 
     /**
      * Send a turn to the active conversation using the Responses API.
+     *
+     * @throws JsonException
      */
     public function send(): ChatResponseDto
     {
@@ -81,7 +84,6 @@ final class ConversationsBuilder
             ->withInput($this->input->list())
             ->send();
 
-        // ConversationsBuilder always uses legacy InputItemsBuilder, which returns ChatResponseDto
         if (!$resp instanceof ChatResponseDto) {
             throw new RuntimeException(
                 'Expected ChatResponseDto but received ' . get_class($resp) . '. ' .

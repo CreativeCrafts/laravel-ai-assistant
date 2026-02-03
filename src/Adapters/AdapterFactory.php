@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Adapters;
 
+use CreativeCrafts\LaravelAiAssistant\Contracts\Adapters\EndpointAdapter;
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
 use InvalidArgumentException;
 

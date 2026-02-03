@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelAiAssistant\Adapters;
 
+use CreativeCrafts\LaravelAiAssistant\Contracts\Adapters\ImageEndpointAdapter;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ImageGenerationException;
 use Illuminate\Support\Str;

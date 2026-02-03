@@ -7,11 +7,11 @@ use CreativeCrafts\LaravelAiAssistant\Adapters\AudioSpeechAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\AudioTranscriptionAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\AudioTranslationAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\ChatCompletionAdapter;
-use CreativeCrafts\LaravelAiAssistant\Adapters\EndpointAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\ImageEditAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\ImageGenerationAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\ImageVariationAdapter;
 use CreativeCrafts\LaravelAiAssistant\Adapters\ResponseApiAdapter;
+use CreativeCrafts\LaravelAiAssistant\Contracts\Adapters\EndpointAdapter;
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
 
 beforeEach(function () {

@@ -60,6 +60,7 @@ class SecurityService
      * @param int $maxRequests Maximum number of requests allowed
      * @param int $timeWindow Time window in seconds
      * @return bool True if the request should be allowed, false if rate limited
+     * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     public function checkRateLimit(string $identifier, int $maxRequests = 100, int $timeWindow = 3600): bool
     {

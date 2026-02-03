@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace CreativeCrafts\LaravelAiAssistant\Adapters;
+namespace CreativeCrafts\LaravelAiAssistant\Contracts\Adapters;
 
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
 

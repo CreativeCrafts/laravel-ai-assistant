@@ -248,7 +248,7 @@ final class ResponsesBuilder
         }
 
         // If only using legacy input items (no unified input), use original behavior
-        // After validation above, if unifiedData is empty, inputItemsList must have data
+        // After the validation above, if unifiedData is empty, inputItemsList must have data
         if (empty($unifiedData)) {
             $conv = $this->conversationId ?? $this->service->createConversation();
             $arr = $this->service->sendTurn(

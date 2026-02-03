@@ -134,8 +134,7 @@ final class AiManager
         if ($transport === Transport::SYNC) {
             return $this->assistantService->completeSync($mode, $request);
         }
-
-        // Stream → accumulate into a final result (callers who need incremental events should still use ChatSession::stream)
+        
         return $this->assistantService->completeStream($mode, $request);
     }
 

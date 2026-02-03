@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-namespace CreativeCrafts\LaravelAiAssistant\Adapters;
+namespace CreativeCrafts\LaravelAiAssistant\Contracts\Adapters;
 
 /**
  * Interface for audio-based endpoint adapters.
- *
  * This interface defines the contract for adapters that handle audio-based
  * requests and responses (e.g., audio transcription, translation, speech generation).
  * Adapters implementing this interface are restricted to audio processing only.

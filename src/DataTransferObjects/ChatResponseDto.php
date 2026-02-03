@@ -32,9 +32,7 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
     {
         $text = self::extractText($data);
         $content = self::extractContent($data) ?? $text;
-        $conversationId = isset($data['conversationId'])
-            ? (string)$data['conversationId']
-            : (isset($data['conversation']['id']) ? (string)$data['conversation']['id'] : null);
+        $conversationId = self::extractConversationId($data);
 
         return new self(
             id: (string)($data['id'] ?? ''),
@@ -45,6 +43,7 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
             conversationId: $conversationId,
         );
     }
+
 
     /**
      * Converts the ChatResponseDto instance to an array representation.
@@ -101,6 +100,26 @@ final readonly class ChatResponseDto implements ChatResponseDtoContract
         if (isset($data['content'])) {
             return (string)$data['content'];
         }
+        return null;
+    }
+
+    /**
+     * Extracts the conversation ID from the response data array.
+     * Checks multiple possible locations for the conversation ID in the response structure.
+     *
+     * @param array $data The response data array from the AI service
+     * @return string|null The conversation ID if found, null otherwise
+     */
+    private static function extractConversationId(array $data): ?string
+    {
+        if (isset($data['conversationId'])) {
+            return (string)$data['conversationId'];
+        }
+
+        if (isset($data['conversation']['id'])) {
+            return (string)$data['conversation']['id'];
+        }
+
         return null;
     }
 }
