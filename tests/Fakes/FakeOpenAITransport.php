@@ -30,6 +30,22 @@ final class FakeOpenAITransport implements OpenAITransport
         return $this->responses[$path] ?? ['status' => 'ok'];
     }
 
+    public function getContent(string $path, array $headers = [], ?float $timeout = null): array
+    {
+        $payload = $this->responses[$path] ?? [];
+        if (is_array($payload)) {
+            return [
+                'content' => (string)($payload['content'] ?? ''),
+                'content_type' => (string)($payload['content_type'] ?? 'application/octet-stream'),
+            ];
+        }
+
+        return [
+            'content' => (string)$payload,
+            'content_type' => 'application/octet-stream',
+        ];
+    }
+
     public function delete(string $path, array $headers = [], ?float $timeout = null): bool
     {
         return true;
