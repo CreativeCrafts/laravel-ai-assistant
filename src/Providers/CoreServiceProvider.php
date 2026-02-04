@@ -22,6 +22,7 @@ use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
 use CreativeCrafts\LaravelAiAssistant\Services\BackgroundJobService;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheBackedProgressTracker;
 use CreativeCrafts\LaravelAiAssistant\Services\CacheService;
+use CreativeCrafts\LaravelAiAssistant\Services\HttpClientFactory;
 use CreativeCrafts\LaravelAiAssistant\Services\IdempotencyService;
 use CreativeCrafts\LaravelAiAssistant\Services\LazyLoadingService;
 use CreativeCrafts\LaravelAiAssistant\Services\LoggingService;
@@ -35,7 +36,6 @@ use CreativeCrafts\LaravelAiAssistant\Services\ThreadsToConversationsMapper;
 use CreativeCrafts\LaravelAiAssistant\Services\ToolRegistry;
 use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
-use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
@@ -44,6 +44,28 @@ class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(HttpClientFactory::class, function ($app) {
+            $apiKey = config('ai-assistant.api_key', '');
+            if (!is_string($apiKey)) {
+                $apiKey = '';
+            }
+            $org = config('ai-assistant.organization');
+            $headers = [
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Accept' => 'application/json',
+            ];
+            if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
+                $headers['OpenAI-Organization'] = $org;
+            }
+
+            $timeout = config('ai-assistant.responses.timeout', 120);
+            if (!is_numeric($timeout)) {
+                $timeout = 120;
+            }
+
+            return new HttpClientFactory(defaultHeaders: $headers, timeout: (float)$timeout);
+        });
+
         // Register OpenAI Transport as a singleton
         $this->app->singleton(OpenAITransport::class, function ($app) {
             $apiKey = config('ai-assistant.api_key', '');
@@ -65,15 +87,9 @@ class CoreServiceProvider extends ServiceProvider
                 $timeout = 120;
             }
 
-            $guzzle = new GuzzleClient([
-                'base_uri' => 'https://api.openai.com',
-                'headers' => $headers,
-                'http_errors' => false,
-                'timeout' => (float)$timeout,
-                'connect_timeout' => 10,
-            ]);
+            $client = $app->make(HttpClientFactory::class)->make(headers: $headers, timeout: (float)$timeout);
 
-            return new GuzzleOpenAITransport($guzzle, '/v1');
+            return new GuzzleOpenAITransport($client, '/v1');
         });
 
         // Register the Cache Service as a singleton
@@ -242,111 +258,19 @@ class CoreServiceProvider extends ServiceProvider
 
         // Register new HTTP repositories for Responses, Conversations, and Files
         $this->app->bind(ResponsesRepositoryContract::class, function ($app) {
-            $apiKey = config('ai-assistant.api_key', '');
-            if (!is_string($apiKey)) {
-                $apiKey = '';
-            }
-            $org = config('ai-assistant.organization');
-            $headers = [
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Accept' => 'application/json',
-            ];
-            if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
-                $headers['OpenAI-Organization'] = $org;
-            }
-            $timeout = config('ai-assistant.responses.timeout', 120);
-            if (!is_numeric($timeout)) {
-                $timeout = 120;
-            }
-            $client = new GuzzleClient([
-                'base_uri' => 'https://api.openai.com',
-                'headers' => $headers,
-                'http_errors' => false,
-                'timeout' => (float)$timeout,
-                'connect_timeout' => 10,
-            ]);
-            return new ResponsesHttpRepository($client);
+            return new ResponsesHttpRepository($app->make(OpenAITransport::class));
         });
 
         $this->app->bind(ConversationsRepositoryContract::class, function ($app) {
-            $apiKey = config('ai-assistant.api_key', '');
-            if (!is_string($apiKey)) {
-                $apiKey = '';
-            }
-            $org = config('ai-assistant.organization');
-            $headers = [
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Accept' => 'application/json',
-            ];
-            if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
-                $headers['OpenAI-Organization'] = $org;
-            }
-            $timeout = config('ai-assistant.responses.timeout', 120);
-            if (!is_numeric($timeout)) {
-                $timeout = 120;
-            }
-            $client = new GuzzleClient([
-                'base_uri' => 'https://api.openai.com',
-                'headers' => $headers,
-                'http_errors' => false,
-                'timeout' => (float)$timeout,
-                'connect_timeout' => 10,
-            ]);
-            return new ConversationsHttpRepository($client);
+            return new ConversationsHttpRepository($app->make(OpenAITransport::class));
         });
 
         $this->app->bind(FilesRepositoryContract::class, function ($app) {
-            $apiKey = config('ai-assistant.api_key', '');
-            if (!is_string($apiKey)) {
-                $apiKey = '';
-            }
-            $org = config('ai-assistant.organization');
-            $headers = [
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Accept' => 'application/json',
-            ];
-            if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
-                $headers['OpenAI-Organization'] = $org;
-            }
-            $timeout = config('ai-assistant.responses.timeout', 120);
-            if (!is_numeric($timeout)) {
-                $timeout = 120;
-            }
-            $client = new GuzzleClient([
-                'base_uri' => 'https://api.openai.com',
-                'headers' => $headers,
-                'http_errors' => false,
-                'timeout' => (float)$timeout,
-                'connect_timeout' => 10,
-            ]);
-            return new FilesHttpRepository($client);
+            return new FilesHttpRepository($app->make(OpenAITransport::class));
         });
 
         $this->app->bind(ResponsesInputItemsRepositoryContract::class, function ($app) {
-            $apiKey = config('ai-assistant.api_key', '');
-            if (!is_string($apiKey)) {
-                $apiKey = '';
-            }
-            $org = config('ai-assistant.organization');
-            $headers = [
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Accept' => 'application/json',
-            ];
-            if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
-                $headers['OpenAI-Organization'] = $org;
-            }
-            $timeout = config('ai-assistant.responses.timeout', 120);
-            if (!is_numeric($timeout)) {
-                $timeout = 120;
-            }
-            $client = new GuzzleClient([
-                'base_uri' => 'https://api.openai.com',
-                'headers' => $headers,
-                'http_errors' => false,
-                'timeout' => (float)$timeout,
-                'connect_timeout' => 10,
-            ]);
-            return new ResponsesInputItemsHttpRepository($client);
+            return new ResponsesInputItemsHttpRepository($app->make(OpenAITransport::class));
         });
     }
 }

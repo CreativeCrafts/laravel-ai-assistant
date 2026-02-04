@@ -139,6 +139,43 @@ final class OpenAiClient
     {
         try {
             $this->multipartBuilder->clear();
+            $maxFileSizeMb = config('ai-assistant.adapters.max_file_size_mb', 25);
+            if (is_numeric($maxFileSizeMb)) {
+                $maxBytes = (int)round((float)$maxFileSizeMb * 1024 * 1024);
+                if ($maxBytes > 0) {
+                    $this->multipartBuilder->setMaxFileSize($maxBytes);
+                }
+            }
+
+            if ($endpoint->isAudio()) {
+                $audioLimit = config('ai-assistant.audio.file_size_limit_mb', 25);
+                if (is_numeric($audioLimit) && is_numeric($maxFileSizeMb)) {
+                    $cap = min((float)$audioLimit, (float)$maxFileSizeMb);
+                    $bytes = (int)round($cap * 1024 * 1024);
+                    if ($bytes > 0) {
+                        $this->multipartBuilder->setMaxFileSize($bytes);
+                    }
+                }
+                $audioFormats = config('ai-assistant.audio.supported_formats', []);
+                if (is_array($audioFormats) && $audioFormats !== []) {
+                    $this->multipartBuilder->setAllowedFormats('audio', $audioFormats);
+                }
+            }
+
+            if ($endpoint->isImage()) {
+                $imageLimit = config('ai-assistant.image.file_size_limit_mb', 4);
+                if (is_numeric($imageLimit) && is_numeric($maxFileSizeMb)) {
+                    $cap = min((float)$imageLimit, (float)$maxFileSizeMb);
+                    $bytes = (int)round($cap * 1024 * 1024);
+                    if ($bytes > 0) {
+                        $this->multipartBuilder->setMaxFileSize($bytes);
+                    }
+                }
+                $imageFormats = config('ai-assistant.image.supported_formats', []);
+                if (is_array($imageFormats) && $imageFormats !== []) {
+                    $this->multipartBuilder->setAllowedFormats('image', $imageFormats);
+                }
+            }
 
             // Add file(s) to multipart request
             if (isset($data['file'])) {

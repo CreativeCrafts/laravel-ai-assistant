@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ConversationsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ConversationsHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 
@@ -25,7 +26,7 @@ it('createConversation returns created conversation', function () {
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['id' => 'conv_1'])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
     $out = $repo->createConversation(['foo' => 'bar']);
 
     expect($out['id'] ?? null)->toBe('conv_1');
@@ -44,7 +45,7 @@ it('createConversation throws on server error', function () {
         ->once()
         ->andReturn(new Psr7Response(500, [], json_encode(['error' => ['message' => 'boom']])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->createConversation())->toThrow(ApiResponseValidationException::class);
 });
@@ -60,7 +61,7 @@ it('getConversation returns conversation', function () {
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['id' => 'conv_2'])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
     $out = $repo->getConversation('conv_2');
 
     expect($out['id'])->toBe('conv_2');
@@ -73,7 +74,7 @@ it('getConversation throws on 404', function () {
         ->once()
         ->andReturn(new Psr7Response(404, [], json_encode(['error' => ['message' => 'nope']])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->getConversation('missing'))->toThrow(ApiResponseValidationException::class);
 });
@@ -91,7 +92,7 @@ it('updateConversation returns updated', function () {
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['id' => 'conv_3', 'title' => 'New Title'])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
     $out = $repo->updateConversation('conv_3', ['title' => 'New Title']);
 
     expect($out['title'] ?? null)->toBe('New Title');
@@ -110,7 +111,7 @@ it('updateConversation throws on 500', function () {
         ->once()
         ->andReturn(new Psr7Response(500, [], json_encode(['error' => ['message' => 'fail']])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->updateConversation('conv_4', ['x' => 'y']))->toThrow(ApiResponseValidationException::class);
 });
@@ -126,7 +127,7 @@ it('deleteConversation returns true on 204', function () {
         })
         ->andReturn(new Psr7Response(204));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
     $ok = $repo->deleteConversation('conv_5');
 
     expect($ok)->toBeTrue();
@@ -145,7 +146,7 @@ it('deleteConversation throws on 500', function () {
         ->once()
         ->andReturn(new Psr7Response(500, [], json_encode(['error' => ['message' => 'boom']])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->deleteConversation('conv_6'))->toThrow(ApiResponseValidationException::class);
 });
@@ -161,7 +162,7 @@ it('listItems returns items with query params', function () {
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['data' => [['id' => 'i1'], ['id' => 'i2'], ['id' => 'i3']]])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
     $out = $repo->listItems('conv_7', ['limit' => 3]);
 
     expect($out['data'] ?? [])->toHaveCount(3);
@@ -180,7 +181,7 @@ it('listItems throws on 500', function () {
         ->once()
         ->andReturn(new Psr7Response(500, [], json_encode(['error' => ['message' => 'bad']])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->listItems('conv_8'))->toThrow(ApiResponseValidationException::class);
 });
@@ -198,7 +199,7 @@ it('createItems returns created items', function () {
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['ok' => true])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
     $out = $repo->createItems('conv_9', [['type' => 'message', 'content' => 'hi']]);
 
     expect($out['ok'] ?? false)->toBeTrue();
@@ -217,7 +218,7 @@ it('createItems throws on 500', function () {
         ->once()
         ->andReturn(new Psr7Response(500, [], json_encode(['error' => ['message' => 'bad']])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->createItems('conv_10', []))->toThrow(ApiResponseValidationException::class);
 });
@@ -233,7 +234,7 @@ it('deleteItem returns true on 200/204', function () {
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['ok' => true])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
     $ok = $repo->deleteItem('conv_11', 'item_1');
 
     expect($ok)->toBeTrue();
@@ -252,7 +253,7 @@ it('deleteItem throws on 500', function () {
         ->once()
         ->andReturn(new Psr7Response(500, [], json_encode(['error' => ['message' => 'no']])));
 
-    $repo = new ConversationsHttpRepository($client);
+    $repo = new ConversationsHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->deleteItem('conv_12', 'item_2'))->toThrow(ApiResponseValidationException::class);
 });

@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 
@@ -23,7 +24,7 @@ it('listResponses returns array on success and applies query params', function (
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['data' => [['id' => 'r1'], ['id' => 'r2']]])));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
     $out = $repo->listResponses(['limit' => 2, 'before' => 'abc']);
 
     expect($out['data'] ?? [])->toHaveCount(2);
@@ -42,7 +43,7 @@ it('listResponses throws on server error', function () {
         ->once()
         ->andReturn(new Psr7Response(500, [], json_encode(['error' => ['message' => 'boom']])));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->listResponses())->toThrow(ApiResponseValidationException::class);
 });
@@ -63,7 +64,7 @@ it('cancelResponse returns true on success', function () {
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['status' => 'canceled'])));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
     $ok = $repo->cancelResponse('resp_42');
 
     expect($ok)->toBeTrue();
@@ -76,7 +77,7 @@ it('cancelResponse throws on 404', function () {
         ->once()
         ->andReturn(new Psr7Response(404, [], json_encode(['error' => ['message' => 'not found']])));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->cancelResponse('missing'))->toThrow(ApiResponseValidationException::class);
 });
@@ -92,7 +93,7 @@ it('deleteResponse returns true on 204', function () {
         })
         ->andReturn(new Psr7Response(204));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
     $ok = $repo->deleteResponse('resp_del_1');
 
     expect($ok)->toBeTrue();
@@ -111,7 +112,7 @@ it('deleteResponse throws on server error', function () {
         ->once()
         ->andReturn(new Psr7Response(500, [], json_encode(['error' => ['message' => 'boom']])));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
 
     expect(fn () => $repo->deleteResponse('resp_del_2'))->toThrow(ApiResponseValidationException::class);
 });
@@ -147,7 +148,7 @@ it('streamResponse yields multiple delta events and final completed event lines'
         })
         ->andReturn(new Psr7Response(200, [], $sseBody));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
 
     $lines = iterator_to_array($repo->streamResponse(['model' => 'gpt', 'input' => 'hi']));
 

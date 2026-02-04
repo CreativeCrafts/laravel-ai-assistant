@@ -178,7 +178,7 @@ describe('Performance Optimization', function () {
 
             $initialMemory = memory_get_usage();
 
-            $builder->addFile('file', $tempFile, null, null, null);
+            $builder->addFile('file', $tempFile, null, 'application/octet-stream', null);
             $multipartData = $builder->build();
 
             $memoryIncrease = memory_get_usage() - $initialMemory;

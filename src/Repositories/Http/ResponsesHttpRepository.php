@@ -7,9 +7,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MaxRetryAttemptsExceededException;
-use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
-use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Config;
 use JsonException;
 
@@ -19,13 +17,10 @@ use JsonException;
  */
 final readonly class ResponsesHttpRepository implements ResponsesRepositoryContract
 {
-    private OpenAITransport $transport;
-
     public function __construct(
-        private GuzzleClient $http,
+        private OpenAITransport $transport,
         private string $basePath = '/v1'
     ) {
-        $this->transport = new GuzzleOpenAITransport($this->http, $this->basePath);
     }
 
     public function listResponses(array $params = []): array

@@ -18,6 +18,7 @@ use Generator;
 use InvalidArgumentException;
 use JsonException;
 use Throwable;
+use SplFileInfo;
 
 /**
  * Internal AI operations service.
@@ -982,8 +983,18 @@ class AssistantService implements AudioProcessingContract
             throw new InvalidArgumentException('File parameter is required for audio processing.');
         }
 
-        if (!is_resource($payload['file'])) {
-            throw new FileOperationException('File parameter must be a valid file resource.');
+        $file = $payload['file'];
+        if (is_string($file)) {
+            if (!is_readable($file)) {
+                throw new FileOperationException('File parameter must be a readable file path.');
+            }
+        } elseif ($file instanceof SplFileInfo) {
+            $path = $file->getRealPath() ?: $file->getPathname();
+            if (!is_string($path) || $path === '' || !is_readable($path)) {
+                throw new FileOperationException('File parameter must be a readable file.');
+            }
+        } elseif (!is_resource($file)) {
+            throw new FileOperationException('File parameter must be a valid file resource or path.');
         }
 
         // Validate model if provided

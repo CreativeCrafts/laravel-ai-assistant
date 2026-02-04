@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Psr7\Response as Psr7Response;
+use GuzzleHttp\Psr7\Request;
 
 afterEach(function () {
     Mockery::close();
@@ -53,12 +56,12 @@ it('createResponse sends idempotency key, preserves across retries, and applies 
         ->andReturnUsing(function () use (&$invocation) {
             $invocation++;
             if ($invocation === 1) {
-                throw new RuntimeException('simulated network error');
+                throw new ConnectException('simulated network error', new Request('POST', '/v1/responses'));
             }
             return new Psr7Response(200, [], json_encode(['ok' => true]));
         });
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
     $result = $repo->createResponse(['model' => 'gpt-test', 'input' => 'hi']);
 
     expect($result)->toBe(['ok' => true])
@@ -100,14 +103,14 @@ it('streamResponse uses sse timeout and preserves idempotency on retry', functio
         ->andReturnUsing(function () use (&$i) {
             $i++;
             if ($i === 1) {
-                throw new RuntimeException('simulated network error');
+                throw new ConnectException('simulated network error', new Request('POST', '/v1/responses'));
             }
             // Provide a tiny SSE body
             $body = "event: response.completed\ndata: {\"type\":\"response.completed\"}\n\n";
             return new Psr7Response(200, [], $body);
         });
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
     $generator = $repo->streamResponse(['model' => 'gpt-test', 'input' => 'hi']);
 
     // Iterate a single chunk to trigger the request and verify
@@ -137,7 +140,7 @@ it('getResponse applies responses timeout', function () {
         })
         ->andReturn(new Psr7Response(200, [], json_encode(['id' => 'resp_123'])));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
     $data = $repo->getResponse('resp_123');
     expect($data['id'])->toBe('resp_123');
 });
@@ -156,9 +159,9 @@ it('transport error results in ApiResponseValidationException', function () {
     $client = Mockery::mock(GuzzleClient::class);
     $client->shouldReceive('request')
         ->once()
-        ->andThrow(new RuntimeException('network timeout'));
+        ->andThrow(new ConnectException('network timeout', new Request('POST', '/v1/responses')));
 
-    $repo = new ResponsesHttpRepository($client);
+    $repo = new ResponsesHttpRepository(new GuzzleOpenAITransport($client));
     expect(fn () => $repo->createResponse(['model' => 'gpt-test', 'input' => 'hello']))
         ->toThrow(ApiResponseValidationException::class);
 });

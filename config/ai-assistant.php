@@ -2,6 +2,22 @@
 
 declare(strict_types=1);
 
+$toolsAllowlist = env('AI_TOOLS_ALLOWLIST', []);
+if (is_string($toolsAllowlist)) {
+    $toolsAllowlist = preg_split('/[|,]/', $toolsAllowlist) ?: [];
+    $toolsAllowlist = array_values(array_filter(array_map('trim', $toolsAllowlist), fn ($v) => $v !== ''));
+} elseif (!is_array($toolsAllowlist)) {
+    $toolsAllowlist = [];
+}
+
+$toolsSchemas = env('AI_TOOLS_SCHEMAS', []);
+if (is_string($toolsSchemas)) {
+    $decoded = json_decode($toolsSchemas, true);
+    $toolsSchemas = is_array($decoded) ? $decoded : [];
+} elseif (!is_array($toolsSchemas)) {
+    $toolsSchemas = [];
+}
+
 return [
     'preset' => env('AI_ASSISTANT_PRESET', 'simple'),
     /*
@@ -526,8 +542,8 @@ return [
     | security and validate arguments.
     */
     'tools' => [
-        'allowlist' => env('AI_TOOLS_ALLOWLIST', []), // array of tool names allowed
-        'schemas' => env('AI_TOOLS_SCHEMAS', []), // map of tool name => schema array
+        'allowlist' => $toolsAllowlist, // array of tool names allowed
+        'schemas' => $toolsSchemas, // map of tool name => schema array
     ],
 
     /*
