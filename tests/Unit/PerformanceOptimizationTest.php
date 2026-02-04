@@ -10,6 +10,40 @@ use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
+use RuntimeException;
+
+function writeTempFile(int $size): string
+{
+    $path = tempnam(sys_get_temp_dir(), 'test_');
+    if ($path === false) {
+        throw new RuntimeException('Unable to create temporary file.');
+    }
+
+    $handle = fopen($path, 'wb');
+    if ($handle === false) {
+        throw new RuntimeException("Unable to open temporary file: {$path}");
+    }
+
+    $chunkSize = min(1048576, $size);
+    $chunk = $chunkSize > 0 ? str_repeat('x', $chunkSize) : '';
+    $remaining = $size;
+
+    while ($remaining > 0) {
+        $writeSize = $remaining >= $chunkSize ? $chunkSize : $remaining;
+        $written = fwrite($handle, $writeSize === $chunkSize ? $chunk : substr($chunk, 0, $writeSize));
+        if ($written === false || $written === 0) {
+            fclose($handle);
+            throw new RuntimeException("Unable to write temporary file: {$path}");
+        }
+
+        $remaining -= $written;
+    }
+
+    fclose($handle);
+    clearstatcache(true, $path);
+
+    return $path;
+}
 
 describe('Performance Optimization', function () {
     describe('Adapter Caching', function () {
@@ -109,10 +143,7 @@ describe('Performance Optimization', function () {
         it('tracks total request size when adding files', function () {
             $builder = new MultipartRequestBuilder();
 
-            // Create a temporary test file
-            $tempFile = tempnam(sys_get_temp_dir(), 'test_');
-            $testContent = str_repeat('a', 1024); // 1KB
-            file_put_contents($tempFile, $testContent);
+            $tempFile = writeTempFile(1024);
 
             $builder->addFile('file', $tempFile, null, null, null);
 
@@ -124,11 +155,8 @@ describe('Performance Optimization', function () {
         it('accumulates size for multiple files', function () {
             $builder = new MultipartRequestBuilder();
 
-            // Create temporary test files
-            $tempFile1 = tempnam(sys_get_temp_dir(), 'test_');
-            $tempFile2 = tempnam(sys_get_temp_dir(), 'test_');
-            file_put_contents($tempFile1, str_repeat('a', 1024)); // 1KB
-            file_put_contents($tempFile2, str_repeat('b', 2048)); // 2KB
+            $tempFile1 = writeTempFile(1024);
+            $tempFile2 = writeTempFile(2048);
 
             $builder->addFile('file1', $tempFile1, null, null, null);
             $builder->addFile('file2', $tempFile2, null, null, null);
@@ -142,8 +170,7 @@ describe('Performance Optimization', function () {
         it('resets size counter when cleared', function () {
             $builder = new MultipartRequestBuilder();
 
-            $tempFile = tempnam(sys_get_temp_dir(), 'test_');
-            file_put_contents($tempFile, str_repeat('a', 1024));
+            $tempFile = writeTempFile(1024);
 
             $builder->addFile('file', $tempFile, null, null, null);
             expect($builder->getTotalRequestSize())->toBe(1024);
@@ -157,9 +184,8 @@ describe('Performance Optimization', function () {
         it('reports size in bytes for accurate monitoring', function () {
             $builder = new MultipartRequestBuilder();
 
-            $tempFile = tempnam(sys_get_temp_dir(), 'test_');
-            $size = 10485760; // 10MB
-            file_put_contents($tempFile, str_repeat('x', $size));
+            $size = 10485760;
+            $tempFile = writeTempFile($size);
 
             $builder->addFile('file', $tempFile, null, 'application/octet-stream', null);
 
@@ -173,8 +199,7 @@ describe('Performance Optimization', function () {
         it('uses file paths without loading into memory', function () {
             $builder = new MultipartRequestBuilder();
 
-            $tempFile = tempnam(sys_get_temp_dir(), 'test_');
-            file_put_contents($tempFile, str_repeat('x', 1024 * 1024)); // 1MB
+            $tempFile = writeTempFile(1024 * 1024);
 
             $initialMemory = memory_get_usage();
 
