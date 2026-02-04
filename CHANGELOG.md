@@ -5,6 +5,34 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1] - 2026-02-04
+
+### Added
+
+- Moderations, Batches, Realtime Sessions, Assistants, Vector Stores, Vector Store Files, and Vector Store File Batches repositories.
+- File content download support for Files and Vector Store Files.
+- Centralized HTTP client factory with optional connection pool settings.
+
+### Changed
+
+- Transport retry behavior now respects idempotency and safe HTTP methods.
+- Webhook signature validation can require timestamps to enforce replay protection.
+- Tool execution via queue in parallel mode returns a queued placeholder instead of inline execution.
+- Multipart uploads now enforce per-audio/per-image size and format limits from config.
+- Tool allowlist and schema config now accept comma/pipe strings or JSON via env.
+
+### Fixed
+
+- SSE streaming parsing now buffers partial frames to avoid corrupted events.
+- Binary responses (e.g., audio) are handled without JSON decoding errors.
+- Response body decoding avoids double-reading streams.
+
+### Breaking
+
+- `OpenAITransport` now requires `getContent()`; custom transports must implement it.
+- `FilesRepositoryContract` now requires `content()`; custom implementations must implement it.
+- Queue tool execution in parallel mode no longer executes inline (returns a queued placeholder).
+
 ## [3.0.31-beta] - 2025-10-21
 
 ### Changed
