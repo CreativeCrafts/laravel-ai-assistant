@@ -77,7 +77,14 @@ class CoreServiceProvider extends ServiceProvider
                 $timeout = 120;
             }
 
-            return new HttpClientFactory(defaultHeaders: $headers, timeout: (float)$timeout);
+            $pool = config('ai-assistant.connection_pool', []);
+            $pool = is_array($pool) ? $pool : [];
+
+            return new HttpClientFactory(
+                defaultHeaders: $headers,
+                timeout: (float)$timeout,
+                connectionPool: $pool
+            );
         });
 
         // Register OpenAI Transport as a singleton

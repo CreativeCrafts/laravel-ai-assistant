@@ -37,3 +37,24 @@ it('allows overriding headers and timeout per client', function () {
         ->and($client->getConfig('headers')['X-Test'])->toBe('1')
         ->and($client->getConfig('timeout'))->toBe(9.0);
 });
+
+it('applies connection pool settings when enabled', function () {
+    $factory = new HttpClientFactory(
+        baseUri: 'https://example.test',
+        defaultHeaders: ['Authorization' => 'Bearer test'],
+        timeout: 5.0,
+        connectTimeout: 2.0,
+        connectionPool: [
+            'enabled' => true,
+            'max_connections' => 50,
+            'max_connections_per_host' => 7,
+        ]
+    );
+
+    $client = $factory->make();
+    $curl = (array)($client->getConfig('curl') ?? []);
+
+    if (defined('CURLOPT_MAXCONNECTS')) {
+        expect($curl[CURLOPT_MAXCONNECTS] ?? null)->toBe(50);
+    }
+});

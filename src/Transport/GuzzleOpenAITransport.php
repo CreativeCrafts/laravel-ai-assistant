@@ -335,11 +335,32 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
     private function requestWithRetry(string $method, string $path, array $options, bool $idempotent): ResponseInterface
     {
         $retryCfg = (array)config('ai-assistant.responses.retry', []);
+        $transportCfg = (array)config('ai-assistant.transport', []);
         $enabled = (bool)($retryCfg['enabled'] ?? true);
-        $maxAttempts = (int)($retryCfg['max_attempts'] ?? 3);
-        $initialDelay = (float)($retryCfg['initial_delay'] ?? 0.5);
+
+        $maxAttempts = $retryCfg['max_attempts'] ?? null;
+        if (!is_numeric($maxAttempts)) {
+            $maxRetries = $transportCfg['max_retries'] ?? null;
+            $maxAttempts = is_numeric($maxRetries) ? ((int)$maxRetries + 1) : 3;
+        }
+        $maxAttempts = (int)$maxAttempts;
+
+        $initialDelay = $retryCfg['initial_delay'] ?? null;
+        if (!is_numeric($initialDelay)) {
+            $initialMs = $transportCfg['initial_delay_ms'] ?? null;
+            $initialDelay = is_numeric($initialMs) ? ((float)$initialMs / 1000) : 0.5;
+        }
+        $initialDelay = (float)$initialDelay;
+
         $multiplier = (float)($retryCfg['backoff_multiplier'] ?? 2.0);
-        $maxDelay = (float)($retryCfg['max_delay'] ?? 8.0);
+
+        $maxDelay = $retryCfg['max_delay'] ?? null;
+        if (!is_numeric($maxDelay)) {
+            $maxMs = $transportCfg['max_delay_ms'] ?? null;
+            $maxDelay = is_numeric($maxMs) ? ((float)$maxMs / 1000) : 8.0;
+        }
+        $maxDelay = (float)$maxDelay;
+
         $jitter = (bool)($retryCfg['jitter'] ?? true);
 
         $attempt = 0;
