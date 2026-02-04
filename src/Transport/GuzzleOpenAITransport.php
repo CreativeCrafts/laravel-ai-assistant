@@ -150,8 +150,7 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
                 // If a resource is provided, try to infer filename and mime from stream metadata
                 if (is_resource($contents)) {
                     $meta = @stream_get_meta_data($contents);
-                    // According to PHP's contract, 'uri' is always present in the metadata array
-                    $uri = (string)$meta['uri'];
+                    $uri = isset($meta['uri']) ? (string) $meta['uri'] : '';
                     if ($uri !== '') {
                         if ($filename === null) {
                             $filename = basename((string)$uri);
