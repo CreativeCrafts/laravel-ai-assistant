@@ -34,4 +34,12 @@ interface FilesRepositoryContract
      * @return bool
      */
     public function delete(string $fileId): bool;
+
+    /**
+     * Retrieve raw content for a file by id.
+     *
+     * @param string $fileId
+     * @return array{content:string, content_type:string}
+     */
+    public function content(string $fileId): array;
 }

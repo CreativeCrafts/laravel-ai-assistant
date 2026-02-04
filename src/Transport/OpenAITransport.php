@@ -55,6 +55,16 @@ interface OpenAITransport
     public function getJson(string $path, array $headers = [], ?float $timeout = null): array;
 
     /**
+     * Send a GET request and return raw content with content type.
+     *
+     * @param string $path Relative API path, e.g. '/v1/files/{id}/content'
+     * @param array $headers Optional extra headers
+     * @param float|null $timeout Per-call timeout override (seconds)
+     * @return array{content:string, content_type:string}
+     */
+    public function getContent(string $path, array $headers = [], ?float $timeout = null): array;
+
+    /**
      * Send a DELETE request and return true on success.
      *
      * @param string $path Relative API path, e.g. '/v1/responses/{id}'

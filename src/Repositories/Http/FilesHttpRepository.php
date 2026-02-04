@@ -108,6 +108,11 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
         return $this->transport->delete($this->endpoint("files/{$fileId}"));
     }
 
+    public function content(string $fileId): array
+    {
+        return $this->transport->getContent($this->endpoint("files/{$fileId}/content"));
+    }
+
     /**
      * Constructs a complete API endpoint URL by combining the base path with the given path.
      * This method ensures proper URL formatting by removing trailing slashes from the base path

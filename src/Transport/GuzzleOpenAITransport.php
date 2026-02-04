@@ -224,6 +224,25 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         return $this->decodeOrFail($res);
     }
 
+    public function getContent(string $path, array $headers = [], ?float $timeout = null): array
+    {
+        $timeout = $this->resolveTimeout($timeout);
+        $headers = ['Accept' => '*/*'] + $headers;
+        $options = [
+            'headers' => $headers,
+            'timeout' => $timeout,
+        ];
+        $res = $this->requestWithRetry('GET', $path, $options, false);
+        if ($res->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
+            $this->throwForError($res);
+        }
+
+        return [
+            'content' => (string)$res->getBody(),
+            'content_type' => $res->getHeaderLine('Content-Type'),
+        ];
+    }
+
     public function streamSse(string $path, array $payload, array $headers = [], ?float $timeout = null, bool $idempotent = false): iterable
     {
         $headers = $this->prepareHeaders($headers + ['Accept' => 'text/event-stream'], true, $payload, $idempotent);

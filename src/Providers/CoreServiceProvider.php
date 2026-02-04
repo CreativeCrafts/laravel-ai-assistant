@@ -5,17 +5,31 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Providers;
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
+use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\BatchesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ModerationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ProgressTrackerContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\RealtimeSessionsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoreFileBatchesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoreFilesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoresRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use CreativeCrafts\LaravelAiAssistant\Jobs\ExecuteToolCallJob;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\AssistantsHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\BatchesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ConversationsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\FilesHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ModerationsHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\RealtimeSessionsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesInputItemsHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\VectorStoreFileBatchesHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\VectorStoreFilesHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\VectorStoresHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Http\MultipartRequestBuilder;
 use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
 use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
@@ -271,6 +285,34 @@ class CoreServiceProvider extends ServiceProvider
 
         $this->app->bind(ResponsesInputItemsRepositoryContract::class, function ($app) {
             return new ResponsesInputItemsHttpRepository($app->make(OpenAITransport::class));
+        });
+
+        $this->app->bind(ModerationsRepositoryContract::class, function ($app) {
+            return new ModerationsHttpRepository($app->make(OpenAITransport::class));
+        });
+
+        $this->app->bind(BatchesRepositoryContract::class, function ($app) {
+            return new BatchesHttpRepository($app->make(OpenAITransport::class));
+        });
+
+        $this->app->bind(RealtimeSessionsRepositoryContract::class, function ($app) {
+            return new RealtimeSessionsHttpRepository($app->make(OpenAITransport::class));
+        });
+
+        $this->app->bind(VectorStoresRepositoryContract::class, function ($app) {
+            return new VectorStoresHttpRepository($app->make(OpenAITransport::class));
+        });
+
+        $this->app->bind(VectorStoreFilesRepositoryContract::class, function ($app) {
+            return new VectorStoreFilesHttpRepository($app->make(OpenAITransport::class));
+        });
+
+        $this->app->bind(VectorStoreFileBatchesRepositoryContract::class, function ($app) {
+            return new VectorStoreFileBatchesHttpRepository($app->make(OpenAITransport::class));
+        });
+
+        $this->app->bind(AssistantsRepositoryContract::class, function ($app) {
+            return new AssistantsHttpRepository($app->make(OpenAITransport::class));
         });
     }
 }

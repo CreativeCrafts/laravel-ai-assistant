@@ -6,6 +6,14 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
 use CreativeCrafts\LaravelAiAssistant\Chat\ChatSession;
+use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\BatchesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ModerationsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\RealtimeSessionsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoreFileBatchesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoreFilesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoresRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionResult;
@@ -54,6 +62,46 @@ final class AiManager
             $this->router,
             $this->adapterFactory
         );
+    }
+
+    public function moderations(): ModerationsRepositoryContract
+    {
+        return app(ModerationsRepositoryContract::class);
+    }
+
+    public function batches(): BatchesRepositoryContract
+    {
+        return app(BatchesRepositoryContract::class);
+    }
+
+    public function realtimeSessions(): RealtimeSessionsRepositoryContract
+    {
+        return app(RealtimeSessionsRepositoryContract::class);
+    }
+
+    public function vectorStores(): VectorStoresRepositoryContract
+    {
+        return app(VectorStoresRepositoryContract::class);
+    }
+
+    public function vectorStoreFiles(): VectorStoreFilesRepositoryContract
+    {
+        return app(VectorStoreFilesRepositoryContract::class);
+    }
+
+    public function vectorStoreFileBatches(): VectorStoreFileBatchesRepositoryContract
+    {
+        return app(VectorStoreFileBatchesRepositoryContract::class);
+    }
+
+    public function assistants(): AssistantsRepositoryContract
+    {
+        return app(AssistantsRepositoryContract::class);
+    }
+
+    public function files(): FilesRepositoryContract
+    {
+        return app(FilesRepositoryContract::class);
     }
 
     /**
@@ -134,7 +182,7 @@ final class AiManager
         if ($transport === Transport::SYNC) {
             return $this->assistantService->completeSync($mode, $request);
         }
-        
+
         return $this->assistantService->completeStream($mode, $request);
     }
 

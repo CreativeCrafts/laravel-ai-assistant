@@ -28,4 +28,9 @@ final class FakeFilesRepository implements FilesRepositoryContract
         $this->deleted[] = $fileId;
         return true;
     }
+
+    public function content(string $fileId): array
+    {
+        return ['content' => '', 'content_type' => 'application/octet-stream'];
+    }
 }
