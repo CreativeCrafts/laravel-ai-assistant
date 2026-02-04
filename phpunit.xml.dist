@@ -7,6 +7,7 @@
   </testsuites>
   <php>
     <ini name="memory_limit" value="512M"/>
+    <ini name="error_reporting" value="E_ALL &amp; ~E_DEPRECATED &amp; ~E_USER_DEPRECATED"/>
   </php>
   <coverage>
     <report>
