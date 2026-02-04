@@ -58,6 +58,7 @@
     "test": "vendor/bin/pest",
     "test-coverage": "vendor/bin/pest --coverage",
     "test-mutation": "vendor/bin/infection",
+    "fix": "vendor/bin/pint --dirty",
     "format": "vendor/bin/pint",
     "check-deps": "composer outdated --direct",
     "validate-composer": "composer validate --strict",
