@@ -7,6 +7,8 @@ namespace CreativeCrafts\LaravelAiAssistant\Transport;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MaxRetryAttemptsExceededException;
 use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\TransferException;
 use JsonException;
 use Psr\Http\Message\ResponseInterface;
 use SplFileInfo;
@@ -237,13 +239,16 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
             $this->throwForError($res);
         }
         $body = $res->getBody();
+        $buffer = '';
         while (!$body->eof()) {
             $chunk = $body->read(1024);
             if ($chunk === '') {
                 continue;
             }
-            $lines = preg_split('/\r?\n/', $chunk);
+            $buffer .= $chunk;
+            $lines = preg_split('/\r?\n/', $buffer);
             if ($lines !== false) {
+                $buffer = (string)array_pop($lines);
                 foreach ($lines as $line) {
                     if ($line === '') {
                         continue;
@@ -251,6 +256,10 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
                     yield $line;
                 }
             }
+        }
+        $remaining = trim($buffer);
+        if ($remaining !== '') {
+            yield $remaining;
         }
     }
 
@@ -318,6 +327,7 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         $lastException = null;
         $lastResponse = null;
         $url = $this->endpoint($path);
+        $canRetry = $enabled && ($idempotent || $this->isSafeMethod($method));
 
         do {
             $attempt++;
@@ -330,12 +340,12 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
                     $res = $this->http->request($method, $url, $options);
                 }
                 $lastResponse = $res;
-                if (!$enabled || $attempt >= $maxAttempts || !$this->isRetryableResponse($res)) {
+                if (!$canRetry || $attempt >= $maxAttempts || !$this->isRetryableResponse($res)) {
                     return $res;
                 }
             } catch (Throwable $e) {
                 $lastException = $e;
-                if (!$enabled || $attempt >= $maxAttempts || !$this->isRetryableException($e)) {
+                if (!$canRetry || $attempt >= $maxAttempts || !$this->isRetryableException($e)) {
                     throw new ApiResponseValidationException($e->getMessage() ?: 'Transport error during OpenAI request.', Http::HTTP_BAD_GATEWAY);
                 }
             }
@@ -447,7 +457,7 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
 
     private function isRetryableException(Throwable $e): bool
     {
-        return true;
+        return $e instanceof ConnectException || $e instanceof TransferException;
     }
 
     private function computeDelay(int $attempt, float $initial, float $multiplier, float $max, bool $jitter): float
@@ -481,11 +491,24 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
             return ['text' => $body];
         }
 
-        $data = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        if (0 === mb_stripos($contentType, 'audio/') || 0 === mb_stripos($contentType, 'application/octet-stream')) {
+            return [
+                'content' => $body,
+                'content_type' => $contentType,
+            ];
+        }
+
+        $data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
         if (!is_array($data)) {
             throw new ApiResponseValidationException('Unexpected response format from OpenAI.');
         }
         return $data;
+    }
+
+    private function isSafeMethod(string $method): bool
+    {
+        $upper = strtoupper($method);
+        return $upper === 'GET' || $upper === 'HEAD';
     }
 
     private function resolveSseTimeout(?float $timeout): float

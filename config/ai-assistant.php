@@ -621,6 +621,8 @@ return [
         // Signature and timestamp headers are configurable; defaults follow OpenAI style
         'signature_header' => env('AI_WEBHOOKS_SIGNATURE_HEADER', 'X-OpenAI-Signature'),
         'timestamp_header' => env('AI_WEBHOOKS_TIMESTAMP_HEADER', 'X-OpenAI-Timestamp'),
+        // Enforce timestamp verification; when true, legacy signature fallback is disabled
+        'require_timestamp' => env('AI_WEBHOOKS_REQUIRE_TIMESTAMP', false),
         // Maximum allowed clock skew (seconds) for replay protection
         'max_skew_seconds' => env('AI_WEBHOOKS_MAX_SKEW_SECONDS', 300), // 5 minutes
         'route' => [

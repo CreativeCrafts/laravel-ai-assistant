@@ -122,9 +122,8 @@ class CoreServiceProvider extends ServiceProvider
                         if ($parallel) {
                             Log::info('[AI Assistant] Queue executor: dispatch async tool job', ['tool' => $name]);
                             // Fire-and-forget; we cannot collect results in true async without extra storage.
-                            // For SDK determinism, we still return the immediate inline result to the caller.
                             Bus::dispatch(new ExecuteToolCallJob($name, $args));
-                            return $fn($args);
+                            return ['queued' => true, 'tool' => $name];
                         }
                         Log::info('[AI Assistant] Queue executor: dispatch sync tool job', ['tool' => $name]);
                         return Bus::dispatchSync(

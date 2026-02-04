@@ -63,6 +63,7 @@ readonly class WebhookController
 
         $signatureHeader = Config::string(key: 'ai-assistant.webhooks.signature_header', default: 'X-OpenAI-Signature');
         $timestampHeader = Config::string(key: 'ai-assistant.webhooks.timestamp_header', default: 'X-OpenAI-Timestamp');
+        $requireTimestamp = Config::boolean(key: 'ai-assistant.webhooks.require_timestamp', default: false);
 
         $provided = (string) $request->header($signatureHeader, '');
         if ($provided === '') {
@@ -72,6 +73,12 @@ readonly class WebhookController
             );
         }
         $timestamp = (string) $request->header($timestampHeader, '');
+        if ($requireTimestamp && ($timestamp === '' || !ctype_digit($timestamp))) {
+            return response()->json(
+                data: ['error' => 'Missing or invalid timestamp'],
+                status: Response::HTTP_UNAUTHORIZED
+            );
+        }
 
         $raw = $request->getContent();
         // Header may be in format "sha256=..." or raw hex
@@ -91,6 +98,10 @@ readonly class WebhookController
                 $expected = hash_hmac('sha256', $toSign, $secret);
                 $verified = hash_equals($expected, $normalized);
             }
+        }
+
+        if (!$verified && $requireTimestamp) {
+            return response()->json(['error' => 'Invalid signature'], Response::HTTP_UNAUTHORIZED);
         }
 
         if (!$verified) {

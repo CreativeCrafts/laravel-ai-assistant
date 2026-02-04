@@ -161,7 +161,7 @@ describe('Performance Optimization', function () {
             $size = 10485760; // 10MB
             file_put_contents($tempFile, str_repeat('x', $size));
 
-            $builder->addFile('file', $tempFile, null, null, null);
+            $builder->addFile('file', $tempFile, null, 'application/octet-stream', null);
 
             expect($builder->getTotalRequestSize())->toBe($size);
 
