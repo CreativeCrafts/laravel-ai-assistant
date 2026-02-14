@@ -1,0 +1,6 @@
+# Proposed Follow-up Tasks
+
+- **Fix typo in audio guide**: Correct the misspelled heading "Audio Transcription Migraiton" in `docs/AUDIO_MIGRATION.md` to "Audio Transcription Migration" to keep the documentation professional and clear.
+- **Fix routing bug for vision input**: Tighten `RequestRouter::hasImageInput()` so it actually verifies the expected `input_image`/`input_text` content shape before selecting the Response API vision path; currently it returns true for any input array and can misroute unrelated requests. 【F:src/Services/RequestRouter.php†L262-L283】
+- **Align comments with behavior**: Update the `hasImageInput` docblock to match the real validation rules once fixed; today it claims the input must contain both text and image content but the implementation only checks for `role` and `content`, leading to misleading internal documentation. 【F:src/Services/RequestRouter.php†L262-L283】
+- **Improve builder chain test**: Strengthen `tests/Feature/UnifiedApiBuilderChainTest.php` by asserting the returned response actually reflects the audio payload (e.g., includes a mock transcript), not just that a non-null response was returned, to ensure the builder forwards state correctly. 【F:tests/Feature/UnifiedApiBuilderChainTest.php†L122-L146】
