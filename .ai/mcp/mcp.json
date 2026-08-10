@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "laravel-boost": {
+      "command": "/Users/prince/Library/Application Support/Herd/bin/php83",
+      "args": [
+        "/Users/prince/Projects/CreativeCrafts/packages/laravel-ai-assistant/artisan",
+        "boost:mcp"
+      ]
+    },
+    "herd": {
+      "command": "/Users/prince/Library/Application Support/Herd/bin/php83",
+      "args": [
+        "/Applications/Herd.app/Contents/Resources/herd-mcp.phar"
+      ],
+      "env": {
+        "SITE_PATH": "/Users/prince/Projects/CreativeCrafts/packages/laravel-ai-assistant"
+      }
+    }
+  }
+}
