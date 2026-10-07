@@ -40,6 +40,11 @@ final class MultipartFormData
             }
 
             if (in_array($name, $fileFields, true)) {
+                // Some file fields also accept a reference object instead of bytes, e.g. ['file_id' => ...]
+                if (is_array($value) && !array_is_list($value) && !array_key_exists('contents', $value)) {
+                    self::addField($parts, $name, $value);
+                    continue;
+                }
                 if (is_array($value) && array_is_list($value)) {
                     foreach ($value as $file) {
                         $parts[] = self::filePart($name . '[]', $file);

@@ -63,6 +63,20 @@ it('keeps explicit parts and raw contents', function () {
     ])->and($parts[1]['contents'])->toBe($stream);
 });
 
+it('encodes reference objects given for file fields as nested fields', function () {
+    $parts = MultipartFormData::encode([
+        'prompt' => 'Make it rain',
+        'video' => ['id' => 'video_123'],
+        'input_reference' => ['image_url' => 'https://example.com/a.png'],
+    ], ['video', 'input_reference']);
+
+    expect($parts)->toBe([
+        ['name' => 'prompt', 'contents' => 'Make it rain'],
+        ['name' => 'video[id]', 'contents' => 'video_123'],
+        ['name' => 'input_reference[image_url]', 'contents' => 'https://example.com/a.png'],
+    ]);
+});
+
 it('throws for missing files', function () {
     MultipartFormData::encode(['file' => '/does/not/exist.mp3'], ['file']);
 })->throws(FileValidationException::class, 'File not found');

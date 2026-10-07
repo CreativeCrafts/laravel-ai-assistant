@@ -12,7 +12,8 @@ use Generator;
  *
  * Each "data:" frame carries one JSON document; continuation lines are buffered until the
  * document is complete. When a payload has no "type" property but its frame was preceded by an
- * "event:" line, the event name is used as the type. The "[DONE]" sentinel ends the stream.
+ * "event:" line, the event name is used as the type. Data that is not JSON is yielded as
+ * ['data' => string] instead of being dropped. The "[DONE]" sentinel ends the stream.
  *
  * @internal Used by the HTTP repositories for streaming endpoints.
  */
@@ -33,8 +34,12 @@ final class ServerSentEvents
             $line = rtrim($line, "\r\n");
 
             if ($line === '') {
+                // A blank line ends the frame (most transports strip these; handle them when present)
+                if ($buffer !== '') {
+                    yield ['data' => $buffer];
+                    $buffer = '';
+                }
                 $event = null;
-                $buffer = '';
                 continue;
             }
 
@@ -56,30 +61,67 @@ final class ServerSentEvents
                 $data = substr($data, 1);
             }
 
-            if ($buffer === '' && trim($data) === '[DONE]') {
+            if (trim($data) === '[DONE]') {
+                if ($buffer !== '') {
+                    yield ['data' => $buffer];
+                }
                 return;
             }
 
-            $buffer = $buffer === '' ? $data : $buffer . "\n" . $data;
-            $decoded = json_decode($buffer, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                if (strlen($buffer) > self::MAX_BUFFER_BYTES) {
+            if ($buffer !== '') {
+                $combined = $buffer . "\n" . $data;
+                if (self::isJson($combined)) {
                     $buffer = '';
+                    yield self::event($combined, $event);
+                    $event = null;
+                    continue;
                 }
+
+                if (!self::isJson($data)) {
+                    $buffer = strlen($combined) > self::MAX_BUFFER_BYTES ? '' : $combined;
+                    continue;
+                }
+
+                // The buffered data never became valid JSON; surface it and start over with this frame
+                yield ['data' => $buffer];
+                $buffer = '';
+            }
+
+            if (!self::isJson($data)) {
+                $buffer = $data;
                 continue;
             }
 
-            $buffer = '';
-            if (!is_array($decoded)) {
-                $decoded = ['data' => $decoded];
-            }
-            if (!isset($decoded['type']) && $event !== null && $event !== '') {
-                $decoded['type'] = $event;
-            }
+            yield self::event($data, $event);
             $event = null;
-
-            /** @var array<string, mixed> $decoded */
-            yield $decoded;
         }
+
+        if ($buffer !== '') {
+            yield ['data' => $buffer];
+        }
+    }
+
+    private static function isJson(string $data): bool
+    {
+        json_decode($data);
+
+        return json_last_error() === JSON_ERROR_NONE;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function event(string $json, ?string $event): array
+    {
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            $decoded = ['data' => $decoded];
+        }
+        if (!isset($decoded['type']) && $event !== null && $event !== '') {
+            $decoded['type'] = $event;
+        }
+
+        /** @var array<string, mixed> $decoded */
+        return $decoded;
     }
 }

@@ -37,6 +37,20 @@ it('stops at the DONE sentinel and ignores comments and ids', function () {
     expect($events)->toBe([['type' => 'a']]);
 });
 
+it('surfaces non-JSON data without losing the following events', function () {
+    $events = iterator_to_array(ServerSentEvents::decode([
+        'data: keep-alive',
+        'data: {"type":"transcript.text.done","text":"Hi"}',
+        'data: trailing',
+    ]), false);
+
+    expect($events)->toBe([
+        ['data' => 'keep-alive'],
+        ['type' => 'transcript.text.done', 'text' => 'Hi'],
+        ['data' => 'trailing'],
+    ]);
+});
+
 it('buffers JSON documents split across data lines', function () {
     $events = iterator_to_array(ServerSentEvents::decode([
         'data: {"type":"transcript.text.segment",',

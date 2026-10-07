@@ -83,12 +83,22 @@ final readonly class UploadsHttpRepository extends AbstractHttpRepository implem
                 }
             }
         } catch (Throwable $e) {
-            $this->cancel($uploadId);
+            try {
+                $this->cancel($uploadId);
+            } catch (Throwable) {
+                // Keep the original failure; an unfinished upload expires on its own after an hour
+            }
             throw $e;
         } finally {
             fclose($handle);
         }
 
-        return $this->complete($uploadId, ['part_ids' => $partIds, 'md5' => (string)md5_file($filePath)]);
+        $payload = ['part_ids' => $partIds];
+        $md5 = md5_file($filePath);
+        if ($md5 !== false) {
+            $payload['md5'] = $md5;
+        }
+
+        return $this->complete($uploadId, $payload);
     }
 }
