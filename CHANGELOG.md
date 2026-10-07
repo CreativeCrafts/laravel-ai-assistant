@@ -50,6 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Response input items are listed from `GET /v1/responses/{id}/input_items` (was the non-existent `/input/items`).
 - Webhook events in OpenAI's format (`data.id`) resolve the response id instead of the event id.
+- Streaming (`Ai::stream()`, `ChatSession::stream()`, `Ai::responses()->stream()`) emits text deltas as they arrive.
+  The SSE parser waited for the blank line between events, which the HTTP transport drops, so it produced a single
+  merged event at the end of the stream.
 
 ### Deprecated
 
