@@ -687,10 +687,16 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         }
 
         if ($this->isBinaryContentType($contentType)) {
-            return [
+            $decoded = [
                 'content' => $body,
                 'content_type' => $contentType,
             ];
+            // e.g. POST /v1/realtime/calls answers with the SDP and the new call in the Location header
+            if ($response->hasHeader('Location')) {
+                $decoded['location'] = $response->getHeaderLine('Location');
+            }
+
+            return $decoded;
         }
 
         $data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);

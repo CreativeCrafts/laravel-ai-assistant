@@ -49,6 +49,11 @@ final readonly class VectorStoresHttpRepository implements VectorStoresRepositor
         return $this->transport->getJson($this->endpoint('vector_stores') . $query, self::BETA_HEADER);
     }
 
+    public function search(string $vectorStoreId, array $payload): array
+    {
+        return $this->transport->postJson($this->endpoint("vector_stores/{$vectorStoreId}/search"), $payload, self::BETA_HEADER);
+    }
+
     private function endpoint(string $path): string
     {
         $prefix = rtrim($this->basePath, '/');

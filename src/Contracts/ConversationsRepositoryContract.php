@@ -57,9 +57,17 @@ interface ConversationsRepositoryContract
      *
      * @param string $conversationId
      * @param array $items
+     * @param array<string, mixed> $params Optional query parameters, e.g. ['include' => ['message.output_text.logprobs']]
      * @return array
      */
-    public function createItems(string $conversationId, array $items): array;
+    public function createItems(string $conversationId, array $items, array $params = []): array;
+
+    /**
+     * Retrieve a single item from a conversation (GET /v1/conversations/{id}/items/{item_id}).
+     *
+     * @param array<string, mixed> $params Optional query parameters, e.g. ['include' => [...]]
+     */
+    public function getItem(string $conversationId, string $itemId, array $params = []): array;
 
     /**
      * Delete a single item from a conversation.

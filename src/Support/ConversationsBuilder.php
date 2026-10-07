@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Support;
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
@@ -66,6 +67,61 @@ final class ConversationsBuilder
         return $this->service->listConversationItems($conv, $params);
     }
 
+    /**
+     * Retrieve the active conversation.
+     */
+    public function retrieve(): array
+    {
+        return $this->repository()->getConversation($this->ensureConversationId());
+    }
+
+    /**
+     * Replace the metadata of the active conversation.
+     *
+     * @param array<string,mixed> $metadata
+     */
+    public function update(array $metadata): array
+    {
+        return $this->repository()->updateConversation($this->ensureConversationId(), ['metadata' => $metadata]);
+    }
+
+    /**
+     * Delete the active conversation (its items are deleted with it).
+     */
+    public function delete(): bool
+    {
+        return $this->repository()->deleteConversation($this->ensureConversationId());
+    }
+
+    /**
+     * Retrieve a single item of the active conversation.
+     *
+     * @param array<string,mixed> $params Optional query parameters, e.g. ['include' => [...]]
+     */
+    public function item(string $itemId, array $params = []): array
+    {
+        return $this->repository()->getItem($this->ensureConversationId(), $itemId, $params);
+    }
+
+    /**
+     * Add items (messages, tool outputs, ...) to the active conversation without generating a response.
+     *
+     * @param array<int,array<string,mixed>> $items
+     * @param array<string,mixed> $params Optional query parameters, e.g. ['include' => [...]]
+     */
+    public function addItems(array $items, array $params = []): array
+    {
+        return $this->repository()->createItems($this->ensureConversationId(), $items, $params);
+    }
+
+    /**
+     * Delete a single item from the active conversation.
+     */
+    public function deleteItem(string $itemId): bool
+    {
+        return $this->repository()->deleteItem($this->ensureConversationId(), $itemId);
+    }
+
     public function input(): InputItemsBuilder
     {
         return $this->input;
@@ -102,6 +158,11 @@ final class ConversationsBuilder
         $conv = $this->ensureConversationId();
         return (new ResponsesBuilder($this->service, $this->router, $this->adapterFactory))
             ->inConversation($conv);
+    }
+
+    private function repository(): ConversationsRepositoryContract
+    {
+        return app(ConversationsRepositoryContract::class);
     }
 
     private function ensureConversationId(): string

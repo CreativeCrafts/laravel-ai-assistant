@@ -20,6 +20,7 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionRequest;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionResult;
 use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
 use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
+use CreativeCrafts\LaravelAiAssistant\Services\Concerns\ProvidesApiResources;
 use CreativeCrafts\LaravelAiAssistant\Support\ConversationsBuilder;
 use CreativeCrafts\LaravelAiAssistant\Support\DiarizationBuilder;
 use CreativeCrafts\LaravelAiAssistant\Support\ResponsesBuilder;
@@ -31,6 +32,8 @@ use SplFileInfo;
 
 final class AiManager
 {
+    use ProvidesApiResources;
+
     private readonly RequestRouter $router;
     private readonly AdapterFactory $adapterFactory;
 

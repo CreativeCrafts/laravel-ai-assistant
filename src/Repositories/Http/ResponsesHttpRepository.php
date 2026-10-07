@@ -7,6 +7,8 @@ namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MaxRetryAttemptsExceededException;
+use CreativeCrafts\LaravelAiAssistant\Support\QueryString;
+use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use Illuminate\Support\Facades\Config;
 use JsonException;
@@ -79,18 +81,36 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
      * to fetch the response details as an associative array.
      *
      * @param string $responseId The unique identifier of the response to retrieve
+     * @param array<string, mixed> $params Optional query parameters (include[], include_obfuscation, starting_after)
      * @return array The response data as an associative array containing the AI response details
      * @throws ApiResponseValidationException When the API returns an error response (status >= 400) or when the response format is invalid
      * @throws MaxRetryAttemptsExceededException When the maximum number of retry attempts is exceeded due to transport errors
      * @throws JsonException When the response body cannot be decoded as valid JSON
      */
-    public function getResponse(string $responseId): array
+    public function getResponse(string $responseId, array $params = []): array
     {
         $timeout = Config::integer(key: 'ai-assistant.responses.timeout', default: 120);
         if (!is_numeric($timeout)) {
             $timeout = 120;
         }
-        return $this->transport->getJson($this->endpoint("responses/{$responseId}"), timeout: (float)$timeout);
+        return $this->transport->getJson(QueryString::append($this->endpoint("responses/{$responseId}"), $params), timeout: (float)$timeout);
+    }
+
+    public function resumeStream(string $responseId, array $params = []): iterable
+    {
+        yield from ServerSentEvents::decode($this->transport->streamRequest('GET', $this->endpoint("responses/{$responseId}"), [
+            'query' => array_merge($params, ['stream' => true]),
+        ]));
+    }
+
+    public function compactResponse(array $payload): array
+    {
+        return $this->transport->request('POST', $this->endpoint('responses/compact'), ['json' => $payload]);
+    }
+
+    public function countInputTokens(array $payload): array
+    {
+        return $this->transport->request('POST', $this->endpoint('responses/input_tokens'), ['json' => $payload]);
     }
 
     /**

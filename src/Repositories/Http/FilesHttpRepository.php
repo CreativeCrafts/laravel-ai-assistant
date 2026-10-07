@@ -7,6 +7,8 @@ namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
+use CreativeCrafts\LaravelAiAssistant\Support\MultipartFormData;
+use CreativeCrafts\LaravelAiAssistant\Support\QueryString;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use JsonException;
 
@@ -31,14 +33,15 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
      * @param string $filePath The absolute or relative path to the file to be uploaded.
      *                         The file must be readable and accessible to the current process.
      * @param string $purpose The intended purpose for the uploaded file. Defaults to 'assistants'.
-     *                        Allowed values include 'assistants', 'batch', 'fine-tune', 'vision', 'user_data'.
+     *                        Allowed values include 'assistants', 'batch', 'fine-tune', 'vision', 'user_data', 'evals'.
+     * @param array $params Extra form fields, e.g. ['expires_after' => ['anchor' => 'created_at', 'seconds' => 3600]].
      * @return array The decoded JSON response from the OpenAI API containing file metadata,
      *               including the file ID, filename, purpose, and other file properties.
      * @throws FileOperationException If the file is not readable or cannot be opened for reading.
      * @throws ApiResponseValidationException If the API response indicates an error or contains invalid data, or on transport/network errors.
      * @throws JsonException If the API response cannot be decoded as valid JSON.
      */
-    public function upload(string $filePath, string $purpose = 'assistants'): array
+    public function upload(string $filePath, string $purpose = 'assistants', array $params = []): array
     {
         if (!is_readable($filePath)) {
             throw new FileOperationException("File not readable: {$filePath}");
@@ -76,10 +79,28 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
             $filePart['content_type'] = $mime;
         }
 
-        return $this->transport->postMultipart($this->endpoint('files'), [
-            'file' => $filePart,
-            'purpose' => $purpose,
-        ]);
+        $fields = [
+            MultipartFormData::filePart('file', $filePart),
+            ['name' => 'purpose', 'contents' => $purpose],
+        ];
+        foreach (MultipartFormData::encode($params) as $part) {
+            $fields[] = $part;
+        }
+
+        return $this->transport->postMultipart($this->endpoint('files'), $fields);
+    }
+
+    /**
+     * Lists files that belong to the organization, optionally filtered by purpose.
+     *
+     * @param array $params Query parameters (purpose, limit, after, order).
+     * @return array The decoded list response.
+     * @throws ApiResponseValidationException If the API response indicates an error or the response format is invalid.
+     * @throws JsonException
+     */
+    public function list(array $params = []): array
+    {
+        return $this->transport->getJson(QueryString::append($this->endpoint('files'), $params));
     }
 
     /**

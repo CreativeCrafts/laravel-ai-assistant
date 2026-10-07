@@ -18,4 +18,12 @@ interface VectorStoresRepositoryContract
     public function delete(string $vectorStoreId): bool;
 
     public function list(array $params = []): array;
+
+    /**
+     * Search a vector store for relevant chunks based on a query and file attributes filter
+     * (POST /v1/vector_stores/{id}/search).
+     *
+     * @param array<string, mixed> $payload e.g. ['query' => 'refund policy', 'max_num_results' => 5, 'filters' => [...]]
+     */
+    public function search(string $vectorStoreId, array $payload): array;
 }

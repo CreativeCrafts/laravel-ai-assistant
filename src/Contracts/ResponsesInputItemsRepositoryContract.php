@@ -13,6 +13,9 @@ interface ResponsesInputItemsRepositoryContract
     /**
      * Append input items to a response.
      *
+     * @deprecated The OpenAI API has no endpoint for appending input items to an existing response.
+     *             Send the items with the next Ai::responses() turn or add them to a conversation instead.
+     *
      * @param string $responseId
      * @param array $items
      * @return array
@@ -20,7 +23,7 @@ interface ResponsesInputItemsRepositoryContract
     public function append(string $responseId, array $items): array;
 
     /**
-     * List input items for a response.
+     * List the input items used to generate a response (GET /v1/responses/{id}/input_items).
      *
      * @param string $responseId
      * @param array $params

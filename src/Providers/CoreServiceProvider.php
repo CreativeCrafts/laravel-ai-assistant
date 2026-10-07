@@ -73,6 +73,10 @@ class CoreServiceProvider extends ServiceProvider
             if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
                 $headers['OpenAI-Organization'] = $org;
             }
+            $project = config('ai-assistant.project');
+            if (is_string($project) && $project !== '') {
+                $headers['OpenAI-Project'] = $project;
+            }
 
             $timeout = config('ai-assistant.responses.timeout', 120);
             if (!is_numeric($timeout)) {
@@ -103,6 +107,10 @@ class CoreServiceProvider extends ServiceProvider
             ];
             if (is_string($org) && $org !== '' && $org !== 'YOUR_OPENAI_ORGANIZATION' && $org !== 'your-organization-id-here') {
                 $headers['OpenAI-Organization'] = $org;
+            }
+            $project = config('ai-assistant.project');
+            if (is_string($project) && $project !== '') {
+                $headers['OpenAI-Project'] = $project;
             }
 
             $timeout = config('ai-assistant.responses.timeout', 120);
