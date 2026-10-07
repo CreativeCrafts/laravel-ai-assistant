@@ -6,6 +6,8 @@ namespace CreativeCrafts\LaravelAiAssistant\Transport;
 
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MaxRetryAttemptsExceededException;
+use CreativeCrafts\LaravelAiAssistant\Support\QueryString;
+use Generator;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\TransferException;
@@ -72,6 +74,187 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
             } else {
                 $headers['Idempotency-Key'] = $headers['Idempotency-Key'] ?? $this->generateIdempotencyKey();
             }
+        }
+
+        $multipart = $this->buildMultipart($fields);
+
+        $options = [
+            'headers' => $headers,
+            'multipart' => $multipart,
+            'timeout' => $timeout,
+        ];
+
+        if ($progressCallback !== null) {
+            $options['progress'] = $progressCallback;
+        }
+
+        $res = $this->requestWithRetry('POST', $path, $options, $idempotent);
+        return $this->decodeOrFail($res);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function getJson(string $path, array $headers = [], ?float $timeout = null): array
+    {
+        $payload = [];
+        $headers = $this->prepareHeaders($headers, false, $payload, false);
+        $timeout = $this->resolveTimeout($timeout);
+        $options = [
+            'headers' => $headers,
+            'timeout' => $timeout,
+        ];
+        $res = $this->requestWithRetry('GET', $path, $options, false);
+        return $this->decodeOrFail($res);
+    }
+
+    public function getContent(string $path, array $headers = [], ?float $timeout = null): array
+    {
+        $timeout = $this->resolveTimeout($timeout);
+        $headers = ['Accept' => '*/*'] + $headers;
+        $options = [
+            'headers' => $headers,
+            'timeout' => $timeout,
+        ];
+        $res = $this->requestWithRetry('GET', $path, $options, false);
+        if ($res->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
+            $this->throwForError($res);
+        }
+
+        return [
+            'content' => (string)$res->getBody(),
+            'content_type' => $res->getHeaderLine('Content-Type'),
+        ];
+    }
+
+    public function streamSse(string $path, array $payload, array $headers = [], ?float $timeout = null, bool $idempotent = false): iterable
+    {
+        $headers = $this->prepareHeaders($headers + ['Accept' => 'text/event-stream'], true, $payload, $idempotent);
+        $timeout = $this->resolveSseTimeout($timeout);
+        $options = [
+            'headers' => $headers,
+            'json' => $payload + ['stream' => true],
+            'stream' => true,
+            'timeout' => $timeout,
+        ];
+        $res = $this->requestWithRetry('POST', $path, $options, $idempotent);
+        if ($res->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
+            $this->throwForError($res);
+        }
+
+        yield from $this->readSseLines($res);
+    }
+
+    public function request(string $method, string $path, array $options = []): array
+    {
+        [$method, $uri, $requestOptions, $idempotent] = $this->prepareRequest($method, $path, $options, false);
+        $res = $this->requestWithRetry($method, $uri, $requestOptions, $idempotent);
+
+        return $this->decodeOrFail($res);
+    }
+
+    public function streamRequest(string $method, string $path, array $options = []): iterable
+    {
+        [$method, $uri, $requestOptions, $idempotent] = $this->prepareRequest($method, $path, $options, true);
+        $res = $this->requestWithRetry($method, $uri, $requestOptions, $idempotent);
+        if ($res->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
+            $this->throwForError($res);
+        }
+
+        yield from $this->readSseLines($res);
+    }
+
+    /**
+     * Translate request() options into Guzzle request options.
+     *
+     * @param array{query?: array<string, mixed>, json?: array<mixed>, multipart?: array<mixed>, body?: string, headers?: array<string, string>, timeout?: float|null, idempotent?: bool} $options
+     * @return array{0: string, 1: string, 2: array<string, mixed>, 3: bool}
+     */
+    private function prepareRequest(string $method, string $path, array $options, bool $isStream): array
+    {
+        $method = strtoupper($method);
+        $idempotent = (bool)($options['idempotent'] ?? false);
+        $headers = $options['headers'] ?? [];
+        $headers += ['Accept' => $isStream ? 'text/event-stream' : 'application/json'];
+
+        $requestOptions = [];
+        if (isset($options['multipart'])) {
+            $fields = $options['multipart'];
+            if (isset($fields['_idempotency_key']) && is_string($fields['_idempotency_key'])) {
+                $headers['Idempotency-Key'] ??= $fields['_idempotency_key'];
+                unset($fields['_idempotency_key']);
+            }
+            $requestOptions['multipart'] = $this->buildMultipart($fields);
+        } elseif (isset($options['json'])) {
+            $payload = $options['json'];
+            $headers = $this->prepareHeaders($headers, $isStream, $payload, $idempotent);
+            $requestOptions['json'] = $payload;
+        } elseif (isset($options['body'])) {
+            $requestOptions['body'] = $options['body'];
+        }
+
+        if ($idempotent && (bool)config('ai-assistant.responses.idempotency_enabled', true)) {
+            $headers['Idempotency-Key'] ??= $this->generateIdempotencyKey();
+        }
+
+        $timeout = $options['timeout'] ?? null;
+        $requestOptions['headers'] = $headers;
+        $requestOptions['timeout'] = $isStream ? $this->resolveSseTimeout($timeout) : $this->resolveTimeout($timeout);
+        if ($isStream) {
+            $requestOptions['stream'] = true;
+        }
+
+        $uri = QueryString::append($path, $options['query'] ?? []);
+
+        return [$method, $uri, $requestOptions, $idempotent];
+    }
+
+    /**
+     * Read a streamed response body and yield non-empty SSE lines, buffering partial frames.
+     *
+     * @return Generator<int, string>
+     */
+    private function readSseLines(ResponseInterface $res): Generator
+    {
+        $body = $res->getBody();
+        $buffer = '';
+        while (!$body->eof()) {
+            $chunk = $body->read(1024);
+            if ($chunk === '') {
+                continue;
+            }
+            $buffer .= $chunk;
+            $lines = preg_split('/\r?\n/', $buffer);
+            if ($lines !== false) {
+                $buffer = (string)array_pop($lines);
+                foreach ($lines as $line) {
+                    if ($line === '') {
+                        continue;
+                    }
+                    yield $line;
+                }
+            }
+        }
+        $remaining = trim($buffer);
+        if ($remaining !== '') {
+            yield $remaining;
+        }
+    }
+
+    /**
+     * Build Guzzle multipart parts from either a name => value map or a list of explicit parts.
+     *
+     * Map entries keep their historical behavior: 'file' entries (paths, SplFileInfo, resources) become file
+     * parts, entries shaped like ['contents' => ..., 'filename' => ...] become explicit parts, and other
+     * non-scalar values are JSON encoded. A list of explicit parts ([['name' => ..., 'contents' => ...], ...])
+     * is passed through as-is, which allows repeated names such as known_speaker_names[].
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildMultipart(array $fields): array
+    {
+        if ($this->isExplicitPartList($fields)) {
+            return array_map(fn (array $part): array => $this->normalizeExplicitPart($part), $fields);
         }
 
         $multipart = [];
@@ -193,92 +376,60 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
             ];
         }
 
-        $options = [
-            'headers' => $headers,
-            'multipart' => $multipart,
-            'timeout' => $timeout,
-        ];
-
-        if ($progressCallback !== null) {
-            $options['progress'] = $progressCallback;
-        }
-
-        $res = $this->requestWithRetry('POST', $path, $options, $idempotent);
-        return $this->decodeOrFail($res);
+        return $multipart;
     }
 
     /**
-     * @throws JsonException
+     * @phpstan-assert-if-true list<array<string, mixed>> $fields
      */
-    public function getJson(string $path, array $headers = [], ?float $timeout = null): array
+    private function isExplicitPartList(array $fields): bool
     {
-        $payload = [];
-        $headers = $this->prepareHeaders($headers, false, $payload, false);
-        $timeout = $this->resolveTimeout($timeout);
-        $options = [
-            'headers' => $headers,
-            'timeout' => $timeout,
-        ];
-        $res = $this->requestWithRetry('GET', $path, $options, false);
-        return $this->decodeOrFail($res);
-    }
-
-    public function getContent(string $path, array $headers = [], ?float $timeout = null): array
-    {
-        $timeout = $this->resolveTimeout($timeout);
-        $headers = ['Accept' => '*/*'] + $headers;
-        $options = [
-            'headers' => $headers,
-            'timeout' => $timeout,
-        ];
-        $res = $this->requestWithRetry('GET', $path, $options, false);
-        if ($res->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
-            $this->throwForError($res);
+        if ($fields === [] || !array_is_list($fields)) {
+            return false;
         }
 
-        return [
-            'content' => (string)$res->getBody(),
-            'content_type' => $res->getHeaderLine('Content-Type'),
-        ];
-    }
-
-    public function streamSse(string $path, array $payload, array $headers = [], ?float $timeout = null, bool $idempotent = false): iterable
-    {
-        $headers = $this->prepareHeaders($headers + ['Accept' => 'text/event-stream'], true, $payload, $idempotent);
-        $timeout = $this->resolveSseTimeout($timeout);
-        $options = [
-            'headers' => $headers,
-            'json' => $payload + ['stream' => true],
-            'stream' => true,
-            'timeout' => $timeout,
-        ];
-        $res = $this->requestWithRetry('POST', $path, $options, $idempotent);
-        if ($res->getStatusCode() >= Http::HTTP_BAD_REQUEST) {
-            $this->throwForError($res);
-        }
-        $body = $res->getBody();
-        $buffer = '';
-        while (!$body->eof()) {
-            $chunk = $body->read(1024);
-            if ($chunk === '') {
-                continue;
-            }
-            $buffer .= $chunk;
-            $lines = preg_split('/\r?\n/', $buffer);
-            if ($lines !== false) {
-                $buffer = (string)array_pop($lines);
-                foreach ($lines as $line) {
-                    if ($line === '') {
-                        continue;
-                    }
-                    yield $line;
-                }
+        foreach ($fields as $part) {
+            if (!is_array($part) || !isset($part['name']) || !is_string($part['name']) || !array_key_exists('contents', $part)) {
+                return false;
             }
         }
-        $remaining = trim($buffer);
-        if ($remaining !== '') {
-            yield $remaining;
+
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $part
+     * @return array<string, mixed>
+     */
+    private function normalizeExplicitPart(array $part): array
+    {
+        $contents = $part['contents'];
+        if (is_bool($contents)) {
+            $contents = $contents ? 'true' : 'false';
+        } elseif (is_int($contents) || is_float($contents)) {
+            $contents = (string)$contents;
+        } elseif (is_array($contents)) {
+            $contents = (string)json_encode($contents);
         }
+
+        $normalized = [
+            'name' => $part['name'],
+            'contents' => $contents,
+        ];
+
+        if (isset($part['filename']) && is_string($part['filename']) && $part['filename'] !== '') {
+            $normalized['filename'] = $part['filename'];
+        }
+
+        $headers = isset($part['headers']) && is_array($part['headers']) ? $part['headers'] : [];
+        if (isset($part['content_type']) && is_string($part['content_type']) && $part['content_type'] !== '') {
+            $headers += ['Content-Type' => $part['content_type']];
+        }
+        if ($headers !== []) {
+            $normalized['headers'] = $headers;
+        }
+
+        return $normalized;
     }
 
     private function prepareHeaders(array $headers, bool $isStream, array &$payload, bool $idempotent): array
@@ -526,11 +677,16 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         $contentType = $response->getHeaderLine('Content-Type');
         $body = (string)$response->getBody();
 
-        if (0 === mb_stripos($contentType, 'text/plain')) {
+        // Some endpoints acknowledge with an empty body (e.g. 202 Accepted / 204 No Content)
+        if (trim($body) === '') {
+            return [];
+        }
+
+        if (0 === mb_stripos($contentType, 'text/') && 0 !== mb_stripos($contentType, 'text/event-stream')) {
             return ['text' => $body];
         }
 
-        if (0 === mb_stripos($contentType, 'audio/') || 0 === mb_stripos($contentType, 'application/octet-stream')) {
+        if ($this->isBinaryContentType($contentType)) {
             return [
                 'content' => $body,
                 'content_type' => $contentType,
@@ -542,6 +698,17 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
             throw new ApiResponseValidationException('Unexpected response format from OpenAI.');
         }
         return $data;
+    }
+
+    private function isBinaryContentType(string $contentType): bool
+    {
+        foreach (['audio/', 'video/', 'image/', 'application/octet-stream', 'application/sdp', 'application/binary', 'application/zip', 'application/pdf'] as $prefix) {
+            if (0 === mb_stripos($contentType, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isSafeMethod(string $method): bool

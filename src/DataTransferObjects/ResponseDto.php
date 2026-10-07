@@ -77,6 +77,16 @@ final readonly class ResponseDto
     }
 
     /**
+     * Speaker-annotated transcription when the request asked for diarization ('diarize' => true), otherwise null.
+     */
+    public function diarization(): ?DiarizedTranscription
+    {
+        return DiarizedTranscription::isDiarized($this->raw)
+            ? DiarizedTranscription::fromArray($this->raw)
+            : null;
+    }
+
+    /**
      * Save audio content to a file.
      *
      * @param string $path The full path where the audio file should be saved

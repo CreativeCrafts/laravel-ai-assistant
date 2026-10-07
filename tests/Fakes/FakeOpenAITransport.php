@@ -10,6 +10,12 @@ final class FakeOpenAITransport implements OpenAITransport
 {
     public array $responses = [];
 
+    /** @var array<string, array<int, string>> SSE lines returned by streamRequest(), keyed by path */
+    public array $streams = [];
+
+    /** @var array<int, array{method: string, path: string, options: array}> */
+    public array $requests = [];
+
     public function postJson(string $path, array $payload, array $headers = [], ?float $timeout = null, bool $idempotent = false): array
     {
         return $this->responses[$path] ?? ['id' => 'fake', 'object' => 'response', 'output' => [['content' => [['type' => 'output_text','text' => ['value' => 'ok']]]]]];
@@ -49,5 +55,19 @@ final class FakeOpenAITransport implements OpenAITransport
     public function delete(string $path, array $headers = [], ?float $timeout = null): bool
     {
         return true;
+    }
+
+    public function request(string $method, string $path, array $options = []): array
+    {
+        $this->requests[] = ['method' => $method, 'path' => $path, 'options' => $options];
+
+        return $this->responses[$path] ?? ['status' => 'ok'];
+    }
+
+    public function streamRequest(string $method, string $path, array $options = []): iterable
+    {
+        $this->requests[] = ['method' => $method, 'path' => $path, 'options' => $options];
+
+        return $this->streams[$path] ?? [];
     }
 }

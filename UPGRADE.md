@@ -5,6 +5,30 @@ For hands-on code examples, see `MIGRATION.md`.
 
 ---
 
+## Unreleased
+
+### Breaking changes
+
+1) **Custom transports must implement `request()` and `streamRequest()`**
+
+If you provide your own `OpenAITransport`, add:
+
+```php
+public function request(string $method, string $path, array $options = []): array;
+public function streamRequest(string $method, string $path, array $options = []): iterable;
+```
+
+`$options` may contain `query`, `json`, `multipart`, `body`, `headers`, `timeout` and `idempotent`.
+`request()` returns the decoded JSON body (`[]` for empty bodies, `['text' => ...]` for text bodies and
+`['content' => ..., 'content_type' => ...]` for binary bodies); `streamRequest()` yields raw SSE lines.
+
+### New capabilities
+
+- Speaker diarization (voice analysis) via `Ai::diarize()` and `'action' => 'diarize'` in the unified builder.
+- Low-level Audio API access via `Ai::audio()`.
+
+---
+
 ## 3.1 (2026-02-04)
 
 ### Breaking changes

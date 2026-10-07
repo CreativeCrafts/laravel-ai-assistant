@@ -12,6 +12,7 @@ Laravel AI Assistant is a production-ready Laravel package for OpenAI APIs. It u
 ## Highlights
 
 - One primary API: `Ai::responses()`
+- Voice analysis: identify who spoke when in a conversation (speaker diarization)
 - Automatic routing for audio and image operations
 - Streaming, tool calls, and structured output
 - Files, conversations, webhooks, and observability
@@ -143,6 +144,72 @@ $response = Ai::responses()
 $response->saveAudio(storage_path('audio/welcome.mp3'));
 ```
 
+### Voice Analysis (Speaker Diarization)
+
+Identify the different voices in a conversation and what each of them said, using OpenAI's
+`gpt-4o-transcribe-diarize` model. Speakers are labelled `A`, `B`, ... automatically, or with your own
+names when you provide a short (2–10 second) reference sample for up to four known speakers.
+
+```php
+$result = Ai::diarize(storage_path('calls/support-call.mp3'))
+    ->knownSpeaker('agent', storage_path('voices/agent.wav'))       // optional, max 4
+    ->knownSpeaker('customer', storage_path('voices/customer.wav'))
+    ->language('en')
+    ->send();
+
+$result->speakers();              // ['agent', 'customer']
+$result->segments;                // DiarizedSegment[]: speaker, start, end, text
+$result->textFor('customer');     // everything the customer said
+$result->speakingTime();          // ['agent' => 63.2, 'customer' => 41.0] (seconds)
+$result->speakingShare();         // ['agent' => 60.65, 'customer' => 39.35] (%)
+$result->dominantSpeaker();       // 'agent'
+$result->turns();                 // consecutive segments merged per speaker
+$result->toTranscript(true);      // "[00:00:01.200 - 00:00:04.500] agent: Thanks for calling..."
+$result->toWebVtt();              // captions with <v speaker> voice tags
+
+// No reference samples? Rename the automatic labels afterwards
+$named = Ai::diarize($path)->send()->renameSpeakers(['A' => 'Agent', 'B' => 'Customer']);
+```
+
+Recordings can come from any filesystem disk (e.g. S3) or a stream:
+
+```php
+Ai::diarize()->fromDisk('s3', 'calls/2026/10/call-123.ogg')->send();
+Ai::diarize($stream, 'call.webm')->send();
+```
+
+Stream speaker segments as soon as they are recognised (for example to broadcast them with Laravel Reverb):
+
+```php
+$stream = Ai::diarize($path)->stream(onDelta: fn (string $text, ?string $segmentId) => /* partial text */ null);
+
+foreach ($stream as $segment) {
+    broadcast(new SpeakerSegmentRecognised($segment->speaker, $segment->text));
+}
+
+$transcription = $stream->getReturn(); // the complete DiarizedTranscription
+```
+
+Diarization is also available through the unified builder:
+
+```php
+$response = Ai::responses()
+    ->input()
+    ->audio([
+        'file' => storage_path('calls/support-call.mp3'),
+        'action' => 'diarize',                               // or 'transcribe' + 'diarize' => true
+        'known_speakers' => ['agent' => storage_path('voices/agent.wav')],
+    ])
+    ->send();
+
+$response->metadata['speakers'];          // speaker labels, e.g. ['agent', ...]
+$response->diarization()?->toTranscript();
+```
+
+Recordings longer than 30 seconds are chunked automatically (`chunking_strategy: auto`); use
+`->serverVad(threshold: 0.6, silenceDurationMs: 500)` to tune voice activity detection. Supported
+formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav and webm (25 MB max).
+
 ### Images
 
 ```php
@@ -183,6 +250,14 @@ file_put_contents(storage_path('downloads/file.jsonl'), $content['content']);
 These are thin wrappers around OpenAI endpoints for advanced use cases.
 
 ```php
+// Audio (speech, transcriptions incl. diarization, translations, custom voices)
+$audio = Ai::audio()->createSpeech(['model' => 'gpt-4o-mini-tts', 'input' => 'Hello', 'voice' => 'marin']);
+file_put_contents(storage_path('hello.mp3'), $audio['content']);
+
+foreach (Ai::audio()->streamTranscription(['file' => $path, 'model' => 'gpt-4o-transcribe']) as $event) {
+    // transcript.text.delta / transcript.text.segment / transcript.text.done
+}
+
 // Moderations
 $result = Ai::moderations()->create([
     'input' => 'Check this content',

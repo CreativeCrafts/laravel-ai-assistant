@@ -210,7 +210,7 @@ return [
         /**
          * Supported audio file formats
          */
-        'supported_formats' => ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'],
+        'supported_formats' => ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'],
 
         /**
          * Timeout settings for audio endpoints (in seconds)

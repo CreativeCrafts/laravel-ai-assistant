@@ -107,7 +107,7 @@ final class AudioTranslationAdapter implements AudioEndpointAdapter
             throw FileValidationException::fileNotReadable($filePath);
         }
 
-        $supportedFormats = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'];
+        $supportedFormats = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'];
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         if (!in_array($extension, $supportedFormats, true)) {

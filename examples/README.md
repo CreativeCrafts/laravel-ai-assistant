@@ -43,6 +43,7 @@ php examples/05-audio-transcription.php
 php examples/06-audio-speech.php
 php examples/07-image-generation.php
 php examples/08-unified-api.php
+php examples/09-speaker-diarization.php
 ```
 
 ## Examples Overview
@@ -292,6 +293,32 @@ Multi-Step Workflow:
 ```
 
 **Note**: This example showcases the SSOT architecture where a single API intelligently delegates to different OpenAI endpoints based on input type.
+
+---
+
+### 09. Speaker Diarization (`09-speaker-diarization.php`)
+
+**Purpose**: Voice analysis — identify the different voices in a conversation recording.
+
+**What you'll learn**:
+- Splitting a conversation into speaker-labelled segments with `Ai::diarize()`
+- Naming speakers from 2–10 second reference samples (up to four known speakers)
+- Speaking time, talk share, turns and the dominant speaker
+- Rendering a transcript or WebVTT captions with speaker voice tags
+- Streaming speaker segments as they are recognised
+- Diarizing through the unified `Ai::responses()` builder (`'action' => 'diarize'`)
+
+**Time**: ~3 minutes
+
+**Example output**:
+```
+=== Laravel AI Assistant: Speaker Diarization ===
+
+1. Identify the speakers in a conversation
+Speakers: A, B
+[  0.00s -   2.50s] A: Thanks for calling, how can I help?
+[  2.80s -   6.00s] B: My order is late.
+```
 
 ---
 

@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Facades;
 
 use CreativeCrafts\LaravelAiAssistant\Chat\ChatSession;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\AudioRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\BatchesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ModerationsRepositoryContract;
@@ -20,6 +21,7 @@ use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
 use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
 use CreativeCrafts\LaravelAiAssistant\Services\AiManager;
 use CreativeCrafts\LaravelAiAssistant\Support\ConversationsBuilder;
+use CreativeCrafts\LaravelAiAssistant\Support\DiarizationBuilder;
 use CreativeCrafts\LaravelAiAssistant\Support\ResponsesBuilder;
 use Generator;
 use Illuminate\Support\Facades\Facade;
@@ -38,6 +40,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static VectorStoreFileBatchesRepositoryContract vectorStoreFileBatches()
  * @method static AssistantsRepositoryContract assistants()
  * @method static FilesRepositoryContract files()
+ * @method static AudioRepositoryContract audio()
+ * @method static DiarizationBuilder diarize(mixed $file = null, ?string $filename = null)
  * @method static CompletionResult complete(Mode $mode, Transport $transport, CompletionRequest $request)
  * @see AiManager
  */

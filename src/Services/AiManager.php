@@ -7,6 +7,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
 use CreativeCrafts\LaravelAiAssistant\Chat\ChatSession;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\AudioRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\BatchesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ModerationsRepositoryContract;
@@ -20,11 +21,13 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\CompletionResult;
 use CreativeCrafts\LaravelAiAssistant\Enums\Mode;
 use CreativeCrafts\LaravelAiAssistant\Enums\Transport;
 use CreativeCrafts\LaravelAiAssistant\Support\ConversationsBuilder;
+use CreativeCrafts\LaravelAiAssistant\Support\DiarizationBuilder;
 use CreativeCrafts\LaravelAiAssistant\Support\ResponsesBuilder;
 use Exception;
 use Generator;
 use JsonException;
 use Psr\SimpleCache\InvalidArgumentException;
+use SplFileInfo;
 
 final class AiManager
 {
@@ -102,6 +105,31 @@ final class AiManager
     public function files(): FilesRepositoryContract
     {
         return app(FilesRepositoryContract::class);
+    }
+
+    /**
+     * Low-level Audio API: speech, transcriptions (incl. diarization), translations and custom voices.
+     */
+    public function audio(): AudioRepositoryContract
+    {
+        return app(AudioRepositoryContract::class);
+    }
+
+    /**
+     * Identify who spoke when in a conversation recording (speaker diarization).
+     *
+     * Examples:
+     *  Ai::diarize(storage_path('calls/support.mp3'))->send()->speakers();
+     *  Ai::diarize()->fromDisk('s3', 'calls/support.mp3')->knownSpeaker('agent', $sample)->send();
+     *
+     * @param string|SplFileInfo|resource|null $file Local path, SplFileInfo or stream resource
+     * @param string|null $filename Filename hint for stream resources (e.g. 'call.mp3')
+     */
+    public function diarize(mixed $file = null, ?string $filename = null): DiarizationBuilder
+    {
+        $builder = new DiarizationBuilder(app(AudioRepositoryContract::class));
+
+        return $file === null ? $builder : $builder->file($file, $filename);
     }
 
     /**

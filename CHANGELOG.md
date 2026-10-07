@@ -5,6 +5,35 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Voice analysis: speaker diarization with OpenAI's `gpt-4o-transcribe-diarize` model.
+  - `Ai::diarize($file)` fluent builder: known speakers from 2–10 second reference samples (max 4), language,
+    temperature, automatic or server-VAD chunking, recordings from paths, streams or filesystem disks (`fromDisk()`).
+  - `DiarizedTranscription` result: `speakers()`, `segmentsFor()`, `textFor()`, `speakingTime()`, `speakingShare()`,
+    `dominantSpeaker()`, `turns()`, `renameSpeakers()`, `toTranscript()`, `toWebVtt()`.
+  - Streaming diarization: `->stream()` yields `DiarizedSegment` objects as soon as each speaker segment is final.
+  - Unified builder support: `->input()->audio(['file' => ..., 'action' => 'diarize', 'known_speakers' => [...]])`,
+    with speakers, speaking time and segments in the response metadata and `ResponseDto::diarization()`.
+- `Ai::audio()` low-level Audio API repository: speech (incl. SSE streaming), transcriptions (incl. streaming),
+  translations and custom voice creation (`POST /v1/audio/voices`).
+- `OpenAITransport::request()` and `streamRequest()` for any HTTP method with JSON, multipart or raw bodies,
+  OpenAI-style query encoding and SSE streaming (including multipart uploads).
+
+### Changed
+
+- Multipart array fields are sent with OpenAI's form encoding (`name[]`, `name[key]`) instead of JSON strings.
+- Transport responses: empty bodies decode to `[]`; `video/*`, `image/*`, `application/sdp` and other binary
+  bodies are returned as `content` + `content_type`; all `text/*` bodies are returned as `text`.
+- Audio transcription and translation accept `flac` and `ogg` recordings.
+- Audio transcription and translation requests honor `ai-assistant.audio.timeouts.*`.
+
+### Breaking
+
+- Custom `OpenAITransport` implementations must implement `request()` and `streamRequest()`.
+
 ## [3.1] - 2026-02-04
 
 ### Added

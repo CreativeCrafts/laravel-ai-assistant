@@ -53,19 +53,29 @@ final class InputBuilder
      *
      * @param array<string,mixed> $config Audio configuration with keys:
      *   - file: string (path to audio file for transcription/translation)
-     *   - action: string (transcribe|translate|speech)
+     *   - action: string (transcribe|translate|speech|diarize)
      *   - text: string (text for speech generation)
-     *   - model: string (optional, e.g., whisper-1, tts-1)
+     *   - model: string (optional, e.g., whisper-1, tts-1, gpt-4o-transcribe-diarize)
      *   - voice: string (optional for speech: alloy|echo|fable|onyx|nova|shimmer)
      *   - language: string (optional for transcription)
-     *   - prompt: string (optional for transcription)
-     *   - response_format: string (optional: json|text|srt|verbose_json|vtt)
+     *   - prompt: string (optional for transcription; not supported when diarizing)
+     *   - response_format: string (optional: json|text|srt|verbose_json|vtt|diarized_json)
      *   - temperature: float (optional, 0-1)
      *   - speed: float (optional for speech, 0.25-4.0)
      *   - format: string (optional for speech: mp3|opus|aac|flac|wav|pcm)
+     *   - diarize: bool (optional for transcription: identify who spoke when; same as action "diarize")
+     *   - known_speakers: array (optional when diarizing: speaker name => 2-10 second reference sample path or data URL, max 4)
+     *   - chunking_strategy: string|array (optional when diarizing: "auto" (default) or a server_vad config)
      */
     public function audio(array $config): self
     {
+        if (($config['action'] ?? null) === 'diarize') {
+            $config['action'] = 'transcribe';
+            $config['diarize'] = true;
+        } elseif (($config['diarize'] ?? false) === true && !isset($config['action'])) {
+            $config['action'] = 'transcribe';
+        }
+
         $this->validateAudioConfig($config);
 
         $this->data['audio'] = $config;
@@ -222,8 +232,25 @@ final class InputBuilder
             }
         } elseif ($action !== null) {
             throw new InvalidArgumentException(
-                'Invalid audio action. Must be one of: transcribe, translate, speech'
+                'Invalid audio action. Must be one of: transcribe, translate, speech, diarize'
             );
+        }
+
+        if (isset($config['diarize']) && !is_bool($config['diarize'])) {
+            throw new InvalidArgumentException('The "diarize" option must be a boolean.');
+        }
+
+        if (isset($config['known_speakers'])) {
+            if (!is_array($config['known_speakers'])) {
+                throw new InvalidArgumentException(
+                    'The "known_speakers" option must be an array of speaker name => reference sample.'
+                );
+            }
+            if (count($config['known_speakers']) > DiarizationBuilder::MAX_KNOWN_SPEAKERS) {
+                throw new InvalidArgumentException(
+                    'A maximum of ' . DiarizationBuilder::MAX_KNOWN_SPEAKERS . ' known speakers is supported per diarization request.'
+                );
+            }
         }
 
         if (isset($config['temperature'])) {

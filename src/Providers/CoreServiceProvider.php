@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Providers;
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\AudioRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\BatchesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
@@ -20,6 +21,7 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoresRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\InvalidApiKeyException;
 use CreativeCrafts\LaravelAiAssistant\Jobs\ExecuteToolCallJob;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\AssistantsHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Repositories\Http\AudioHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\BatchesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ConversationsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\FilesHttpRepository;
@@ -320,6 +322,10 @@ class CoreServiceProvider extends ServiceProvider
 
         $this->app->bind(AssistantsRepositoryContract::class, function ($app) {
             return new AssistantsHttpRepository($app->make(OpenAITransport::class));
+        });
+
+        $this->app->bind(AudioRepositoryContract::class, function ($app) {
+            return new AudioHttpRepository($app->make(OpenAITransport::class));
         });
     }
 }
