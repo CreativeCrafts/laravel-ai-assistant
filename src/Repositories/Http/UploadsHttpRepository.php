@@ -7,6 +7,8 @@ namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 use CreativeCrafts\LaravelAiAssistant\Contracts\UploadsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 use CreativeCrafts\LaravelAiAssistant\Support\MultipartFormData;
+use GuzzleHttp\Psr7\LimitStream;
+use GuzzleHttp\Psr7\Stream;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -57,27 +59,18 @@ final readonly class UploadsHttpRepository extends AbstractHttpRepository implem
             throw new RuntimeException('The Uploads API did not return an upload id.');
         }
 
-        $handle = fopen($filePath, 'rb');
-        if ($handle === false) {
-            throw FileValidationException::fileNotReadable($filePath);
-        }
-
         $partIds = [];
         try {
-            $index = 0;
-            while (!feof($handle)) {
-                $chunk = fread($handle, $partSize);
-                if ($chunk === false || $chunk === '') {
-                    break;
+            for ($offset = 0, $index = 0; $offset < $bytes; $offset += $partSize, $index++) {
+                $handle = fopen($filePath, 'rb');
+                if ($handle === false) {
+                    throw FileValidationException::fileNotReadable($filePath);
                 }
-                $stream = fopen('php://temp', 'r+b');
-                if ($stream === false) {
-                    throw new RuntimeException('Unable to buffer upload part.');
-                }
-                fwrite($stream, $chunk);
-                rewind($stream);
-
-                $part = $this->addPart($uploadId, ['data' => ['contents' => $stream, 'filename' => basename($filePath) . '.part' . $index++]]);
+                // Stream each part's byte range straight from the file instead of buffering up to 64 MB in memory
+                $part = $this->addPart($uploadId, ['data' => [
+                    'contents' => new LimitStream(new Stream($handle), min($partSize, $bytes - $offset), $offset),
+                    'filename' => basename($filePath) . '.part' . $index,
+                ]]);
                 if (isset($part['id']) && is_string($part['id'])) {
                     $partIds[] = $part['id'];
                 }
@@ -89,8 +82,6 @@ final readonly class UploadsHttpRepository extends AbstractHttpRepository implem
                 // Keep the original failure; an unfinished upload expires on its own after an hour
             }
             throw $e;
-        } finally {
-            fclose($handle);
         }
 
         $payload = ['part_ids' => $partIds];

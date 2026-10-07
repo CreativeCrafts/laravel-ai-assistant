@@ -7,7 +7,13 @@ use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ModelsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\RealtimeHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\UploadsHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\RecordingHttpClient;
+use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Promise\Create;
+use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Response;
+use Psr\Http\Message\RequestInterface;
 
 it('creates WebRTC realtime calls and returns the SDP answer with the call id', function () {
     $http = new RecordingHttpClient(new Response(201, [
@@ -56,6 +62,69 @@ it('uploads large files in parts and completes the upload', function () {
         ->and((string)$requests[4]->getUri())->toBe('https://api.openai.com/v1/uploads/upload_1/complete')
         ->and($complete['part_ids'])->toBe(['part_1', 'part_2', 'part_3'])
         ->and($complete['md5'])->toBe(md5(str_repeat('a', 10)));
+});
+
+/**
+ * Responses for an upload of three parts: create, three parts, complete.
+ */
+function threePartUploadClient(): RecordingHttpClient
+{
+    return new RecordingHttpClient(
+        new Response(200, ['Content-Type' => 'application/json'], '{"id":"upload_1","status":"pending"}'),
+        new Response(200, ['Content-Type' => 'application/json'], '{"id":"part_1"}'),
+        new Response(200, ['Content-Type' => 'application/json'], '{"id":"part_2"}'),
+        new Response(200, ['Content-Type' => 'application/json'], '{"id":"part_3"}'),
+        new Response(200, ['Content-Type' => 'application/json'], '{"id":"upload_1","status":"completed"}'),
+    );
+}
+
+it('sends each upload part from its own byte range of the file', function () {
+    $path = (string)tempnam(sys_get_temp_dir(), 'upload_');
+    file_put_contents($path, 'abcdefghij');
+    $http = threePartUploadClient();
+
+    (new UploadsHttpRepository($http->transport()))->uploadFile($path, 'batch', 'text/plain', 4);
+    $parts = array_map(fn (array $entry): string => (string)$entry['request']->getBody(), array_slice($http->history, 1, 3));
+    unlink($path);
+
+    expect($parts[0])->toContain("\r\n\r\nabcd\r\n")
+        ->and($parts[1])->toContain("\r\n\r\nefgh\r\n")
+        ->and($parts[2])->toContain("\r\n\r\nij\r\n");
+});
+
+it('streams upload parts instead of buffering them in memory', function () {
+    $partSize = 8 * 1024 * 1024;
+    $path = (string)tempnam(sys_get_temp_dir(), 'upload_');
+    $handle = fopen($path, 'wb');
+    ftruncate($handle, 3 * $partSize);
+    fclose($handle);
+
+    // Answers any number of parts and drains each request body in small reads, like curl does
+    $sent = 0;
+    $handler = HandlerStack::create(function (RequestInterface $request) use (&$sent): PromiseInterface {
+        $body = $request->getBody();
+        while (!$body->eof()) {
+            $sent += strlen($body->read(65536));
+        }
+        $path = $request->getUri()->getPath();
+
+        return Create::promiseFor(new Response(200, ['Content-Type' => 'application/json'], match (true) {
+            str_ends_with($path, '/parts') => '{"id":"part_1"}',
+            str_ends_with($path, '/complete') => '{"id":"upload_1","status":"completed"}',
+            default => '{"id":"upload_1","status":"pending"}',
+        }));
+    });
+    $transport = new GuzzleOpenAITransport(new GuzzleClient(['handler' => $handler, 'base_uri' => 'https://api.openai.com']));
+
+    memory_reset_peak_usage();
+    $before = memory_get_usage();
+    $upload = (new UploadsHttpRepository($transport))->uploadFile($path, 'batch', 'application/octet-stream', $partSize);
+    $growth = memory_get_peak_usage() - $before;
+    unlink($path);
+
+    expect($upload['status'])->toBe('completed')
+        ->and($sent)->toBeGreaterThan(3 * $partSize)
+        ->and($growth)->toBeLessThan(intdiv($partSize, 2));
 });
 
 it('rejects unreadable upload sources', function () {
