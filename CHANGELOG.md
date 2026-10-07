@@ -53,6 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streaming (`Ai::stream()`, `ChatSession::stream()`, `Ai::responses()->stream()`) emits text deltas as they arrive.
   The SSE parser waited for the blank line between events, which the HTTP transport drops, so it produced a single
   merged event at the end of the stream.
+- `Ai::responses()->stream()` sends the text given with `input()->message()` or `withMessages()`, mapped the same way
+  as `send()`, and the builder's `temperature()` and `maxCompletionTokens()`. Before, only `inputItems()` and
+  `input()->imageInput()` reached a streamed request.
 - Chat sessions (`Ai::chat()`, `Ai::quick()`, `AiAssistant`) send request shapes the Responses API accepts:
   - Function tools are sent flat (`{type, name, description, parameters, strict}`), and `tool_choice` for a specific
     function as `{type: function, name}`.

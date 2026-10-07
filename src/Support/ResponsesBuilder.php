@@ -322,9 +322,10 @@ final class ResponsesBuilder
     public function stream(?callable $onEvent = null, ?callable $shouldStop = null): Generator
     {
         $conv = $this->conversationId ?? $this->service->createConversation();
-        $unifiedData = $this->unifiedInput->toArray();
-        $presetInput = isset($unifiedData['input']) && is_array($unifiedData['input'])
-            ? $unifiedData['input']
+        // Map input()->message(), withMessages() and imageInput() to Responses input the same way send() does
+        $request = $this->adapterFactory->make(OpenAiEndpoint::ResponseApi)->transformRequest($this->buildRequest());
+        $presetInput = isset($request['input']) && is_array($request['input'])
+            ? $request['input']
             : null;
 
         return $this->service->streamTurn(
@@ -340,6 +341,8 @@ final class ResponsesBuilder
             shouldStop: $shouldStop,
             idempotencyKey: $this->idempotencyKey,
             toolChoice: $this->toolChoice,
+            temperature: $this->temperature,
+            maxCompletionTokens: $this->maxCompletionTokens,
             presetInput: $presetInput,
         );
     }
