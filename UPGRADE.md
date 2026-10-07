@@ -22,10 +22,42 @@ public function streamRequest(string $method, string $path, array $options = [])
 `request()` returns the decoded JSON body (`[]` for empty bodies, `['text' => ...]` for text bodies and
 `['content' => ..., 'content_type' => ...]` for binary bodies); `streamRequest()` yields raw SSE lines.
 
+2) **Custom repository implementations**
+
+If you bind your own implementations of these contracts, add the new methods/parameters:
+
+```php
+// ResponsesRepositoryContract
+public function getResponse(string $responseId, array $params = []): array;
+public function resumeStream(string $responseId, array $params = []): iterable;
+public function compactResponse(array $payload): array;
+public function countInputTokens(array $payload): array;
+
+// ConversationsRepositoryContract
+public function createItems(string $conversationId, array $items, array $params = []): array;
+public function getItem(string $conversationId, string $itemId, array $params = []): array;
+
+// FilesRepositoryContract
+public function upload(string $filePath, string $purpose = 'assistants', array $params = []): array;
+public function list(array $params = []): array;
+
+// VectorStoresRepositoryContract
+public function search(string $vectorStoreId, array $payload): array;
+```
+
+3) **OpenAI webhooks**
+
+OpenAI signs webhook deliveries with the `webhook-id`, `webhook-timestamp` and `webhook-signature` headers.
+Set `AI_WEBHOOKS_SIGNING_SECRET` to the endpoint's `whsec_...` secret to receive them; the previous
+`X-OpenAI-Signature` scheme keeps working for other senders. Non-response events (e.g. `batch.completed`) now
+return 200 and dispatch `OpenAiWebhookReceived` instead of being stored as response statuses.
+
 ### New capabilities
 
 - Speaker diarization (voice analysis) via `Ai::diarize()` and `'action' => 'diarize'` in the unified builder.
 - Low-level Audio API access via `Ai::audio()`.
+- Every other OpenAI API resource via the `Ai` facade (see "OpenAI API Coverage" in the README), including the
+  Administration API via `Ai::admin()` (set `OPENAI_ADMIN_KEY`).
 
 ---
 

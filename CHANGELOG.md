@@ -21,6 +21,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   translations and custom voice creation (`POST /v1/audio/voices`).
 - `OpenAITransport::request()` and `streamRequest()` for any HTTP method with JSON, multipart or raw bodies,
   OpenAI-style query encoding and SSE streaming (including multipart uploads).
+- Full OpenAI API coverage through low-level repositories on the `Ai` facade:
+  - `Ai::chatCompletions()` (incl. streaming and stored completions), `Ai::completions()`, `Ai::embeddings()`,
+    `Ai::images()` (incl. streaming), `Ai::videos()`, `Ai::models()`, `Ai::uploads()` (incl. `uploadFile()` for
+    multi-part uploads up to 8 GB), `Ai::containers()`, `Ai::containerFiles()`, `Ai::fineTuningJobs()`,
+    `Ai::fineTuningCheckpointPermissions()`, `Ai::graders()`, `Ai::evals()`, `Ai::evalRuns()`, `Ai::realtime()`
+    (client secrets, WebRTC `createCall()`, SIP call control, translation secrets), `Ai::live()`,
+    `Ai::webhookEndpoints()`, `Ai::skills()`, `Ai::decisions()`, `Ai::contentProvenanceChecks()`, `Ai::safety()`.
+  - Beta: `Ai::chatKit()`, `Ai::agents()`, `Ai::agentSessions()` (incl. event streaming), `Ai::agentEnvironments()`,
+    `Ai::vaults()`.
+  - Administration API via `Ai::admin()`: admin API keys, audit logs, certificates, data retention, external storage,
+    groups, invites, projects, project users/groups/service accounts/API keys/rate limits/permissions, roles,
+    spend alerts, spend limits, usage and costs, users. Signed with `OPENAI_ADMIN_KEY` when configured.
+- Responses: `getResponse()` query parameters, `resumeStream()`, `compactResponse()`, `countInputTokens()`, and
+  `Ai::responses()->retrieve()/resume()/cancel()/delete()/listInputItems()/countInputTokens()/compact()`.
+- Conversations: `getItem()`, `include` parameters for `createItems()`, and
+  `Ai::conversations()->retrieve()/update()/delete()/item()/addItems()/deleteItem()`.
+- Files: `list()` and extra upload fields (e.g. `expires_after`); vector stores: `search()`.
+- Webhooks: OpenAI Standard Webhooks signature verification (`webhook-id`/`webhook-timestamp`/`webhook-signature`,
+  `whsec_` secrets) in the webhook route and the `verify.ai.webhook` middleware, plus an `OpenAiWebhookReceived`
+  event for every verified event (batch, fine-tuning, eval, realtime call and response events).
+- `OPENAI_PROJECT` (OpenAI-Project header) and `OPENAI_ADMIN_KEY` configuration.
+- Path parameters are percent-encoded like the official SDKs so IDs cannot inject path segments or queries.
+
+### Fixed
+
+- Response input items are listed from `GET /v1/responses/{id}/input_items` (was the non-existent `/input/items`).
+- Webhook events in OpenAI's format (`data.id`) resolve the response id instead of the event id.
+
+### Deprecated
+
+- `ResponsesInputItemsRepositoryContract::append()`: the OpenAI API has no endpoint for appending input items.
+- `Ai::assistants()`: OpenAI deprecated the Assistants API (shutdown announced for August 26, 2026).
 
 ### Changed
 
@@ -33,6 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking
 
 - Custom `OpenAITransport` implementations must implement `request()` and `streamRequest()`.
+- Custom implementations of these internal contracts must add the new methods/parameters:
+  `ResponsesRepositoryContract` (`getResponse()` `$params`, `resumeStream()`, `compactResponse()`, `countInputTokens()`),
+  `ConversationsRepositoryContract` (`getItem()`, `createItems()` `$params`), `FilesRepositoryContract` (`list()`,
+  `upload()` `$params`) and `VectorStoresRepositoryContract` (`search()`).
 
 ## [3.1] - 2026-02-04
 
