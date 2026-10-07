@@ -44,15 +44,16 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
      * processes the API response and returns the decoded result as an associative array.
      *
      * @param array $payload The request payload containing the AI prompt and parameters. May include an optional '_idempotency_key' field for request deduplication, which will be extracted and used as a header
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return array The decoded API response as an associative array containing the AI-generated response data
      * @throws ApiResponseValidationException When the API returns an error response (status >= 400) or when the response format is invalid
      * @throws MaxRetryAttemptsExceededException When the maximum number of retry attempts is exceeded without a successful response
      * @throws JsonException When the response body cannot be decoded as valid JSON or when network/transport errors occur
      */
-    public function createResponse(array $payload): array
+    public function createResponse(array $payload, array $headers = []): array
     {
         // Delegate to shared transport with idempotency and per-call timeout from config handled internally
-        return $this->transport->postJson('/v1/responses', $payload, idempotent: true);
+        return $this->transport->postJson('/v1/responses', $payload, $headers, idempotent: true);
     }
 
     /**
@@ -65,15 +66,16 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
      * incrementally rather than waiting for the complete response.
      *
      * @param array $payload The request payload containing the AI prompt and parameters. May include an optional '_idempotency_key' field for request deduplication
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return iterable<string> A generator that yields individual lines from the SSE stream as they are received from the API
      * @throws ApiResponseValidationException When the API returns an error response (status >= 400) or when the response format is invalid
      * @throws MaxRetryAttemptsExceededException When the maximum number of retry attempts is exceeded during the initial connection
      * @throws JsonException When the HTTP request fails due to network or client issues
      */
-    public function streamResponse(array $payload): iterable
+    public function streamResponse(array $payload, array $headers = []): iterable
     {
         // Delegate streaming to shared transport; include ['stream' => true] as per API
-        return $this->transport->streamSse('/v1/responses', $payload + ['stream' => true], idempotent: true);
+        return $this->transport->streamSse('/v1/responses', $payload + ['stream' => true], $headers, idempotent: true);
     }
 
     /**

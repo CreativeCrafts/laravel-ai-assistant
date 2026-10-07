@@ -181,6 +181,7 @@ class AssistantService implements AudioProcessingContract
         ?float $temperature = null,
         ?int $maxCompletionTokens = null,
         ?array $presetInput = null,
+        array $headers = [],
     ): array {
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
@@ -198,7 +199,7 @@ class AssistantService implements AudioProcessingContract
             $presetInput
         );
         $__start = microtime(true);
-        $resp = $this->responsesRepository->createResponse($payload);
+        $resp = $this->responsesRepository->createResponse($payload, $headers);
         $envelope = $this->normalizeResponseEnvelope($resp);
         // Emit metrics after normalisation
         try {
@@ -501,6 +502,7 @@ class AssistantService implements AudioProcessingContract
         ?float $temperature = null,
         ?int $maxCompletionTokens = null,
         ?array $presetInput = null,
+        array $headers = [],
     ): Generator {
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
@@ -519,7 +521,7 @@ class AssistantService implements AudioProcessingContract
         );
 
         $request = CompletionRequest::fromArray($payload);
-        $events = $this->streaming()->process(Mode::CHAT, $request, $onEvent, $shouldStop);
+        $events = $this->streaming()->process(Mode::CHAT, $request, $onEvent, $shouldStop, $headers);
         foreach ($events as $evt) {
             yield $evt;
         }

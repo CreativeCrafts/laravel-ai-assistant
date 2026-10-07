@@ -58,6 +58,8 @@ final class ResponsesBuilder
     /** @var array<string,mixed> */
     private array $metadata = [];
     private ?string $idempotencyKey = null;
+    /** @var array<string, string> */
+    private array $headers = [];
     private array|string|null $toolChoice = null;
 
     private InputItemsBuilder $inputItems;
@@ -97,6 +99,19 @@ final class ResponsesBuilder
     public function model(string $model): self
     {
         $this->model = $model;
+        return $this;
+    }
+
+    /**
+     * Send extra HTTP headers with the create/stream request, e.g. to opt into a beta:
+     * ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1']).
+     * Later calls merge into earlier ones; a repeated header name replaces the earlier value.
+     *
+     * @param array<string, string> $headers
+     */
+    public function withHeaders(array $headers): self
+    {
+        $this->headers = array_merge($this->headers, $headers);
         return $this;
     }
 
@@ -264,6 +279,7 @@ final class ResponsesBuilder
                 metadata: $this->metadata,
                 idempotencyKey: $this->idempotencyKey,
                 toolChoice: $this->toolChoice,
+                headers: $this->headers,
             );
             return ChatResponseDto::fromArray($arr);
         }
@@ -341,6 +357,7 @@ final class ResponsesBuilder
             idempotencyKey: $this->idempotencyKey,
             toolChoice: $this->toolChoice,
             presetInput: $presetInput,
+            headers: $this->headers,
         );
     }
 
@@ -537,6 +554,7 @@ final class ResponsesBuilder
                 temperature: $temperature,
                 maxCompletionTokens: $maxCompletionTokens,
                 presetInput: $presetInput,
+                headers: $this->headers,
             );
         }
 

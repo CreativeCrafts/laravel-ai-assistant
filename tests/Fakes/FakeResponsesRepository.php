@@ -13,6 +13,7 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
     /** @var array<int,string> */
     public array $streamLines = [];
     public array $lastPayload = [];
+    public array $lastHeaders = [];
     public array $canceled = [];
     public array $deleted = [];
     public ?array $lastResponse = null;
@@ -32,9 +33,10 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
         $this->streamLines = $lines;
     }
 
-    public function createResponse(array $payload): array
+    public function createResponse(array $payload, array $headers = []): array
     {
         $this->lastPayload = $payload;
+        $this->lastHeaders = $headers;
         $resp = array_shift($this->queue);
         if ($resp === null) {
             // default dummy response
@@ -52,9 +54,10 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
         return $resp;
     }
 
-    public function streamResponse(array $payload): iterable
+    public function streamResponse(array $payload, array $headers = []): iterable
     {
         $this->lastPayload = $payload;
+        $this->lastHeaders = $headers;
         if ($this->streamLines === []) {
             // default trivial stream
             return [

@@ -58,6 +58,31 @@ final class RecordingAudioRepository implements AudioRepositoryContract
     {
         return [];
     }
+
+    public function createVoiceConsent(array $payload): array
+    {
+        return [];
+    }
+
+    public function listVoiceConsents(array $params = []): array
+    {
+        return [];
+    }
+
+    public function retrieveVoiceConsent(string $consentId): array
+    {
+        return [];
+    }
+
+    public function updateVoiceConsent(string $consentId, array $payload): array
+    {
+        return [];
+    }
+
+    public function deleteVoiceConsent(string $consentId): array
+    {
+        return [];
+    }
 }
 
 beforeEach(function () {

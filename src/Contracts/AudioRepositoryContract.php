@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Contracts;
 
 /**
- * @internal Low-level abstraction for the Audio API (speech, transcriptions, translations, voices).
+ * @internal Low-level abstraction for the Audio API (speech, transcriptions, translations, voices, voice consents).
  * Use Ai::audio() for raw access or Ai::diarize() for speaker identification instead.
  */
 interface AudioRepositoryContract
@@ -57,4 +57,36 @@ interface AudioRepositoryContract
      * @param array<string, mixed> $payload 'audio_sample' may be a path, SplFileInfo, stream resource or explicit part
      */
     public function createVoice(array $payload): array;
+
+    /**
+     * Upload a voice consent recording (POST /v1/audio/voice_consents).
+     *
+     * @param array<string, mixed> $payload e.g. ['name' => 'John Doe', 'language' => 'en-US', 'recording' => '/path/consent.wav'];
+     *                                      'recording' may be a path, SplFileInfo, stream resource or explicit part
+     */
+    public function createVoiceConsent(array $payload): array;
+
+    /**
+     * List voice consent recordings (GET /v1/audio/voice_consents).
+     *
+     * @param array<string, mixed> $params Query parameters (after, limit)
+     */
+    public function listVoiceConsents(array $params = []): array;
+
+    /**
+     * Retrieve a voice consent recording (GET /v1/audio/voice_consents/{consentId}).
+     */
+    public function retrieveVoiceConsent(string $consentId): array;
+
+    /**
+     * Update a voice consent recording's metadata (POST /v1/audio/voice_consents/{consentId}).
+     *
+     * @param array<string, mixed> $payload e.g. ['name' => 'John Doe']
+     */
+    public function updateVoiceConsent(string $consentId, array $payload): array;
+
+    /**
+     * Delete a voice consent recording (DELETE /v1/audio/voice_consents/{consentId}).
+     */
+    public function deleteVoiceConsent(string $consentId): array;
 }

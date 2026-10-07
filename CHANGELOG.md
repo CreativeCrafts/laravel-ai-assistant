@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Unified builder support: `->input()->audio(['file' => ..., 'action' => 'diarize', 'known_speakers' => [...]])`,
     with speakers, speaking time and segments in the response metadata and `ResponseDto::diarization()`.
 - `Ai::audio()` low-level Audio API repository: speech (incl. SSE streaming), transcriptions (incl. streaming),
-  translations and custom voice creation (`POST /v1/audio/voices`).
+  translations, custom voice creation (`POST /v1/audio/voices`) and voice consent recordings
+  (`createVoiceConsent()`, `listVoiceConsents()`, `retrieveVoiceConsent()`, `updateVoiceConsent()`,
+  `deleteVoiceConsent()`).
 - `OpenAITransport::request()` and `streamRequest()` for any HTTP method with JSON, multipart or raw bodies,
   OpenAI-style query encoding and SSE streaming (including multipart uploads).
 - Full OpenAI API coverage through low-level repositories on the `Ai` facade:
@@ -30,12 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (client secrets, WebRTC `createCall()`, SIP call control, translation secrets), `Ai::live()`,
     `Ai::webhookEndpoints()`, `Ai::skills()`, `Ai::decisions()`, `Ai::contentProvenanceChecks()`, `Ai::safety()`.
   - Beta: `Ai::chatKit()`, `Ai::agents()`, `Ai::agentSessions()` (incl. event streaming), `Ai::agentEnvironments()`,
-    `Ai::vaults()`.
+    `Ai::vaults()` (incl. `update()`).
   - Administration API via `Ai::admin()`: admin API keys, audit logs, certificates, data retention, external storage,
     groups, invites, projects, project users/groups/service accounts/API keys/rate limits/permissions, roles,
     spend alerts, spend limits, usage and costs, users. Signed with `OPENAI_ADMIN_KEY` when configured.
 - Responses: `getResponse()` query parameters, `resumeStream()`, `compactResponse()`, `countInputTokens()`, and
   `Ai::responses()->retrieve()/resume()/cancel()/delete()/listInputItems()/countInputTokens()/compact()`.
+- Responses: extra request headers for `createResponse()` and `streamResponse()` (new optional `$headers` argument) and
+  `Ai::responses()->withHeaders([...])`, e.g. `['OpenAI-Beta' => 'responses_multi_agent=v1']` for multi-agent beta.
 - Conversations: `getItem()`, `include` parameters for `createItems()`, and
   `Ai::conversations()->retrieve()/update()/delete()/item()/addItems()/deleteItem()`, which act on the conversation
   selected with `use()` or `start()`.

@@ -103,6 +103,16 @@ $response = Ai::responses()
     ->send();
 ```
 
+Send extra request headers, for example to opt into the multi-agent beta:
+
+```php
+$response = Ai::responses()
+    ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1'])
+    ->input()
+    ->message('Plan and delegate this research task')
+    ->send();
+```
+
 ### Conversations
 
 ```php
@@ -285,7 +295,7 @@ decoded response, so new API parameters work without a package update.
 | Chat Completions | `Ai::chatCompletions()` | create, stream, list/retrieve/update/delete stored completions, list messages |
 | Completions (legacy) | `Ai::completions()` | create, stream |
 | Embeddings | `Ai::embeddings()` | create |
-| Audio | `Ai::audio()`, `Ai::diarize()` | speech (+ SSE), transcriptions (+ streaming, diarization), translations, custom voices |
+| Audio | `Ai::audio()`, `Ai::diarize()` | speech (+ SSE), transcriptions (+ streaming, diarization), translations, custom voices, voice consents |
 | Images | `Ai::images()` | generate (+ stream), edit (+ stream), variations |
 | Videos (Sora) | `Ai::videos()` | create, retrieve, list, delete, remix, edit, extend, download content, characters |
 | Models | `Ai::models()` | list, retrieve, delete fine-tuned models |

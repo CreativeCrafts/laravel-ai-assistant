@@ -14,18 +14,20 @@ interface ResponsesRepositoryContract
      * Create a response for a turn.
      *
      * @param array $payload
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return array Response resource as array
      */
-    public function createResponse(array $payload): array;
+    public function createResponse(array $payload, array $headers = []): array;
 
     /**
      * Stream a response for a turn via SSE/iterable.
      * Implementations should return an iterable yielding parsed events or raw SSE lines.
      *
      * @param array $payload
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return iterable
      */
-    public function streamResponse(array $payload): iterable;
+    public function streamResponse(array $payload, array $headers = []): iterable;
 
     /**
      * Retrieve a response by id.

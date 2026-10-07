@@ -54,14 +54,15 @@ class StreamingService
      * @param CompletionRequest $request
      * @param callable|null $onEvent Optional callback invoked with each normalized event
      * @param callable|null $shouldStop Optional callback returning true to stop early (a client disconnected)
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return Generator Yields normalised events: ['type' => string, 'data' => array, 'isFinal' => bool]
      * @throws Exception
      */
-    public function process(Mode $mode, CompletionRequest $request, ?callable $onEvent = null, ?callable $shouldStop = null): Generator
+    public function process(Mode $mode, CompletionRequest $request, ?callable $onEvent = null, ?callable $shouldStop = null, array $headers = []): Generator
     {
         $payload = $request->toArray();
 
-        $sse = $this->responses->streamResponse($payload);
+        $sse = $this->responses->streamResponse($payload, $headers);
         $events = $this->streamResponses($sse, $onEvent, $shouldStop);
         foreach ($events as $evt) {
             yield $evt;
