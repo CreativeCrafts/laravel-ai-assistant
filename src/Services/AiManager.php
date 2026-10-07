@@ -125,8 +125,8 @@ final class AiManager
      *  Ai::diarize(storage_path('calls/support.mp3'))->send()->speakers();
      *  Ai::diarize()->fromDisk('s3', 'calls/support.mp3')->knownSpeaker('agent', $sample)->send();
      *
-     * @param string|SplFileInfo|resource|null $file Local path, SplFileInfo or stream resource
-     * @param string|null $filename Filename hint for stream resources (e.g. 'call.mp3')
+     * @param string|SplFileInfo|resource|null $file Local path, SplFileInfo (including uploaded files) or stream resource
+     * @param string|null $filename Filename the API receives (e.g. 'call.mp3'); uploads default to their original filename
      */
     public function diarize(mixed $file = null, ?string $filename = null): DiarizationBuilder
     {

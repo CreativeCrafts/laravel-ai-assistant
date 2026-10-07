@@ -13,6 +13,7 @@ use Generator;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use SplFileInfo;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * Fluent builder for speaker diarization: transcribe a conversation and identify who spoke when.
@@ -58,8 +59,11 @@ final class DiarizationBuilder
     }
 
     /**
-     * The conversation recording to analyse: a local path, an SplFileInfo, or an open stream
-     * resource (pass $filename for streams so the API can detect the audio format).
+     * The conversation recording to analyse: a local path, an SplFileInfo (including uploaded files), or
+     * an open stream resource (pass $filename for streams so the API can detect the audio format).
+     *
+     * The API detects the audio format from the filename it receives, so uploaded files are sent under
+     * their original client filename and the format is validated against that name.
      *
      * @param string|SplFileInfo|resource $file
      */
@@ -67,8 +71,14 @@ final class DiarizationBuilder
     {
         if (is_string($file) || $file instanceof SplFileInfo) {
             $path = $file instanceof SplFileInfo ? ($file->getRealPath() ?: $file->getPathname()) : $file;
-            $this->validateAudioFile($path);
-            $this->file = $filename === null ? $path : ['contents' => $path, 'filename' => $filename];
+            // Uploads are stored at extension-less temporary paths such as /tmp/phpAbC123
+            if ($filename === null && $file instanceof UploadedFile) {
+                $filename = $file->getClientOriginalName();
+            }
+            $this->validateAudioFile($path, $filename ?? $path);
+            $this->file = $filename === null
+                ? $path
+                : ['contents' => $path, 'filename' => $filename, 'content_type' => MultipartFormData::mimeTypeFromExtension($filename)];
 
             return $this;
         }
@@ -292,7 +302,10 @@ final class DiarizationBuilder
         );
     }
 
-    private function validateAudioFile(string $path): void
+    /**
+     * @param string $name The filename the API receives, which determines the audio format
+     */
+    private function validateAudioFile(string $path, string $name): void
     {
         if (!file_exists($path)) {
             throw FileValidationException::fileNotFound($path);
@@ -301,7 +314,7 @@ final class DiarizationBuilder
             throw FileValidationException::fileNotReadable($path);
         }
 
-        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         if (!in_array($extension, self::SUPPORTED_FORMATS, true)) {
             throw FileValidationException::unsupportedFormat($path, $extension, self::SUPPORTED_FORMATS);
         }

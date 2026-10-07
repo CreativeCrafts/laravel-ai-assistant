@@ -77,7 +77,8 @@ final readonly class ResponseDto
     }
 
     /**
-     * Speaker-annotated transcription when the request asked for diarization ('diarize' => true), otherwise null.
+     * Speaker-annotated transcription when the response contains speaker-labelled segments (a diarization
+     * request), otherwise null. A diarized recording without any speech has no segments and also returns null.
      */
     public function diarization(): ?DiarizedTranscription
     {

@@ -197,9 +197,10 @@ $result->toWebVtt();              // captions with <v speaker> voice tags
 $named = Ai::diarize($path)->send()->renameSpeakers(['A' => 'Agent', 'B' => 'Customer']);
 ```
 
-Recordings can come from any filesystem disk (e.g. S3) or a stream:
+Recordings can also be uploaded files, come from any filesystem disk (e.g. S3) or a stream:
 
 ```php
+Ai::diarize($request->file('recording'))->send();   // sent under the original filename, e.g. call.m4a
 Ai::diarize()->fromDisk('s3', 'calls/2026/10/call-123.ogg')->send();
 Ai::diarize($stream, 'call.webm')->send();
 ```

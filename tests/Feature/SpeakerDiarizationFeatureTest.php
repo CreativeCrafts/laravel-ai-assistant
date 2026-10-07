@@ -11,6 +11,7 @@ use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Response as Psr7Response;
+use Illuminate\Http\UploadedFile;
 
 beforeEach(function () {
     $this->recording = __DIR__ . '/../fixtures/test-audio.mp3';
@@ -91,6 +92,19 @@ it('identifies known speakers through Ai::diarize()', function () {
         ->and($result->speakers())->toBe(['agent', 'customer'])
         ->and($result->textFor('customer'))->toBe('My order is late.')
         ->and($result->toTranscript())->toBe("agent: Thanks for calling." . PHP_EOL . "customer: My order is late.");
+});
+
+it('sends uploaded recordings under their original filename', function () {
+    bindDiarizationTransport($this->diarizedResponse, function (array $parts) {
+        $file = collect($parts)->firstWhere('name', 'file');
+        expect($file['filename'])->toBe('support-call.mp3')
+            ->and($file['headers'])->toBe(['Content-Type' => 'audio/mpeg'])
+            ->and(is_resource($file['contents']))->toBeTrue();
+    });
+
+    $upload = UploadedFile::fake()->createWithContent('support-call.mp3', (string)file_get_contents($this->recording));
+
+    expect(Ai::diarize($upload)->send()->speakers())->toBe(['agent', 'customer']);
 });
 
 it('diarizes through the unified responses builder', function () {

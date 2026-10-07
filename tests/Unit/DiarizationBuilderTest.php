@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\DiarizedTranscription;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\AudioTranscriptionException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileValidationException;
 use CreativeCrafts\LaravelAiAssistant\Support\DiarizationBuilder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -140,6 +141,36 @@ it('accepts stream resources with a filename hint', function () {
 
     expect($payload['file'])->toBe(['contents' => $stream, 'filename' => 'call.ogg', 'content_type' => 'audio/ogg']);
 });
+
+it('diarizes uploaded files under their original filename', function () {
+    // PHP keeps uploads at extension-less temporary paths such as /tmp/phpAbC123
+    $upload = UploadedFile::fake()->createWithContent('support-call.mp3', (string)file_get_contents($this->recording));
+
+    $payload = $this->builder->file($upload)->toPayload();
+
+    expect(pathinfo((string)$upload->getRealPath(), PATHINFO_EXTENSION))->toBe('')
+        ->and($payload['file'])->toBe([
+            'contents' => $upload->getRealPath(),
+            'filename' => 'support-call.mp3',
+            'content_type' => 'audio/mpeg',
+        ]);
+});
+
+it('validates the format of the filename the API receives', function () {
+    $path = (string)tempnam(sys_get_temp_dir(), 'recording');
+    copy($this->recording, $path);
+
+    try {
+        expect($this->builder->file($path, 'call.wav')->toPayload()['file'])
+            ->toBe(['contents' => $path, 'filename' => 'call.wav', 'content_type' => 'audio/wav']);
+    } finally {
+        unlink($path);
+    }
+});
+
+it('rejects uploads whose original filename is not a supported audio format', function () {
+    $this->builder->file(UploadedFile::fake()->createWithContent('notes.txt', 'not audio'));
+})->throws(FileValidationException::class, 'Unsupported file format: txt');
 
 it('reads recordings from a filesystem disk', function () {
     Storage::fake('recordings');
