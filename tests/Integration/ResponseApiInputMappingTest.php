@@ -106,3 +106,19 @@ it('streams with the builder temperature and output token limit', function () {
     expect($responses->lastPayload['temperature'] ?? null)->toBe(0.3)
         ->and($responses->lastPayload['max_output_tokens'] ?? null)->toBe(120);
 });
+
+it('sends and streams messages[] when no instructions are set', function () {
+    /** @var FakeResponsesRepository $responses */
+    $responses = app(ResponsesRepositoryContract::class);
+    $expected = [['role' => 'user', 'content' => [['type' => 'input_text', 'text' => 'Hi there']]]];
+
+    $builder = Ai::responses()->model('gpt-test')->withMessages([
+        ['role' => 'user', 'content' => 'Hi there'],
+    ]);
+
+    $builder->send();
+    expect($responses->lastPayload['input'] ?? null)->toBe($expected);
+
+    iterator_to_array($builder->stream(), false);
+    expect($responses->lastPayload['input'] ?? null)->toBe($expected);
+});

@@ -35,7 +35,7 @@ describe('transformRequest', function () {
         expect($result['input'])->toBe('Test input');
     });
 
-    it('transforms request with messages array', function () {
+    it('transforms a messages array to input, with or without instructions', function () {
         $unifiedRequest = [
             'messages' => [
                 ['role' => 'system', 'content' => 'You are helpful.'],
@@ -46,10 +46,12 @@ describe('transformRequest', function () {
 
         $result = $this->adapter->transformRequest($unifiedRequest);
 
-        expect($result['messages'])->toBe([
-            ['role' => 'system', 'content' => 'You are helpful.'],
-            ['role' => 'user', 'content' => 'Hello!'],
-        ]);
+        // The Responses API has no messages field, so the messages become input items
+        expect($result)->not->toHaveKey('messages')
+            ->and($result['input'])->toBe([
+                ['role' => 'system', 'content' => [['type' => 'input_text', 'text' => 'You are helpful.']]],
+                ['role' => 'user', 'content' => [['type' => 'input_text', 'text' => 'Hello!']]],
+            ]);
     });
 
     it('includes conversation_id when provided', function () {
