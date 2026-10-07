@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\FileOperationException;
 use CreativeCrafts\LaravelAiAssistant\Support\MultipartFormData;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Support\QueryString;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use JsonException;
@@ -114,7 +115,7 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
      */
     public function retrieve(string $fileId): array
     {
-        return $this->transport->getJson($this->endpoint("files/{$fileId}"));
+        return $this->transport->getJson($this->endpoint('files/' . PathSegment::encode($fileId)));
     }
 
     /**
@@ -127,12 +128,12 @@ final readonly class FilesHttpRepository implements FilesRepositoryContract
      */
     public function delete(string $fileId): bool
     {
-        return $this->transport->delete($this->endpoint("files/{$fileId}"));
+        return $this->transport->delete($this->endpoint('files/' . PathSegment::encode($fileId)));
     }
 
     public function content(string $fileId): array
     {
-        return $this->transport->getContent($this->endpoint("files/{$fileId}/content"));
+        return $this->transport->getContent($this->endpoint('files/' . PathSegment::encode($fileId) . '/content'));
     }
 
     /**

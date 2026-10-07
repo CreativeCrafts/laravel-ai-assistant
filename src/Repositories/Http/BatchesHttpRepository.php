@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\BatchesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 
 /**
@@ -25,12 +26,12 @@ final readonly class BatchesHttpRepository implements BatchesRepositoryContract
 
     public function retrieve(string $batchId): array
     {
-        return $this->transport->getJson($this->endpoint("batches/{$batchId}"));
+        return $this->transport->getJson($this->endpoint('batches/' . PathSegment::encode($batchId)));
     }
 
     public function cancel(string $batchId): array
     {
-        return $this->transport->postJson($this->endpoint("batches/{$batchId}/cancel"), []);
+        return $this->transport->postJson($this->endpoint('batches/' . PathSegment::encode($batchId) . '/cancel'), []);
     }
 
     public function list(array $params = []): array

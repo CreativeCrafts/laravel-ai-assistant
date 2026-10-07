@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoreFileBatchesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 
 /**
@@ -22,17 +23,17 @@ final readonly class VectorStoreFileBatchesHttpRepository implements VectorStore
 
     public function create(string $vectorStoreId, array $payload): array
     {
-        return $this->transport->postJson($this->endpoint("vector_stores/{$vectorStoreId}/file_batches"), $payload, self::BETA_HEADER);
+        return $this->transport->postJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/file_batches'), $payload, self::BETA_HEADER);
     }
 
     public function retrieve(string $vectorStoreId, string $batchId): array
     {
-        return $this->transport->getJson($this->endpoint("vector_stores/{$vectorStoreId}/file_batches/{$batchId}"), self::BETA_HEADER);
+        return $this->transport->getJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/file_batches/' . PathSegment::encode($batchId)), self::BETA_HEADER);
     }
 
     public function cancel(string $vectorStoreId, string $batchId): array
     {
-        return $this->transport->postJson($this->endpoint("vector_stores/{$vectorStoreId}/file_batches/{$batchId}/cancel"), [], self::BETA_HEADER);
+        return $this->transport->postJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/file_batches/' . PathSegment::encode($batchId) . '/cancel'), [], self::BETA_HEADER);
     }
 
     public function listFiles(string $vectorStoreId, string $batchId, array $params = []): array
@@ -43,7 +44,7 @@ final readonly class VectorStoreFileBatchesHttpRepository implements VectorStore
         }
 
         return $this->transport->getJson(
-            $this->endpoint("vector_stores/{$vectorStoreId}/file_batches/{$batchId}/files") . $query,
+            $this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/file_batches/' . PathSegment::encode($batchId) . '/files') . $query,
             self::BETA_HEADER
         );
     }
