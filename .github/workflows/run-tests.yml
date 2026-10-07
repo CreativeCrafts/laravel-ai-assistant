@@ -11,19 +11,23 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        php: [8.2, 8.3]
-        laravel: [11.*, 12.*]
+        php: [8.2, 8.3, 8.4]
+        laravel: [12.*, 13.*]
         stability: [prefer-stable]
+        exclude:
+          # Laravel 13 requires PHP 8.3+
+          - laravel: 13.*
+            php: 8.2
         include:
-          - laravel: 12.*
-            testbench: 10.*
+          - laravel: 13.*
+            testbench: 11.*
             carbon: ^3.0
             larastan: ^3.0
-            pest: ^3.7
+            pest: ^4.4
             rector: ^2.0
             phpstan: ^2.0
-          - laravel: 11.*
-            testbench: 9.*
+          - laravel: 12.*
+            testbench: 10.*
             carbon: ^3.0
             larastan: ^3.0
             pest: ^3.7

@@ -24,6 +24,8 @@ Laravel AI Assistant is a production-ready Laravel package for OpenAI APIs. It u
 
 ### 1) Install
 
+Requires PHP 8.2+ and Laravel 10, 11, 12 or 13 (Laravel 13 requires PHP 8.3+). The test suite runs on Laravel 12 and 13.
+
 ```bash
 composer require creativecrafts/laravel-ai-assistant
 php artisan ai:install

@@ -54,6 +54,7 @@ return 200 and dispatch `OpenAiWebhookReceived` instead of being stored as respo
 
 ### New capabilities
 
+- Laravel 13 support (requires PHP 8.3+).
 - Speaker diarization (voice analysis) via `Ai::diarize()` and `'action' => 'diarize'` in the unified builder.
 - Low-level Audio API access via `Ai::audio()`.
 - Every other OpenAI API resource via the `Ai` facade (see "OpenAI API Coverage" in the README), including the

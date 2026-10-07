@@ -21,7 +21,7 @@
   "require": {
     "php": "^8.3|^8.2",
     "guzzlehttp/guzzle": "^7.9",
-    "illuminate/contracts": "^12|^11|^10.0",
+    "illuminate/contracts": "^13|^12|^11|^10.0",
     "spatie/laravel-package-tools": "^1.19",
     "symfony/http-client": "^6.3|^7.2"
   },
@@ -33,10 +33,10 @@
     "mockery/mockery": "^1.6",
     "nunomaduro/collision": "^8.8|^7.0",
     "nunomaduro/mock-final-classes": "^1.2",
-    "orchestra/testbench": "^10.0|^9.15|^8.0",
-    "pestphp/pest": "^3.8",
-    "pestphp/pest-plugin-arch": "^3.1",
-    "pestphp/pest-plugin-laravel": "^3.2",
+    "orchestra/testbench": "^11.0|^10.0|^9.15|^8.0",
+    "pestphp/pest": "^3.8|^4.4",
+    "pestphp/pest-plugin-arch": "^3.1|^4.0",
+    "pestphp/pest-plugin-laravel": "^3.2|^4.1",
     "phpstan/extension-installer": "^1.4",
     "phpstan/phpstan-phpunit": "^2.0",
     "roave/security-advisories": "dev-latest"
@@ -56,7 +56,7 @@
     "post-autoload-dump": "@php ./vendor/bin/testbench package:discover --ansi",
     "analyse": "vendor/bin/phpstan analyse",
     "test": "vendor/bin/pest",
-    "test-coverage": "vendor/bin/pest --coverage",
+    "test-coverage": "vendor/bin/pest --coverage --coverage-html=build/coverage --coverage-text=build/coverage.txt --coverage-clover=build/logs/clover.xml",
     "test-mutation": "vendor/bin/infection",
     "fix": "vendor/bin/pint --dirty",
     "format": "vendor/bin/pint",
