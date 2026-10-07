@@ -1,0 +1,685 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method CreativeCrafts\\LaravelAiAssistant\\Adapters\\AdapterFactory\:\:make\(\) has InvalidArgumentException in PHPDoc @throws tag but it''s not thrown\.$#'
+			identifier: throws.unusedType
+			count: 1
+			path: src/Adapters/AdapterFactory.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Adapters/AudioSpeechAdapter.php
+
+		-
+			message: '#^Method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ChatCompletionAdapter\:\:buildMessages\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Adapters/ChatCompletionAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$audioInput of method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ChatCompletionAdapter\:\:buildAudioInputMessage\(\) expects array\<string, mixed\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ChatCompletionAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageEditAdapter.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Adapters/ImageGenerationAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$n of method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ImageGenerationAdapter\:\:validateImageCount\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageGenerationAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$quality of method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ImageGenerationAdapter\:\:validateQuality\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageGenerationAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$size of method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ImageGenerationAdapter\:\:validateSize\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageGenerationAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$style of method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ImageGenerationAdapter\:\:validateStyle\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageGenerationAdapter.php
+
+		-
+			message: '#^Parameter \#2 \$model of method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ImageGenerationAdapter\:\:validateImageCount\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageGenerationAdapter.php
+
+		-
+			message: '#^Parameter \#2 \$model of method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ImageGenerationAdapter\:\:validateSize\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageGenerationAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$count of static method CreativeCrafts\\LaravelAiAssistant\\Exceptions\\ImageVariationException\:\:invalidVariationCount\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageVariationAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$size of static method CreativeCrafts\\LaravelAiAssistant\\Exceptions\\ImageVariationException\:\:invalidSize\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ImageVariationAdapter.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Adapters/ResponseApiAdapter.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 2
+			path: src/Adapters/ResponseApiAdapter.php
+
+		-
+			message: '#^Parameter \#1 \$messages of method CreativeCrafts\\LaravelAiAssistant\\Adapters\\ResponseApiAdapter\:\:convertMessagesToInput\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Adapters/ResponseApiAdapter.php
+
+		-
+			message: '#^Call to function is_array\(\) with non\-empty\-array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/AiAssistant.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/AiAssistant.php
+
+		-
+			message: '#^Part \$type \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: src/AiAssistant.php
+
+		-
+			message: '#^Property CreativeCrafts\\LaravelAiAssistant\\AiAssistant\:\:\$options on left side of \?\? is not nullable nor uninitialized\.$#'
+			identifier: nullCoalesce.initializedProperty
+			count: 5
+			path: src/AiAssistant.php
+
+		-
+			message: '#^Property CreativeCrafts\\LaravelAiAssistant\\AiAssistant\:\:\$prompt on left side of \?\? is not nullable nor uninitialized\.$#'
+			identifier: nullCoalesce.initializedProperty
+			count: 4
+			path: src/AiAssistant.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between 2 and 2 will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: src/AiAssistant.php
+
+		-
+			message: '#^Call to function method_exists\(\) with CreativeCrafts\\LaravelAiAssistant\\AiAssistant and ''attachFilesToTurn'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Call to function method_exists\(\) with CreativeCrafts\\LaravelAiAssistant\\AiAssistant and ''includeCodeInterpre…'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Call to function method_exists\(\) with CreativeCrafts\\LaravelAiAssistant\\AiAssistant and ''includeFileSearchTo…'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Call to function method_exists\(\) with CreativeCrafts\\LaravelAiAssistant\\AiAssistant and ''includeFunctionCall…'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Call to function method_exists\(\) with CreativeCrafts\\LaravelAiAssistant\\AiAssistant and ''setToolChoice'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Call to function method_exists\(\) with CreativeCrafts\\LaravelAiAssistant\\AiAssistant and ''useFileSearch'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Cannot access offset ''additionalProperties'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Cannot access offset ''description'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Cannot access offset ''parameters'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Cannot access offset ''properties'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Cannot access offset ''required'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Cannot access offset ''strict'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^PHPDoc tag @var with type string is not subtype of native type non\-empty\-string\|null\.$#'
+			identifier: varTag.nativeType
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Parameter \#1 \$functionName of method CreativeCrafts\\LaravelAiAssistant\\AiAssistant\:\:includeFunctionCallTool\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Parameter \#2 \$functionDescription of method CreativeCrafts\\LaravelAiAssistant\\AiAssistant\:\:includeFunctionCallTool\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Parameter \#4 \$isStrict of method CreativeCrafts\\LaravelAiAssistant\\AiAssistant\:\:includeFunctionCallTool\(\) expects bool, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Chat/ChatSession.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Console/Commands/ConfigValidateCommand.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''OPENAI_API_KEY'' and ''OPENAI_API_KEY'' will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: src/Console/Commands/ConfigValidateCommand.php
+
+		-
+			message: '#^Offset ''extension'' on array\{extension\: ''curl''\}\|array\{extension\: ''json''\}\|array\{extension\: ''mbstring''\}\|array\{extension\: ''openssl''\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: src/Console/Commands/HealthCheckCommand.php
+
+		-
+			message: '#^Part \$value \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: src/Console/Commands/HealthCheckCommand.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 3
+			path: src/Console/Commands/TestConnectionCommand.php
+
+		-
+			message: '#^Parameter \#1 \$responseId of method CreativeCrafts\\LaravelAiAssistant\\Contracts\\ResponsesRepositoryContract\:\:getResponse\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Console/Commands/TestConnectionCommand.php
+
+		-
+			message: '#^Property CreativeCrafts\\LaravelAiAssistant\\DataTransferObjects\\ChatResponseDto\:\:\$raw on left side of \?\? is not nullable nor uninitialized\.$#'
+			identifier: nullCoalesce.initializedProperty
+			count: 1
+			path: src/DataTransferObjects/ChatResponseDto.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/DataTransferObjects/NewAssistantResponseData.php
+
+		-
+			message: '#^Method CreativeCrafts\\LaravelAiAssistant\\DataTransferObjects\\ResponseEnvelope\:\:blocks\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/DataTransferObjects/ResponseEnvelope.php
+
+		-
+			message: '#^Method CreativeCrafts\\LaravelAiAssistant\\DataTransferObjects\\ResponseEnvelope\:\:toolCalls\(\) should return array\<int, array\{id\?\: string\|null, name\?\: string\|null, arguments\?\: mixed\}\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/DataTransferObjects/ResponseEnvelope.php
+
+		-
+			message: '#^PHPDoc tag @method for method CreativeCrafts\\LaravelAiAssistant\\Facades\\AiAssistant\:\:init\(\) return type contains unknown class CreativeCrafts\\LaravelAiAssistant\\Assistant\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Facades/AiAssistant.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Cannot access offset ''error'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Cannot access offset ''message'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Cannot access offset ''response'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Parameter \#2 \$error of class CreativeCrafts\\LaravelAiAssistant\\Events\\ResponseFailed constructor expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Parameter \#2 \$status of method CreativeCrafts\\LaravelAiAssistant\\Services\\ResponseStatusStore\:\:setStatus\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 2
+			path: src/Http/MultipartRequestBuilder.php
+
+		-
+			message: '#^Parameter \$endpointPriority of class CreativeCrafts\\LaravelAiAssistant\\Services\\RequestRouter constructor expects array\<int, string\>, array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Providers/CoreServiceProvider.php
+
+		-
+			message: '#^Parameter \#2 \$macro of static method Illuminate\\Routing\\Router\:\:macro\(\) expects bindable closure, static closure given\.$#'
+			identifier: argument.staticClosure
+			count: 1
+			path: src/Providers/MacroAndMiddlewareServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$middleware of method Illuminate\\Routing\\Route\:\:middleware\(\) expects array\<string\>\|string\|null, array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Providers/WebhookServiceProvider.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Repositories/Http/FilesHttpRepository.php
+
+		-
+			message: '#^Call to function is_numeric\(\) with int will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Repositories/Http/ResponsesHttpRepository.php
+
+		-
+			message: '#^Parameter \#1 \$jsonSchema of method CreativeCrafts\\LaravelAiAssistant\\Chat\\ChatSession\:\:setResponseFormatJsonSchema\(\) expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Services/AiManager.php
+
+		-
+			message: '#^Parameter \#2 \$name of method CreativeCrafts\\LaravelAiAssistant\\Chat\\ChatSession\:\:setResponseFormatJsonSchema\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Services/AiManager.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot access offset ''arguments'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot access offset ''content'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot access offset ''text'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot access offset ''type'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 4
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 8
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Parameter \#2 \$array of function array_map expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Services/AssistantService.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Contracts\\Cache\\Store and ''getPrefix'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Services/CacheService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Services/CacheService.php
+
+		-
+			message: '#^Method CreativeCrafts\\LaravelAiAssistant\\Services\\CacheService\:\:decodePayload\(\) should return array\<string, mixed\>\|string\|null but returns array\<mixed, mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Services/CacheService.php
+
+		-
+			message: '#^Method CreativeCrafts\\LaravelAiAssistant\\Services\\CacheService\:\:decodePayload\(\) should return array\<string, mixed\>\|string\|null but returns array\<mixed, mixed\>\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Services/CacheService.php
+
+		-
+			message: '#^Parameter \#1 \$key of static method Redis\:\:del\(\) expects array\<string\>\|string, list\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Services/CacheService.php
+
+		-
+			message: '#^Parameter \#1 \$name of static method Illuminate\\Database\\DatabaseManager\:\:connection\(\) expects string\|UnitEnum\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Services/CacheService.php
+
+		-
+			message: '#^Binary operation "\*" between mixed and 1000 results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: src/Services/HealthCheckService.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' \(slow execution\)'' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: src/Services/HealthCheckService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Services/HealthCheckService.php
+
+		-
+			message: '#^Cannot access offset ''enabled'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Services/HealthCheckService.php
+
+		-
+			message: '#^Cannot access offset ''max_tokens'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Services/HealthCheckService.php
+
+		-
+			message: '#^Cannot access offset ''test_model'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Services/HealthCheckService.php
+
+		-
+			message: '#^Cannot access offset ''timeout'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Services/HealthCheckService.php
+
+		-
+			message: '#^Parameter \#2 \$timestamp of function date expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Services/HealthCheckService.php
+
+		-
+			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: src/Services/MetricsCollectionService.php
+
+		-
+			message: '#^Binary operation "\+" between mixed and float results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: src/Services/MetricsCollectionService.php
+
+		-
+			message: '#^Binary operation "/" between mixed and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: src/Services/MetricsCollectionService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{endpoint\: string, period_hours\: int, total_calls\: int, average_response_time_ms\: float, error_rate_percent\: float, success_rate_percent\: float, last_updated\: string\|null\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Services/MetricsCollectionService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{period_hours\: int, average_memory_usage_mb\: float, peak_memory_usage_mb\: float, average_cpu_usage_percent\: float, peak_cpu_usage_percent\: float, health_status\: string, last_updated\: string\|null\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Services/MetricsCollectionService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{period_hours\: int, total_tokens\: int, tokens_by_model\: array, tokens_by_operation\: array, estimated_cost_usd\: float, last_updated\: string\|null\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Services/MetricsCollectionService.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 2
+			path: src/Services/MetricsCollectionService.php
+
+		-
+			message: '#^Parameter \#2 \$formats of method CreativeCrafts\\LaravelAiAssistant\\Http\\MultipartRequestBuilder\:\:setAllowedFormats\(\) expects array\<string\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Services/OpenAiClient.php
+
+		-
+			message: '#^Cannot access offset ''content'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Services/RequestRouter.php
+
+		-
+			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: src/Services/SecurityService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 4
+			path: src/Services/StreamingService.php
+
+		-
+			message: '#^Comparison operation "\>\=" between 1 and 0 is always true\.$#'
+			identifier: greaterOrEqual.alwaysTrue
+			count: 1
+			path: src/Services/StreamingService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Services/ToolRegistry.php
+
+		-
+			message: '#^Property CreativeCrafts\\LaravelAiAssistant\\Support\\ResponsesBuilder\:\:\$idempotencyKey \(string\|null\) is never assigned string so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/Support/ResponsesBuilder.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Support/StreamReader.php
+
+		-
+			message: '#^Cannot access offset ''delta'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Support/StreamReader.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Support/StreamReader.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between 2 and 2 will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: src/Support/ToolsBuilder.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Transport/GuzzleOpenAITransport.php
+
+		-
+			message: '#^Cannot access offset ''message'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Transport/GuzzleOpenAITransport.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Transport/GuzzleOpenAITransport.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: src/Transport/GuzzleOpenAITransport.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Transport/GuzzleOpenAITransport.php

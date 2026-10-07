@@ -47,8 +47,8 @@ use Throwable;
  * @deprecated Since v3.0. Use Ai::responses() for unified API or Ai::chat() for chat sessions.
  *             This class will be removed in v4.0.
  *
- * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::responses()
- * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::chat()
+ * @see Facades\Ai::responses()
+ * @see Facades\Ai::chat()
  */
 class AiAssistant implements AiAssistantContract
 {
