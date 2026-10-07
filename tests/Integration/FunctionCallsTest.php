@@ -27,7 +27,6 @@ beforeEach(function () {
 it('executes multiple tool calls in a single turn and continues to final text', function () {
     $assistant = app(AssistantService::class);
     $responses = app(ResponsesRepositoryContract::class);
-    $convs = app(ConversationsRepositoryContract::class);
 
     // Register two tools
     $registry = app(ToolRegistry::class);
@@ -56,8 +55,6 @@ it('executes multiple tool calls in a single turn and continues to final text', 
 
     expect($res['messages'] ?? '')->toBe('sum=5, product=6');
 
-    // Verify both tool_result items saved into conversation
-    $list = $convs->listItems($convId);
-    $ids = array_map(fn ($it) => $it['tool_call_id'] ?? null, $list['data'] ?? []);
-    expect($ids)->toContain($callId1, $callId2);
+    // Both results go back to the model as function_call_output items
+    expect(ResponsesFactory::functionCallOutputs($responses->lastPayload))->toBe([$callId1 => '5', $callId2 => '6']);
 });

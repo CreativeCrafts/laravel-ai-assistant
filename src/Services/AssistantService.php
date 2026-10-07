@@ -19,6 +19,7 @@ use InvalidArgumentException;
 use JsonException;
 use Throwable;
 use SplFileInfo;
+use stdClass;
 
 /**
  * Internal AI operations service.
@@ -83,32 +84,16 @@ class AssistantService implements AudioProcessingContract
         $modalities = $options['modalities'] ?? null;
         $metadata = $options['metadata'] ?? [];
         $idempotencyKey = $options['idempotency_key'] ?? null;
-        $useFileSearch = $options['use_file_search'] ?? true;
+        $temperature = isset($options['temperature']) && is_numeric($options['temperature']) ? (float)$options['temperature'] : null;
 
         $fileIds = array_values(array_unique(array_filter((array)($options['file_ids'] ?? []), 'is_string')));
         $imageInputs = array_values(array_filter((array)($options['input_images'] ?? []), static function ($v) {
             return is_string($v) || is_array($v);
         }));
-        $attachments = array_values(array_filter((array)($options['attachments'] ?? []), 'is_array'));
-        if ($attachments === [] && $fileIds !== []) {
-            $attachments = array_map(static fn (string $fid) => [
-                'file_id' => $fid,
-                'tools' => [['type' => 'file_search']],
-            ], $fileIds);
-        }
-        $attachments = $this->validateAttachments($attachments);
-
-        // Auto-enable the file_search tool if file references/attachments are provided and not already present
-        if ($useFileSearch && ($fileIds !== [] || $attachments !== [])) {
-            $hasFileSearch = false;
-            foreach ($tools as $t) {
-                if (is_array($t) && ($t['type'] ?? null) === 'file_search') {
-                    $hasFileSearch = true;
-                    break;
-                }
-            }
-            if (!$hasFileSearch) {
-                $tools[] = ['type' => 'file_search'];
+        // Attachments are validated for backward compatibility; the Responses API reads attached files as input_file blocks
+        foreach ($this->validateAttachments(array_values(array_filter((array)($options['attachments'] ?? []), 'is_array'))) as $attachment) {
+            if (!in_array($attachment['file_id'], $fileIds, true)) {
+                $fileIds[] = $attachment['file_id'];
             }
         }
 
@@ -135,19 +120,15 @@ class AssistantService implements AudioProcessingContract
         }
         foreach ($fileIds as $fid) {
             $contentBlocks[] = [
-                'type' => 'file_reference',
+                'type' => 'input_file',
                 'file_id' => $fid,
             ];
         }
 
-        $input = [
+        $inputItems = [[
             'role' => 'user',
             'content' => $contentBlocks,
-        ];
-        if ($attachments !== []) {
-            $input['attachments'] = $attachments;
-        }
-        $inputItems = [$input];
+        ]];
 
         return $this->sendTurn(
             $conversationId,
@@ -159,7 +140,8 @@ class AssistantService implements AudioProcessingContract
             $modalities,
             $metadata,
             $idempotencyKey,
-            $options['tool_choice'] ?? null
+            $options['tool_choice'] ?? null,
+            $temperature
         );
     }
 
@@ -292,7 +274,9 @@ class AssistantService implements AudioProcessingContract
                 $results,
                 $model,
                 $instructions,
-                $idempotencyKey
+                $idempotencyKey,
+                $tools,
+                $responseFormat
             );
         }
 
@@ -300,53 +284,50 @@ class AssistantService implements AudioProcessingContract
     }
 
     /**
-     * Post tool_result items to the conversation and ask the model to continue the turn.
+     * Send tool outputs back to the model as function_call_output items and let it continue the turn.
+     *
+     * @param array<int, array{tool_call_id?: string, output?: mixed}> $toolResults tool_call_id is the call_id of the function_call item
+     * @param array $tools Tools to keep available, so the model can call another tool
+     * @param array|string|null $responseFormat Output format of the turn, which applies to the answer that follows the tool calls
      */
     public function continueWithToolResults(
         string $conversationId,
         array $toolResults,
         ?string $model = null,
         ?string $instructions = null,
-        ?string $idempotencyKey = null
+        ?string $idempotencyKey = null,
+        array $tools = [],
+        array|string|null $responseFormat = null
     ): array {
-        // 1) Insert tool_result items in the conversation
-        $items = [];
+        $outputs = [];
         foreach ($toolResults as $tr) {
-            // Expecting [tool_call_id, output]
             $toolCallId = (string)($tr['tool_call_id'] ?? '');
             $output = $tr['output'] ?? null;
             if ($toolCallId === '') {
                 continue;
             }
-            $text = is_string($output) ? $output : json_encode($output);
-            $items[] = [
-                'type' => 'tool_result',
-                'role' => 'tool',
-                'tool_call_id' => $toolCallId,
-                'content' => [
-                    ['type' => 'output_text', 'text' => (string)$text],
-                ],
+            $outputs[] = [
+                'type' => 'function_call_output',
+                'call_id' => $toolCallId,
+                'output' => is_string($output) ? $output : (string)json_encode($output),
             ];
         }
-        if ($items !== []) {
-            $this->conversationsRepository->createItems($conversationId, $items);
-        }
 
-        // 2) Trigger a new responses.create referencing same conversation
+        // The function_call items are already stored in the conversation, so the outputs are the only new input
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
             $instructions,
             $model,
-            tools: [],
+            tools: $tools,
             inputItems: [],
-            responseFormat: null,
+            responseFormat: $responseFormat,
             modalities: null,
             metadata: [],
             idempotencyKey: $idempotencyKey,
             toolChoice: null,
             temperature: null,
             maxCompletionTokens: null,
-            presetInput: null
+            presetInput: $outputs !== [] ? $outputs : null
         );
         $__start = microtime(true);
         $resp = $this->responsesRepository->createResponse($payload);
@@ -792,7 +773,7 @@ class AssistantService implements AudioProcessingContract
             $payload['instructions'] = $instr;
         }
         if (!empty($tools)) {
-            $payload['tools'] = $tools;
+            $payload['tools'] = $this->normalizeTools($tools);
         }
         // If input is already set via InputBuilder (SSOT approach), use it directly
         if (!empty($presetInput)) {
@@ -816,6 +797,10 @@ class AssistantService implements AudioProcessingContract
                         if (($blk['type'] ?? null) === 'text') {
                             $blk['type'] = 'input_text';
                         }
+                        // Legacy file references become Responses API file inputs
+                        if (($blk['type'] ?? null) === 'file_reference') {
+                            $blk['type'] = 'input_file';
+                        }
                         // Normalize input_image legacy nested shape: image: { file_id | url }
                         if (($blk['type'] ?? null) === 'input_image' && isset($blk['image']) && is_array($blk['image'])) {
                             if (isset($blk['image']['file_id']) && is_string($blk['image']['file_id'])) {
@@ -828,11 +813,18 @@ class AssistantService implements AudioProcessingContract
                         $normBlocks[] = $blk;
                     }
                 }
-                $new = ['role' => $role, 'content' => $normBlocks];
+                // Responses input messages have no "attachments" field: send attached files as input_file blocks
                 if (isset($itm['attachments']) && is_array($itm['attachments'])) {
-                    $new['attachments'] = $itm['attachments'];
+                    $attachedIds = array_column(array_filter($normBlocks, static fn (array $b): bool => ($b['type'] ?? null) === 'input_file'), 'file_id');
+                    foreach ($itm['attachments'] as $att) {
+                        $fileId = is_array($att) ? ($att['file_id'] ?? null) : null;
+                        if (is_string($fileId) && $fileId !== '' && !in_array($fileId, $attachedIds, true)) {
+                            $normBlocks[] = ['type' => 'input_file', 'file_id' => $fileId];
+                            $attachedIds[] = $fileId;
+                        }
+                    }
                 }
-                $normalizedInput[] = $new;
+                $normalizedInput[] = ['role' => $role, 'content' => $normBlocks];
             }
             $payload['input'] = $normalizedInput;
         }
@@ -841,13 +833,17 @@ class AssistantService implements AudioProcessingContract
         }
         if ($responseFormat !== null) {
             $payload['text'] = [
-                'format' => $responseFormat,
+                'format' => $this->normalizeResponseFormat($responseFormat),
             ];
         }
         if ($modalities !== null) {
             $payload['modalities'] = $modalities;
         }
         if ($toolChoice !== null) {
+            // {type: function, function: {name}} -> {type: function, name}
+            if (is_array($toolChoice) && ($toolChoice['type'] ?? null) === 'function' && isset($toolChoice['function']['name'])) {
+                $toolChoice = ['type' => 'function', 'name' => $toolChoice['function']['name']];
+            }
             $payload['tool_choice'] = $toolChoice;
         }
         if ($idempotencyKey !== null) {
@@ -887,6 +883,76 @@ class AssistantService implements AudioProcessingContract
         return $payload;
     }
 
+    /**
+     * Convert tool definitions from the Chat Completions/Assistants shapes the chat helpers build into the
+     * Responses API shapes. Tools that are already in the Responses shape are returned unchanged.
+     *
+     * @param array<int|string, mixed> $tools
+     * @return array<int, mixed>
+     */
+    private function normalizeTools(array $tools): array
+    {
+        $normalized = [];
+        foreach ($tools as $tool) {
+            if (!is_array($tool)) {
+                $normalized[] = $tool;
+                continue;
+            }
+            $type = $tool['type'] ?? null;
+            if ($type === 'function' && isset($tool['function']) && is_array($tool['function'])) {
+                // {type: function, function: {name, description, parameters, strict}} -> {type: function, name, ...}
+                $function = $tool['function'];
+                unset($tool['function']);
+                $tool = array_merge($tool, $function);
+            }
+            if ($type === 'function') {
+                $tool['parameters'] = $this->normalizeFunctionParameters($tool['parameters'] ?? null);
+            } elseif ($type === 'file_search') {
+                $ids = $tool['vector_store_ids'] ?? [];
+                if (!is_array($ids) || $ids === []) {
+                    throw new InvalidArgumentException('The file_search tool needs at least one vector store id, e.g. includeFileSearchTool([\'vs_123\']).');
+                }
+            } elseif ($type === 'code_interpreter' && !isset($tool['container'])) {
+                $tool['container'] = ['type' => 'auto'];
+            }
+            $normalized[] = $tool;
+        }
+        return $normalized;
+    }
+
+    /**
+     * JSON Schema objects must encode as JSON objects: an empty PHP array would be sent as [].
+     */
+    private function normalizeFunctionParameters(mixed $parameters): mixed
+    {
+        if ($parameters === null || $parameters === [] || ($parameters instanceof stdClass && get_object_vars($parameters) === [])) {
+            return ['type' => 'object', 'properties' => new stdClass(), 'required' => [], 'additionalProperties' => false];
+        }
+        if (is_array($parameters) && array_key_exists('properties', $parameters) && $parameters['properties'] === []) {
+            $parameters['properties'] = new stdClass();
+        }
+        return $parameters;
+    }
+
+    /**
+     * Convert response formats to the Responses API text.format shape:
+     * 'text' -> {type: text}; {type: json_schema, json_schema: {name, schema, strict}} -> {type: json_schema, name, schema, strict}.
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeResponseFormat(array|string $format): array
+    {
+        if (is_string($format)) {
+            return ['type' => $format];
+        }
+        if (($format['type'] ?? null) === 'json_schema' && isset($format['json_schema']) && is_array($format['json_schema'])) {
+            $schema = $format['json_schema'];
+            unset($format['json_schema']);
+            $format = array_merge($format, $schema);
+        }
+        return $format;
+    }
+
     private function normalizeResponseEnvelope(array $resp): array
     {
         $id = (string)($resp['id'] ?? '');
@@ -900,6 +966,9 @@ class AssistantService implements AudioProcessingContract
         $output = $resp['output'] ?? $resp['outputs'] ?? [];
         if (is_array($output)) {
             foreach ($output as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
                 $type = $item['type'] ?? null;
                 if ($type === 'output_text' && isset($item['content'][0]['text'])) {
                     $text = (string)$item['content'][0]['text'];
@@ -929,6 +998,14 @@ class AssistantService implements AudioProcessingContract
                         }
                         $messagesText .= $blockText;
                     }
+                } elseif ($type === 'function_call') {
+                    // Responses API function calls: results are matched by call_id, which is what "id" carries here
+                    $toolCalls[] = [
+                        'id' => $item['call_id'] ?? null,
+                        'name' => $item['name'] ?? null,
+                        'arguments' => $item['arguments'] ?? null,
+                        'item_id' => $item['id'] ?? null,
+                    ];
                 } elseif ($type === 'tool_call') {
                     $toolCalls[] = [
                         'id' => $item['id'] ?? null,
