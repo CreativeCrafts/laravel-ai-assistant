@@ -34,14 +34,35 @@ final class ResponsesFactory
         return array_replace_recursive($base, $overrides);
     }
 
-    public static function toolCallItem(string $id, string $name, array $arguments): array
+    /**
+     * A Responses API function_call output item; $callId is what tool results refer to.
+     */
+    public static function toolCallItem(string $callId, string $name, array $arguments): array
     {
         return [
-            'type' => 'tool_call',
-            'id' => $id,
+            'type' => 'function_call',
+            'id' => self::id('fc_'),
+            'call_id' => $callId,
             'name' => $name,
-            'arguments' => $arguments,
+            'arguments' => json_encode($arguments, JSON_THROW_ON_ERROR),
+            'status' => 'completed',
         ];
+    }
+
+    /**
+     * function_call_output items sent as input of a responses.create payload, keyed by call_id.
+     *
+     * @return array<string, string>
+     */
+    public static function functionCallOutputs(array $payload): array
+    {
+        $outputs = [];
+        foreach ((array)($payload['input'] ?? []) as $item) {
+            if (is_array($item) && ($item['type'] ?? null) === 'function_call_output') {
+                $outputs[(string)$item['call_id']] = (string)$item['output'];
+            }
+        }
+        return $outputs;
     }
 
     public static function withToolCalls(string $conversationId, array $toolCalls, array $overrides = []): array

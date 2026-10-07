@@ -109,9 +109,8 @@ final class ResponsesBuilder
      * follow-up requests that continue a turn after tool calls), retrieve(), resume(), cancel(), delete(),
      * listInputItems(), countInputTokens() and compact(), e.g. ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1']).
      * Later calls merge into earlier ones; a header name repeated in any letter case replaces the earlier value.
-     * Requests routed to other endpoints (audio, images, chat completions) do not send these headers, and neither do
-     * the Conversations API calls a turn makes (creating the conversation when inConversation() is not used, posting
-     * tool results).
+     * Requests routed to other endpoints (audio, images, chat completions) do not send these headers, and neither does
+     * the Conversations API request that creates the conversation when inConversation() is not used.
      *
      * @param array<string, string> $headers
      */

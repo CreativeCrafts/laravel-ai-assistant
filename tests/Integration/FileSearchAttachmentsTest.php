@@ -23,7 +23,7 @@ beforeEach(function () {
     app()->instance(FilesRepositoryContract::class, $fakeFiles);
 });
 
-it('auto-inserts file_search when attachments are provided', function () {
+it('sends attachments as input_file blocks without an attachments field', function () {
     $assistant = app(AssistantService::class);
     /** @var FakeResponsesRepository $responses */
     $responses = app(ResponsesRepositoryContract::class);
@@ -39,18 +39,12 @@ it('auto-inserts file_search when attachments are provided', function () {
     ]);
 
     $payload = $responses->lastPayload;
-    $tools = $payload['tools'] ?? [];
-    $hasFileSearch = false;
-    foreach ($tools as $t) {
-        if (($t['type'] ?? null) === 'file_search') {
-        $hasFileSearch = true;
-        break;
-        }
-    }
-    expect($hasFileSearch)->toBeTrue();
+    expect($payload['input'][0]['content'])->toContain(['type' => 'input_file', 'file_id' => 'file_777'])
+        ->and($payload['input'][0])->not->toHaveKey('attachments')
+        ->and($payload)->not->toHaveKey('tools');
 });
 
-it('respects use_file_search(false) and does not auto-insert tool', function () {
+it('does not add a file_search tool for attached files', function () {
     $assistant = app(AssistantService::class);
     /** @var FakeResponsesRepository $responses */
     $responses = app(ResponsesRepositoryContract::class);

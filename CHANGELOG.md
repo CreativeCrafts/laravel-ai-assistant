@@ -59,6 +59,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Response input items are listed from `GET /v1/responses/{id}/input_items` (was the non-existent `/input/items`).
 - Webhook events in OpenAI's format (`data.id`) resolve the response id instead of the event id.
+- Chat sessions (`Ai::chat()`, `Ai::quick()`, `AiAssistant`) send request shapes the Responses API accepts:
+  - Function tools are sent flat (`{type, name, description, parameters, strict}`), and `tool_choice` for a specific
+    function as `{type: function, name}`.
+  - `includeFileSearchTool($ids)` sends its vector store ids on the tool; `includeCodeInterpreterTool($fileIds)` sends an
+    `auto` container with those files.
+  - JSON schema output is sent as a flat `text.format` (`{type: json_schema, name, schema}`), and `'text'` as
+    `{type: text}`.
+  - Tool calls are read from `function_call` output items, and tool results are sent back as `function_call_output`
+    input items (with the turn's tools and output format, so the model can call another tool and format its answer).
+- `setResponseFormatText()`, `setResponseFormatJson()`, `setResponseFormatJsonSchema()` and `Ai::quick()`'s
+  `response_format` were never sent with the request; they now are.
+- `ChatSession::setTemperature()` was never sent with the request; it now is.
+- Files and images attached to a chat turn are no longer re-sent with every later turn of the session.
+- A function tool without parameters no longer crashes `ChatSession::send()`.
 
 ### Deprecated
 
@@ -67,6 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Files attached to a chat turn (`attachFiles()`, `attachUploadedFile()`, `attachFilesFromStorage()`, the `file_ids`
+  and `attachments` options) are sent as `input_file` content blocks instead of `file_reference` blocks and an
+  `attachments` field, and no longer add a `file_search` tool; the `use_file_search` flag has no effect. To search
+  files, add them to a vector store and call `includeFileSearchTool(['vs_...'])`, which now throws an
+  `InvalidArgumentException` when no vector store id is given.
+- Tool results are no longer written to the conversation as `tool_result` items before the follow-up request.
 - Multipart array fields are sent with OpenAI's form encoding (`name[]`, `name[key]`) instead of JSON strings.
 - Transport responses: empty bodies decode to `[]`; `video/*`, `image/*`, `application/sdp` and other binary
   bodies are returned as `content` + `content_type`; all `text/*` bodies are returned as `text`.

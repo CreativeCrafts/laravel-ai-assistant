@@ -478,28 +478,31 @@ final class ChatSession
                 if ($type === 'function' && isset($tool['function'])) {
                     $func = $tool['function'];
                     if (method_exists($this->core, 'includeFunctionCallTool')) {
+                        // A function without parameters carries an empty object (stdClass) instead of a schema array
+                        $parameters = is_array($func['parameters'] ?? null) ? $func['parameters'] : [];
                         $this->core->includeFunctionCallTool(
                             $func['name'] ?? '',
                             $func['description'] ?? '',
-                            [
-                                'properties' => $func['parameters']['properties'] ?? [],
-                                'required' => $func['parameters']['required'] ?? [],
-                                'additionalProperties' => $func['parameters']['additionalProperties'] ?? false,
+                            $parameters === [] ? [] : [
+                                'properties' => $parameters['properties'] ?? [],
+                                'required' => $parameters['required'] ?? [],
+                                'additionalProperties' => $parameters['additionalProperties'] ?? false,
                             ],
                             $func['strict'] ?? false
                         );
                     }
                 } elseif ($type === 'file_search' && method_exists($this->core, 'includeFileSearchTool')) {
-                    $vectorStoreIds = [];
-                    if (isset($config['tool_resources']['file_search']['vector_store_ids'])) {
-                        $vectorStoreIds = $config['tool_resources']['file_search']['vector_store_ids'];
-                    }
+                    $vectorStoreIds = array_merge(
+                        (array)($tool['vector_store_ids'] ?? []),
+                        (array)($config['tool_resources']['file_search']['vector_store_ids'] ?? [])
+                    );
                     $this->core->includeFileSearchTool($vectorStoreIds);
                 } elseif ($type === 'code_interpreter' && method_exists($this->core, 'includeCodeInterpreterTool')) {
-                    $fileIds = [];
-                    if (isset($config['tool_resources']['code_interpreter']['file_ids'])) {
-                        $fileIds = $config['tool_resources']['code_interpreter']['file_ids'];
-                    }
+                    $container = $tool['container'] ?? null;
+                    $fileIds = array_merge(
+                        is_array($container) ? (array)($container['file_ids'] ?? []) : [],
+                        (array)($config['tool_resources']['code_interpreter']['file_ids'] ?? [])
+                    );
                     $this->core->includeCodeInterpreterTool($fileIds);
                 }
             }

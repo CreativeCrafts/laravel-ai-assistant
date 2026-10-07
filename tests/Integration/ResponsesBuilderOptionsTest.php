@@ -185,16 +185,18 @@ describe('ResponsesBuilder::withOptions', function () {
             ->and($keyFor(['multi_agent' => ['enabled' => true]]))->not->toBe($keyFor([]));
     });
 
-    it('carries the options into the request that continues a turn after tool calls, without input or tool_choice', function () {
+    it('carries the options into the request that continues a turn after tool calls, without their input or tool_choice', function () {
         $this->responses->pushResponse(ResponsesFactory::withToolCalls('conv_1', [
             ['id' => 'call_1', 'name' => 'unregistered_tool', 'arguments' => ['x' => 1]],
         ]));
         $this->responses->pushResponse(ResponsesFactory::afterToolResultsFinal('conv_1', 'done'));
+        $tools = [['type' => 'function', 'name' => 'unregistered_tool', 'parameters' => ['type' => 'object', 'properties' => ['x' => ['type' => 'integer']]]]];
 
         $builder = new ResponsesBuilder(app(AssistantService::class));
         $builder->inConversation('conv_1')
             ->withOptions([
                 'multi_agent' => ['enabled' => true],
+                'tools' => $tools,
                 'tool_choice' => 'required',
                 'input' => [['role' => 'user', 'content' => 'From options']],
             ])
@@ -204,10 +206,35 @@ describe('ResponsesBuilder::withOptions', function () {
 
         expect($this->responses->createdPayloads)->toHaveCount(2);
         [$first, $continuation] = $this->responses->createdPayloads;
-        expect($first)->toMatchArray(['multi_agent' => ['enabled' => true], 'tool_choice' => 'required'])
+        expect($first)->toMatchArray(['multi_agent' => ['enabled' => true], 'tools' => $tools, 'tool_choice' => 'required'])
             ->and($first['input'][0]['content'][0]['text'])->toBe('Hi')
-            ->and($continuation['multi_agent'])->toBe(['enabled' => true])
-            ->and($continuation)->not->toHaveKey('input')
+            ->and($continuation)->toMatchArray(['multi_agent' => ['enabled' => true], 'tools' => $tools])
+            ->and($continuation['input'])->toBe([[
+                'type' => 'function_call_output',
+                'call_id' => 'call_1',
+                'output' => '{"error":"Tool not registered","tool":"unregistered_tool"}',
+            ]])
             ->and($continuation)->not->toHaveKey('tool_choice');
+    });
+
+    it('does not send the input of the options when a turn continues without tool outputs', function () {
+        // A tool call without a call_id has no output to send back
+        $this->responses->pushResponse([
+            'id' => 'resp_1',
+            'conversation_id' => 'conv_1',
+            'status' => 'in_progress',
+            'output' => [['type' => 'function_call', 'name' => 'unregistered_tool', 'arguments' => '{}']],
+        ]);
+        $this->responses->pushResponse(ResponsesFactory::afterToolResultsFinal('conv_1', 'done'));
+
+        $builder = new ResponsesBuilder(app(AssistantService::class));
+        $builder->inConversation('conv_1')
+            ->withOptions(['input' => [['role' => 'user', 'content' => 'From options']]])
+            ->inputItems()->appendUserText('Hi');
+
+        $builder->send();
+
+        expect($this->responses->createdPayloads)->toHaveCount(2)
+            ->and($this->responses->createdPayloads[1])->not->toHaveKey('input');
     });
 });
