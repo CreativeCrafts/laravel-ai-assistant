@@ -92,6 +92,31 @@ it('rejects OpenAI events with invalid or stale signatures', function (?int $tim
     'stale timestamp' => [time() - 3600, null],
 ]);
 
+it('honors max_skew_seconds given as an environment string', function (string $skew, int $age, int $status) {
+    // env('AI_WEBHOOKS_MAX_SKEW_SECONDS') returns strings such as "600"
+    config()->set('ai-assistant.webhooks.max_skew_seconds', $skew);
+    $event = ['id' => 'evt_1', 'object' => 'event', 'created_at' => time(), 'type' => 'batch.completed', 'data' => ['id' => 'batch_1']];
+
+    $response = app(WebhookController::class)->handle(openAiWebhookRequest($event, $this->secret, time() - $age));
+
+    expect($response->status())->toBe($status);
+})->with([
+    'inside a 600 second window' => ['600', 500, 200],
+    'outside a 60 second window' => ['60', 120, 401],
+]);
+
+it('accepts legacy body signatures when max_skew_seconds is an environment string', function () {
+    config()->set('ai-assistant.webhooks.max_skew_seconds', '600');
+    $body = '{"type":"response.completed","response":{"id":"resp_legacy"}}';
+    $request = Request::create('/ai-assistant/webhook', 'POST', [], [], [], [
+        'HTTP_X_OPENAI_SIGNATURE' => hash_hmac('sha256', $body, $this->secret),
+        'CONTENT_TYPE' => 'application/json',
+    ], $body);
+
+    expect(app(WebhookController::class)->handle($request)->status())->toBe(200)
+        ->and(app(ResponseStatusStore::class)->getStatus('resp_legacy')['status'] ?? null)->toBe('completed');
+});
+
 it('lets the verify.ai.webhook middleware accept OpenAI signatures', function () {
     $event = ['id' => 'evt_1', 'object' => 'event', 'created_at' => time(), 'type' => 'eval.run.succeeded', 'data' => ['id' => 'evalrun_1']];
     $middleware = new VerifyAiWebhookSignature();

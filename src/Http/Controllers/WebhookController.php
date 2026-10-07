@@ -64,10 +64,9 @@ readonly class WebhookController
         }
 
         $raw = $request->getContent();
-        $skew = Config::integer(key: 'ai-assistant.webhooks.max_skew_seconds', default: 300);
-        if ($skew < 1) {
-            $skew = 300;
-        }
+        // env() yields strings (e.g. "600"), so accept any positive numeric value like the middleware does
+        $skewValue = Config::get('ai-assistant.webhooks.max_skew_seconds', 300);
+        $skew = is_numeric($skewValue) && (int)$skewValue > 0 ? (int)$skewValue : 300;
 
         $webhookId = (string) $request->header(StandardWebhookSignature::ID_HEADER, '');
         $webhookTimestamp = (string) $request->header(StandardWebhookSignature::TIMESTAMP_HEADER, '');
