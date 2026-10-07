@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelAiAssistant;
 
 use CreativeCrafts\LaravelAiAssistant\Console\Commands\ConfigValidateCommand;
 use CreativeCrafts\LaravelAiAssistant\Console\Commands\HealthCheckCommand;
+use CreativeCrafts\LaravelAiAssistant\Console\Commands\InstallCommand;
 use CreativeCrafts\LaravelAiAssistant\Console\Commands\TestConnectionCommand;
 use CreativeCrafts\LaravelAiAssistant\Contracts\AiAssistantContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
@@ -36,6 +37,7 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasMigrations(['create_ai_assistant_tables'])
             ->hasCommands([
+                InstallCommand::class,
                 HealthCheckCommand::class,
                 ConfigValidateCommand::class,
                 TestConnectionCommand::class,
