@@ -26,10 +26,9 @@ echo $response->text;
 | `temperature(float $t)` | `0`–`2`; throws `InvalidArgumentException` outside that range |
 | `maxCompletionTokens(int $n)` | Upper bound on generated tokens (must be ≥ 1) |
 | `responseFormat(array\|string $format)` | `'text'`, `'json_object'` or a full `json_schema` format (see below) |
-| `toolChoice(array\|string $choice)` | `'auto'`, `'none'`, `'required'` or a specific tool |
-| `modalities(array $modalities)` | e.g. `['text', 'audio']` |
-| `inConversation(string $conversationId)` | Attach the turn to an OpenAI conversation ([guide](conversations.md)) |
+| `inConversation(string $conversationId)` | Attach the turn to an OpenAI conversation ([guide](conversations.md)). Without it, every text `send()` creates a new conversation |
 | `input()` | The unified `InputBuilder` (`message`, `messages`, `imageInput`, `audio`, `audioInput`, `image`) |
+| `inputItems()` | Low-level Responses input items (`appendUserText`, `appendUserImageUrl`, `appendUserImageId`, `appendRaw`); `send()` then returns a `ChatResponseDto` |
 | `withMessages(array $messages)` | Pass pre-built OpenAI messages |
 | `send()` | Execute and return a `ResponseDto` |
 | `stream()` | Stream events instead ([guide](streaming.md)) |
@@ -38,13 +37,13 @@ echo $response->text;
 
 | Property / method | Description |
 |---|---|
-| `$response->id` | Response id (`resp_...`) |
-| `$response->status` | `completed`, `failed`, `incomplete`, … |
+| `$response->id` | For text turns a generated placeholder; the real OpenAI id is `$response->raw['responseId']` |
+| `$response->status` | Falls back to `completed`; for text turns check `$response->raw['finishReason']` |
 | `$response->text` | Generated text (or transcript for audio) |
 | `$response->type` | Which route served the request: `response_api`, `audio_transcription`, `audio_translation`, `audio_speech`, `image_generation`, `image_edit`, `image_variation`, … |
 | `$response->conversationId` | Conversation the turn belongs to, if any |
-| `$response->metadata` | Route-specific extras (model, image count, diarization speakers, …) |
-| `$response->raw` | The untouched OpenAI response |
+| `$response->metadata` | Route-specific extras. For text turns `metadata['usage']` holds the token usage |
+| `$response->raw` | The data the route returned. For text turns this is the package's normalised result (`responseId`, `conversationId`, `messages`, `toolCalls`, `usage`, `finishReason`, with the untouched OpenAI response under `raw`) |
 | `isText()`, `isAudio()`, `isImage()` | Quick type checks |
 | `saveAudio(string $path): bool` | Write generated speech to disk |
 | `saveImages(string $dir): array` | Write generated images, returns the saved paths |
@@ -286,11 +285,13 @@ Use the returned output as the input for the next turn to stay within the contex
 
 ## Full Responses API access
 
-Need a parameter the builder doesn't expose (`reasoning`, `tools` with hosted tools, `include`, `store`,
-`prompt_cache_key`, …)? Call the repository with the raw payload:
+Need a parameter the builder doesn't expose (`reasoning`, `tools`, `tool_choice`, `include`, `store`,
+`prompt_cache_key`, …)? Call the repository with the raw payload. It returns the decoded OpenAI response
+unchanged:
 
 ```php
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
 
 $responses = app(ResponsesRepositoryContract::class);
 
@@ -301,8 +302,11 @@ $result = $responses->createResponse([
     'input' => 'What changed in the latest Laravel release?',
 ]);
 
-foreach ($responses->streamResponse(['model' => 'gpt-5-mini', 'input' => 'Hi!']) as $event) {
-    // decoded SSE events
+// streamResponse() yields raw SSE lines; decode them into event arrays with ServerSentEvents
+foreach (ServerSentEvents::decode($responses->streamResponse(['model' => 'gpt-5-mini', 'input' => 'Hi!'])) as $event) {
+    if (($event['type'] ?? null) === 'response.output_text.delta') {
+        echo $event['delta'];
+    }
 }
 
 $responses->listResponses(['limit' => 20]);

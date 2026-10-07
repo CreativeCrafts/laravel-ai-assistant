@@ -12,7 +12,7 @@ $response = Ai::responses()
     ->input()
     ->image([
         'prompt' => 'A cosy reading nook with a cat, studio ghibli style',
-        'model' => 'dall-e-3',          // default: OPENAI_IMAGE_GENERATION_MODEL
+        'model' => 'dall-e-3',          // default: dall-e-2
         'size' => '1792x1024',
         'quality' => 'hd',
         'style' => 'vivid',
@@ -27,9 +27,9 @@ $paths = $response->saveImages(storage_path('app/public/generated'));
 | Option | Description |
 |---|---|
 | `prompt` | What to draw (required for generation and edits) |
-| `model` | `dall-e-3`, `dall-e-2`, `gpt-image-1` |
+| `model` | `dall-e-2` (default) or `dall-e-3`. For `gpt-image-1` use [`Ai::images()`](#low-level-images-api-gpt-image-1): the builder always sends `response_format`, which gpt-image models reject |
 | `n` | Number of images (1–10; `dall-e-3` supports 1) |
-| `size` | `256x256`, `512x512`, `1024x1024`, `1792x1024`, `1024x1792` (model dependent) |
+| `size` | `256x256`, `512x512`, `1024x1024`; `1792x1024` and `1024x1792` with `dall-e-3` (the builder validates sizes against these lists, so use `Ai::images()` for `gpt-image-1` sizes such as `1536x1024`) |
 | `quality` | `standard`, `hd` (dall-e-3) |
 | `style` | `vivid`, `natural` (dall-e-3) |
 | `response_format` | `url` or `b64_json` |

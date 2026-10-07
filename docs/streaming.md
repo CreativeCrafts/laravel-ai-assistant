@@ -3,6 +3,31 @@
 Streaming shows the answer while it is being generated instead of after the whole response is ready.
 This guide covers streaming in PHP, to the browser (Inertia + React), and over websockets with Laravel Reverb.
 
+> **Known issue in the current release.** `Ai::stream()`, `ChatSession::stream()` and
+> `ResponsesBuilder::stream()` parse the stream with a parser that waits for the blank line between SSE
+> events, but the HTTP transport drops blank lines. Against the live API they currently emit a single merged
+> event at the end instead of text deltas. Until the fix ships, stream with the repository and
+> `ServerSentEvents::decode()`, which does not depend on blank lines:
+>
+> ```php
+> use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+> use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
+>
+> $lines = app(ResponsesRepositoryContract::class)->streamResponse([
+>     'model' => 'gpt-5-mini',
+>     'instructions' => 'Answer in markdown.',
+>     'input' => 'Tell me a short story about Laravel',
+> ]);
+>
+> foreach (ServerSentEvents::decode($lines) as $event) {
+>     if ($event['type'] === 'response.output_text.delta') {
+>         echo $event['delta'];   // decoded events are the API's own payloads: no `data` wrapper
+>     }
+> }
+> ```
+>
+> The examples below show the intended `Ai::stream()` API; swap in the snippet above in the meantime.
+
 ## The event format
 
 Streams yield normalised Responses API events. The ones you will use most:
@@ -11,7 +36,7 @@ Streams yield normalised Responses API events. The ones you will use most:
 |---|---|---|
 | `response.created` | `['response' => [...]]` | Generation started |
 | `response.output_text.delta` | `['delta' => 'Hel', 'accumulated' => 'Hel', 'typing' => true, ...]` | New text |
-| `response.output_text.done` | `['text' => 'Hello!', 'typing' => false, ...]` | Text finished |
+| `response.output_text.done` | `['text' => 'Hello!', ...]` (the API's own payload) | Text finished |
 | `response.completed` | `['response' => [...]]`, including `usage` | Done (`isFinal` is `true`) |
 | `response.failed` | `['response' => [...]]` with the error | Failed (`isFinal` is `true`) |
 
@@ -312,11 +337,13 @@ The same pattern works for live [speaker diarization](speaker-diarization.md#str
 
 ## Streaming other endpoints
 
-Low-level repositories expose streaming methods that yield decoded SSE events:
+Low-level repositories expose streaming methods. All of them yield decoded event arrays except
+`streamResponse()`, which yields raw SSE lines: wrap it with
+`CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents::decode()` to get arrays.
 
 | Method | Events |
 |---|---|
-| `app(ResponsesRepositoryContract::class)->streamResponse($payload)` | Raw Responses API events |
+| `app(ResponsesRepositoryContract::class)->streamResponse($payload)` | Raw SSE lines of Responses API events |
 | `Ai::chatCompletions()->stream($payload)` | Chat completion chunks |
 | `Ai::completions()->stream($payload)` | Legacy completion chunks |
 | `Ai::audio()->streamSpeech($payload)` | `speech.audio.delta` / `speech.audio.done` |

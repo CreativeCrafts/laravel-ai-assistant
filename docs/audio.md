@@ -16,7 +16,7 @@ $response = Ai::responses()
     ->audio([
         'file' => storage_path('app/recordings/interview.mp3'),
         'action' => 'transcribe',
-        'model' => 'gpt-4o-transcribe',   // default: OPENAI_AUDIO_TRANSCRIPTION_MODEL (whisper-1)
+        'model' => 'gpt-4o-transcribe',   // default: gpt-4o-mini-transcribe
         'language' => 'en',               // ISO-639-1, improves accuracy and latency
         'prompt' => 'Laravel, Eloquent, Horizon, Reverb',  // spelling hints
     ])

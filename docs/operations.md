@@ -172,8 +172,8 @@ A dedicated Horizon supervisor keeps AI work from starving your other queues:
 
 Remember to set the queue connection's `retry_after` (in `config/queue.php`) higher than the job timeout.
 
-Tool calls can also run on the queue: `AI_TOOL_CALLING_EXECUTOR=queue` (see
-[Chat sessions & tools](chat-sessions-and-tools.md#run-tools-on-a-queue)).
+For slow tools, run the whole [tool-calling loop](chat-sessions-and-tools.md#tool-function-calling) inside a
+queued job and broadcast the final answer, as in the [Reverb example](streaming.md#streaming-over-websockets-with-laravel-reverb).
 
 ## Production checklist
 

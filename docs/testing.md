@@ -99,17 +99,35 @@ $this->mock(ResponsesRepositoryContract::class)
 
 ## Fake streams
 
-Streaming methods return iterables, so return a generator or an array of events:
+`ResponsesRepositoryContract::streamResponse()` returns raw SSE lines, one line per item. Return them in the
+same shape, with an `event:` line, a `data:` line and an empty string between events:
 
 ```php
+function sseEvent(array $event): array
+{
+    return ['event: ' . $event['type'], 'data: ' . json_encode($event), ''];
+}
+
 $this->mock(ResponsesRepositoryContract::class)
     ->shouldReceive('streamResponse')
-    ->andReturn((function () {
-        yield "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}\n\n";
-        yield "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"lo\"}\n\n";
-        yield "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\"}}\n\n";
-    })());
+    ->andReturn([
+        ...sseEvent(['type' => 'response.output_text.delta', 'delta' => 'Hel']),
+        ...sseEvent(['type' => 'response.output_text.delta', 'delta' => 'lo']),
+        ...sseEvent(['type' => 'response.completed', 'response' => ['id' => 'resp_1']]),
+    ]);
+
+$text = '';
+foreach (Ai::stream('Say hello') as $event) {
+    if ($event->type === 'response.output_text.delta') {
+        $text .= $event->data['delta'];
+    }
+}
+
+expect($text)->toBe('Hello');
 ```
+
+`Ai::stream()` also creates a conversation first, so mock `ConversationsRepositoryContract::createConversation`
+as in `fakeAiReply()` above.
 
 For low-level streaming endpoints (`Ai::chatCompletions()->stream()`, `Ai::audio()->streamTranscription()`, …)
 return already-decoded event arrays:
@@ -167,20 +185,28 @@ final class OpenAiSummariser implements Summariser
 
 ## Webhooks
 
-Post a signed payload to the webhook route and assert your listeners ran:
+The webhook route is registered at boot, and the package checks the signing secret at boot too, so enable
+webhooks for the whole test run in `phpunit.xml` (or `.env.testing`) rather than with `config()` inside a test:
+
+```xml
+<env name="AI_WEBHOOKS_ENABLED" value="true"/>
+<env name="AI_WEBHOOKS_SIGNING_SECRET" value="whsec_MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="/>
+```
+
+Then sign a payload with `StandardWebhookSignature::sign()`, post it, and assert your listeners ran:
 
 ```php
 use CreativeCrafts\LaravelAiAssistant\Events\OpenAiWebhookReceived;
+use CreativeCrafts\LaravelAiAssistant\Support\StandardWebhookSignature;
 use Illuminate\Support\Facades\Event;
 
 it('dispatches batch results import', function () {
-    config(['ai-assistant.webhooks.enabled' => true, 'ai-assistant.webhooks.signing_secret' => $secret = 'whsec_' . base64_encode(random_bytes(32))]);
     Event::fake([OpenAiWebhookReceived::class]);
 
     $body = json_encode(['id' => 'evt_1', 'object' => 'event', 'type' => 'batch.completed', 'data' => ['id' => 'batch_1']]);
     $id = 'msg_1';
     $timestamp = (string) time();
-    $signature = base64_encode(hash_hmac('sha256', "{$id}.{$timestamp}.{$body}", base64_decode(substr($secret, 6)), true));
+    $signature = StandardWebhookSignature::sign($body, $id, $timestamp, config('ai-assistant.webhooks.signing_secret'));
 
     $this->call('POST', '/ai-assistant/webhook', [], [], [], [
         'HTTP_WEBHOOK_ID' => $id,
@@ -192,9 +218,6 @@ it('dispatches batch results import', function () {
     Event::assertDispatched(OpenAiWebhookReceived::class, fn ($e) => $e->type === 'batch.completed');
 });
 ```
-
-> The webhook route is registered at boot, so set `AI_WEBHOOKS_ENABLED=true` in `phpunit.xml` (or your
-> `.env.testing`) rather than only via `config()` inside the test.
 
 ## Integration tests against the real API
 

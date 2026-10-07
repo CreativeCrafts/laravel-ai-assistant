@@ -49,26 +49,33 @@ The `config/presets/` folder in the package contains three ready-made configurat
 
 ### Audio (`audio.*`)
 
-| Key | Env | Default |
-|---|---|---|
-| `audio.models.transcription` | `OPENAI_AUDIO_TRANSCRIPTION_MODEL` | `whisper-1` |
-| `audio.models.translation` | `OPENAI_AUDIO_TRANSLATION_MODEL` | `whisper-1` |
-| `audio.models.speech` | `OPENAI_AUDIO_SPEECH_MODEL` | `tts-1` |
-| `audio.voices.default` | `OPENAI_AUDIO_DEFAULT_VOICE` | `alloy` |
-| `audio.file_size_limit_mb` | `OPENAI_AUDIO_FILE_SIZE_LIMIT_MB` | `25` |
-| `audio.timeouts.{transcription,translation,speech}` | `OPENAI_AUDIO_*_TIMEOUT` | `120`, `120`, `60` seconds |
+| Key | Env | Default | Used by |
+|---|---|---|---|
+| `audio.file_size_limit_mb` | `OPENAI_AUDIO_FILE_SIZE_LIMIT_MB` | `25` | `Ai::responses()` audio input and `Ai::diarize()` |
+| `audio.timeouts.transcription`, `audio.timeouts.translation` | `OPENAI_AUDIO_*_TIMEOUT` | `120` seconds | `Ai::responses()` and `Ai::audio()` |
+| `audio.timeouts.speech` | `OPENAI_AUDIO_SPEECH_TIMEOUT` | `60` seconds | `Ai::audio()` only |
 
 ### Images (`image.*`)
 
-| Key | Env | Default |
-|---|---|---|
-| `image.models.generation` | `OPENAI_IMAGE_GENERATION_MODEL` | `dall-e-3` |
-| `image.models.edit` | `OPENAI_IMAGE_EDIT_MODEL` | `dall-e-2` |
-| `image.models.variation` | `OPENAI_IMAGE_VARIATION_MODEL` | `dall-e-2` |
-| `image.file_size_limit_mb` | `OPENAI_IMAGE_FILE_SIZE_LIMIT_MB` | `4` |
-| `image.timeouts.*` | `OPENAI_IMAGE_*_TIMEOUT` | `120` seconds |
+| Key | Env | Default | Used by |
+|---|---|---|---|
+| `image.file_size_limit_mb` | `OPENAI_IMAGE_FILE_SIZE_LIMIT_MB` | `4` | `Ai::responses()` image input |
 
-> Tip: set `OPENAI_IMAGE_GENERATION_MODEL=gpt-image-1` to use the newer image model through `Ai::responses()`.
+### Model defaults of the unified builder
+
+The config file also contains `audio.models.*`, `audio.voices.default`, `image.models.*` and `image.timeouts.*`,
+but the current code does not read them. When you omit `model` (or `voice`), `Ai::responses()` uses these
+built-in defaults:
+
+| Route | Default |
+|---|---|
+| Text (`message()`, `messages()`, `imageInput()`) | `gpt-4o-mini` |
+| Transcription (`action: transcribe`) | `gpt-4o-mini-transcribe`, `response_format: json`, `temperature: 0` |
+| Translation (`action: translate`) | `whisper-1` |
+| Speech (`action: speech`) | `tts-1`, voice `alloy`, format `mp3` |
+| Image generation, edit and variation | `dall-e-2`, size `1024x1024` for generation |
+
+Pass `model` explicitly to use another model, for example `'model' => 'gpt-image-1'` with `Ai::images()`.
 
 ## HTTP, timeouts and retries
 
@@ -92,17 +99,19 @@ See [Error handling & retries](error-handling.md) for how these interact.
 | `streaming.enabled` | `AI_STREAMING_ENABLED` | `true` |
 | `streaming.timeout` / `streaming.sse_timeout` | `AI_STREAMING_TIMEOUT` / `AI_STREAMING_SSE_TIMEOUT` | `120` |
 | `streaming.buffer_size` / `streaming.chunk_size` | `AI_STREAMING_BUFFER_SIZE` / `AI_STREAMING_CHUNK_SIZE` | `8192` / `1024` |
-| `streaming.max_response_size` | `AI_MAX_RESPONSE_SIZE_MB` | `50` |
 
 ## Tool calling
 
+These settings apply to the `ChatSession` tool helpers, which currently send pre-Responses tool shapes
+(see [Current limitations](chat-sessions-and-tools.md#current-limitations-of-chatsession)). The recommended
+[tool-calling loop](chat-sessions-and-tools.md#tool-function-calling) does not depend on them.
+
 | Key | Env | Default | Notes |
 |---|---|---|---|
-| `tool_calling.max_rounds` | `AI_TOOL_CALLING_MAX_ROUNDS` | `3` | How many tool-call round trips are executed automatically |
-| `tool_calling.executor` | `AI_TOOL_CALLING_EXECUTOR` | `sync` | `sync` or `queue` (runs tools through `ExecuteToolCallJob`) |
-| `tool_calling.parallel` | `AI_TOOL_CALLING_PARALLEL` | `false` | |
-| `tools.allowlist` | `AI_TOOLS_ALLOWLIST` | `[]` | Comma- or pipe-separated tool names |
-| `tools.schemas` | `AI_TOOLS_SCHEMAS` | `[]` | JSON map of tool name → schema |
+| `tool_calling.max_rounds` | `AI_TOOL_CALLING_MAX_ROUNDS` | `3` | Round trips for the `ChatSession` automatic tool loop |
+| `tool_calling.executor` | `AI_TOOL_CALLING_EXECUTOR` | `sync` | `sync`, or `queue` to run each tool through `ExecuteToolCallJob` (dispatched synchronously unless `parallel` is on) |
+| `tool_calling.parallel` | `AI_TOOL_CALLING_PARALLEL` | `false` | With the queue executor, dispatch tools to the queue and return `{"queued": true}` instead of waiting for the result |
+| `tools.allowlist` | `AI_TOOLS_ALLOWLIST` | `[]` | Comma- or pipe-separated tool names accepted by `ChatSession` function tools |
 
 ## Unified routing (`routing.*`)
 
@@ -156,7 +165,7 @@ Full details in [Webhooks](webhooks.md).
 | `cache.*` | `AI_ASSISTANT_CACHE_*` | Store, TTLs, compression, encryption, stampede protection |
 | `lazy_loading.*` | `AI_LAZY_*`, `AI_DEFER_CLIENT_CREATION` | Deferred client creation |
 | `deprecations.emit` | `AI_ASSISTANT_EMIT_DEPRECATIONS` | Emit deprecation notices for legacy APIs |
-| `mock_responses` | `AI_ASSISTANT_MOCK` | Return mock responses (never enable in production) |
+| `mock_responses` | `AI_ASSISTANT_MOCK` | Only logs a warning when enabled in production; it does not mock requests. Use the [testing patterns](testing.md) instead |
 
 See [Operations](operations.md) for how to use them.
 

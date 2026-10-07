@@ -50,8 +50,8 @@ public function store(Request $request)
 > `upload()` sends the file under its basename. For a temporary upload the basename is random (`phpA1B2.tmp`);
 > if the extension matters, move the file first: `$request->file('document')->storeAs('tmp', $original)`.
 
-`ChatSession::attachUploadedFile()` handles uploads for you and attaches the file to the next turn (see
-[Chat sessions](chat-sessions-and-tools.md#file-search-over-your-documents)).
+To ask the model about an uploaded file, reference it as an `input_file` block (see
+[Send a file with a single turn](chat-sessions-and-tools.md#send-a-file-with-a-single-turn)).
 
 ## List, inspect, download and delete
 

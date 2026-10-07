@@ -143,16 +143,6 @@ foreach ($hits['data'] as $hit) {
 ### Let the model answer from the store (RAG)
 
 ```php
-$answer = Ai::chat($request->input('question'))
-    ->instructions('Answer only from the help centre documents. If the answer is not there, say so.')
-    ->includeFileSearchTool([$store['id']])
-    ->send()
-    ->text;
-```
-
-Or with full control over the Responses API payload:
-
-```php
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 
 $response = app(ResponsesRepositoryContract::class)->createResponse([

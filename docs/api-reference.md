@@ -112,6 +112,9 @@ responses(): ResponsesBuilder
 
 `CreativeCrafts\LaravelAiAssistant\Chat\ChatSession`
 
+> The tool, attachment and response-format methods below currently send pre-Responses API shapes. See
+> [Current limitations](chat-sessions-and-tools.md#current-limitations-of-chatsession) for working alternatives.
+
 ```php
 setUserMessage(string $text): self
 instructions(string $instructions): self

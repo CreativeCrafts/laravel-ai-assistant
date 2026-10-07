@@ -29,7 +29,7 @@ echo Ai::responses()
 - **One fluent builder**, `Ai::responses()`, for text, vision, audio and images, routed to the right endpoint automatically
 - **Every OpenAI endpoint**: Responses, Conversations, Chat Completions, Audio, Images, Videos (Sora), Embeddings, Files, Uploads, Vector stores, Batches, Fine-tuning, Evals, Realtime, Agents, Skills, Containers, ChatKit, Webhooks and the Administration API
 - **Streaming** to the CLI, the browser (SSE, Inertia + React) or websockets (Laravel Reverb)
-- **Tool calling** with plain PHP callables, executed automatically (inline or on the queue)
+- **Tool calling** with plain PHP callables registered in a `ToolRegistry`
 - **Speaker diarization**: who spoke when, with named speakers, transcripts and WebVTT captions
 - **Production-ready**: retries with backoff, idempotency keys, signed webhooks, health checks, observability, caching
 - **Testable**: every API is a container-bound contract you can mock
@@ -94,12 +94,23 @@ $invoice = json_decode($response->text, true);
 ### Streaming
 
 ```php
-foreach (Ai::stream('Tell me about Laravel Reverb') as $event) {
-    if ($event->type === 'response.output_text.delta') {
-        echo $event->data['delta'];
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
+
+$lines = app(ResponsesRepositoryContract::class)->streamResponse([
+    'model' => 'gpt-5-mini',
+    'input' => 'Tell me about Laravel Reverb',
+]);
+
+foreach (ServerSentEvents::decode($lines) as $event) {
+    if ($event['type'] === 'response.output_text.delta') {
+        echo $event['delta'];
     }
 }
 ```
+
+`Ai::stream()` has a known issue in this release; see the [Streaming guide](docs/streaming.md) for details and
+for streaming to Inertia + React or Laravel Reverb.
 
 ### Multi-turn conversations
 
@@ -116,17 +127,33 @@ Ai::responses()->inConversation($conversationId)->model('gpt-5-mini')
 ### Tool calling
 
 ```php
-// AppServiceProvider::boot()
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Services\ToolRegistry;
+
+// AppServiceProvider::boot(): the PHP implementation
 app(ToolRegistry::class)->register('get_order_status', fn (array $args) => Order::statusFor($args['order_number']));
 
-// Anywhere
-$response = Ai::chat('Where is my order A-1042?')
-    ->includeFunctionCallTool('get_order_status', 'Look up an order by number', [
-        'properties' => ['order_number' => ['type' => 'string']],
-        'required' => ['order_number'],
-    ])
-    ->send();
+// Describe the tool in the Responses API format and let the model call it
+$response = app(ResponsesRepositoryContract::class)->createResponse([
+    'model' => 'gpt-5-mini',
+    'input' => 'Where is my order A-1042?',
+    'tools' => [[
+        'type' => 'function',
+        'name' => 'get_order_status',
+        'description' => 'Look up an order by number',
+        'parameters' => [
+            'type' => 'object',
+            'properties' => ['order_number' => ['type' => 'string']],
+            'required' => ['order_number'],
+            'additionalProperties' => false,
+        ],
+        'strict' => true,
+    ]],
+]);
 ```
+
+Run each `function_call` item with the registry and send back `function_call_output` items. The full loop is
+in [Tool calling](docs/chat-sessions-and-tools.md#tool-function-calling).
 
 ### Audio
 
@@ -165,9 +192,11 @@ $video = Ai::videos()->create(['model' => 'sora-2', 'prompt' => 'A drone shot ov
 ```php
 $vector = Ai::embeddings()->create(['model' => 'text-embedding-3-small', 'input' => 'Refund policy'])['data'][0]['embedding'];
 
-$answer = Ai::chat('How long do refunds take?')
-    ->includeFileSearchTool(['vs_help_centre'])
-    ->send()->text;
+$result = app(ResponsesRepositoryContract::class)->createResponse([
+    'model' => 'gpt-5-mini',
+    'input' => 'How long do refunds take?',
+    'tools' => [['type' => 'file_search', 'vector_store_ids' => ['vs_help_centre']]],
+]);
 ```
 
 ## Documentation
