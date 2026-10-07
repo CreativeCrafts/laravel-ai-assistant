@@ -24,12 +24,10 @@ beforeEach(function () {
     app()->instance(FilesRepositoryContract::class, $fakeFiles);
 });
 
-it('handles missing tool by inserting tool_result with error and completing turn', function () {
+it('handles missing tool by sending a function_call_output with an error and completing turn', function () {
     $assistant = app(AssistantService::class);
     /** @var FakeResponsesRepository $responses */
     $responses = app(ResponsesRepositoryContract::class);
-    /** @var FakeConversationsRepository $convs */
-    $convs = app(ConversationsRepositoryContract::class);
 
     $convId = $assistant->createConversation();
 
@@ -45,25 +43,16 @@ it('handles missing tool by inserting tool_result with error and completing turn
     $result = $assistant->sendChatMessage($convId, 'hi');
     expect($result['messages'] ?? '')->toBe('done');
 
-    $items = $convs->listItems($convId);
-    $flat = $items['data'] ?? [];
-    $found = false;
-    foreach ($flat as $it) {
-        if (($it['type'] ?? '') === 'tool_result' && ($it['tool_call_id'] ?? '') === $callId) {
-            $found = true;
-            $textBlock = $it['content'][0]['text'] ?? '';
-            expect((string)$textBlock)->toContain('error');
-        }
-    }
-    expect($found)->toBeTrue();
+    $outputs = ResponsesFactory::functionCallOutputs($responses->lastPayload);
+    expect($outputs)->toHaveKey($callId)
+        ->and($outputs[$callId])->toContain('error')
+        ->and($responses->lastPayload['conversation'] ?? null)->toBe($convId);
 });
 
-it('handles tool throwing exception by capturing error in tool_result', function () {
+it('handles tool throwing exception by capturing error in the function_call_output', function () {
     $assistant = app(AssistantService::class);
     /** @var FakeResponsesRepository $responses */
     $responses = app(ResponsesRepositoryContract::class);
-    /** @var FakeConversationsRepository $convs */
-    $convs = app(ConversationsRepositoryContract::class);
 
     // register a tool that throws
     $tools = app(ToolRegistry::class);
@@ -87,26 +76,16 @@ it('handles tool throwing exception by capturing error in tool_result', function
 
     $assistant->sendChatMessage($convId, 'test');
 
-    $items = $convs->listItems($convId);
-    $flat = $items['data'] ?? [];
-    $found = false;
-    foreach ($flat as $it) {
-        if (($it['type'] ?? '') === 'tool_result' && ($it['tool_call_id'] ?? '') === $callId) {
-            $found = true;
-            $txt = (string)($it['content'][0]['text'] ?? '');
-            expect($txt)->toContain('error');
-            expect($txt)->toContain('exploded');
-        }
-    }
-    expect($found)->toBeTrue();
+    $outputs = ResponsesFactory::functionCallOutputs($responses->lastPayload);
+    expect($outputs)->toHaveKey($callId)
+        ->and($outputs[$callId])->toContain('error')
+        ->and($outputs[$callId])->toContain('exploded');
 });
 
 it('supports multiple tool calls combining results', function () {
     $assistant = app(AssistantService::class);
     /** @var FakeResponsesRepository $responses */
     $responses = app(ResponsesRepositoryContract::class);
-    /** @var FakeConversationsRepository $convs */
-    $convs = app(ConversationsRepositoryContract::class);
 
     $tools = app(ToolRegistry::class);
     $tools->register('sum', fn (array $a) => array_sum($a['numbers'] ?? []), [
@@ -130,7 +109,7 @@ it('supports multiple tool calls combining results', function () {
 
     $assistant->sendChatMessage($convId, 'go');
 
-    $items = $convs->listItems($convId)['data'] ?? [];
-    $ids = array_map(fn ($it) => $it['tool_call_id'] ?? null, array_filter($items, fn ($it) => ($it['type'] ?? '') === 'tool_result'));
-    expect($ids)->toContain($call1)->toContain($call2);
+    $outputs = ResponsesFactory::functionCallOutputs($responses->lastPayload);
+    expect(array_keys($outputs))->toContain($call1)->toContain($call2)
+        ->and($outputs[$call1])->toBe('3');
 });
