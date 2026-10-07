@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Http\Middleware;
 
 use Closure;
+use CreativeCrafts\LaravelAiAssistant\Support\StandardWebhookSignature;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -20,6 +21,20 @@ class VerifyAiWebhookSignature
 
         if ($secret === '') {
             return response('Webhook signing not configured', 400);
+        }
+
+        // OpenAI webhooks: Standard Webhooks signature (webhook-id / webhook-timestamp / webhook-signature)
+        $webhookId = (string)$request->headers->get(StandardWebhookSignature::ID_HEADER, '');
+        $webhookTimestamp = (string)$request->headers->get(StandardWebhookSignature::TIMESTAMP_HEADER, '');
+        $webhookSignature = (string)$request->headers->get(StandardWebhookSignature::SIGNATURE_HEADER, '');
+        if ($webhookId !== '' && $webhookTimestamp !== '' && $webhookSignature !== '') {
+            $skew = config('ai-assistant.webhooks.max_skew_seconds', 300);
+            $tolerance = is_numeric($skew) && (int)$skew > 0 ? (int)$skew : 300;
+            if (!StandardWebhookSignature::verify((string)$request->getContent(), $webhookId, $webhookTimestamp, $webhookSignature, $secret, $tolerance)) {
+                return response('Invalid signature', 401);
+            }
+
+            return $next($request);
         }
 
         // Use Symfony HeaderBag, which returns string|null (better for static analysis)
