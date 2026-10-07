@@ -28,10 +28,17 @@ If you bind your own implementations of these contracts, add the new methods/par
 
 ```php
 // ResponsesRepositoryContract
-public function getResponse(string $responseId, array $params = []): array;
-public function resumeStream(string $responseId, array $params = []): iterable;
-public function compactResponse(array $payload): array;
-public function countInputTokens(array $payload): array;
+public function createResponse(array $payload, array $headers = []): array;
+public function streamResponse(array $payload, array $headers = []): iterable;
+public function getResponse(string $responseId, array $params = [], array $headers = []): array;
+public function resumeStream(string $responseId, array $params = [], array $headers = []): iterable;
+public function compactResponse(array $payload, array $headers = []): array;
+public function countInputTokens(array $payload, array $headers = []): array;
+public function cancelResponse(string $responseId, array $headers = []): bool;
+public function deleteResponse(string $responseId, array $headers = []): bool;
+
+// ResponsesInputItemsRepositoryContract
+public function list(string $responseId, array $params = [], array $headers = []): array;
 
 // ConversationsRepositoryContract
 public function createItems(string $conversationId, array $items, array $params = []): array;
@@ -44,6 +51,14 @@ public function list(array $params = []): array;
 // VectorStoresRepositoryContract
 public function search(string $vectorStoreId, array $payload): array;
 ```
+
+The Responses repository methods above now receive the `$headers` argument (`[]` when none are set): `streamResponse()`
+on every call, `createResponse()` for conversation turns (`Ai::responses()->send()`, `Ai::chat()`, `Ai::quick()` and
+`AiAssistant`), and the other methods when called through `Ai::responses()->retrieve()`, `resume()`, `cancel()`,
+`delete()`, `listInputItems()`, `countInputTokens()` and `compact()`. Mocks that pin the arguments of these calls
+(for example Mockery's `->with($payload)`) must expect it.
+
+If you extend `StreamingService` and override `process()`, add the trailing `array $headers = []` parameter.
 
 3) **OpenAI webhooks**
 

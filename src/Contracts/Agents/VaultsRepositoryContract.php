@@ -28,6 +28,15 @@ interface VaultsRepositoryContract
     public function retrieve(string $vaultId): array;
 
     /**
+     * Updates a vault's name or metadata. See vaults.
+     *
+     * POST /v1/vaults/{vaultId}
+     *
+     * @param array<string, mixed> $payload e.g. ['name' => 'Production', 'metadata' => ['team' => 'ops']]
+     */
+    public function update(string $vaultId, array $payload): array;
+
+    /**
      * Lists vaults using ID-based pagination. See vaults.
      *
      * GET /v1/vaults

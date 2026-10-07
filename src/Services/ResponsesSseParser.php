@@ -27,22 +27,19 @@ final class ResponsesSseParser
             $line = trim((string) $line);
             if ($line === '') {
                 if ($event !== null && $data !== '') {
-                    $decoded = json_decode($data, true);
-                    if (!is_array($decoded)) {
-                        $decoded = ['data' => $data];
-                    }
-                    yield [
-                        'type' => $event,
-                        'data' => $decoded,
-                        'isFinal' => in_array($event, ['response.completed', 'response.failed', 'response.canceled'], true),
-                    ];
+                    yield $this->frame($event, $data);
                 }
                 $event = null;
                 $data = '';
                 continue;
             }
             if (str_starts_with($line, 'event:')) {
+                // The HTTP transport drops the blank lines between frames, so a new "event:" line also ends the previous frame
+                if ($event !== null && $data !== '') {
+                    yield $this->frame($event, $data);
+                }
                 $event = trim(substr($line, strlen('event:')));
+                $data = '';
             } elseif (str_starts_with($line, 'data:')) {
                 $dataPart = trim(substr($line, strlen('data:')));
                 if ($data !== '') {
@@ -52,15 +49,7 @@ final class ResponsesSseParser
             }
         }
         if ($event !== null && $data !== '') {
-            $decoded = json_decode($data, true);
-            if (!is_array($decoded)) {
-                $decoded = ['data' => $data];
-            }
-            yield [
-                'type' => $event,
-                'data' => $decoded,
-                'isFinal' => in_array($event, ['response.completed', 'response.failed', 'response.canceled'], true),
-            ];
+            yield $this->frame($event, $data);
         }
     }
 
@@ -125,6 +114,23 @@ final class ResponsesSseParser
                 $accumulated = '';
             }
         }
+    }
+
+    /**
+     * @return array{type: string, data: array, isFinal: bool}
+     */
+    private function frame(string $event, string $data): array
+    {
+        $decoded = json_decode($data, true);
+        if (!is_array($decoded)) {
+            $decoded = ['data' => $data];
+        }
+
+        return [
+            'type' => $event,
+            'data' => $decoded,
+            'isFinal' => in_array($event, ['response.completed', 'response.failed', 'response.canceled'], true),
+        ];
     }
 
     private function extractDeltaText(array $data): string

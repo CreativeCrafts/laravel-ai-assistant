@@ -103,6 +103,23 @@ $response = Ai::responses()
     ->send();
 ```
 
+`withHeaders()` sends extra headers with every Responses API request the builder makes: `send()`, `stream()`, the
+follow-up request that continues a turn after tool calls, and the stored-response methods below. `withOptions()` adds
+create parameters the builder has no method for to `send()` and `stream()`. OpenAI's multi-agent beta needs both:
+
+```php
+$response = Ai::responses()
+    ->model('gpt-5')
+    ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1'])
+    ->withOptions(['multi_agent' => ['enabled' => true]])
+    ->input()
+    ->message('Compare the pricing pages of our three main competitors')
+    ->send();
+```
+
+The builder's own methods, such as `model()`, `instructions()` and `responseFormat()`, take precedence over the same
+keys in `withOptions()`. Requests routed to the audio, image or chat completions endpoints ignore both.
+
 ### Conversations
 
 ```php
@@ -285,7 +302,7 @@ decoded response, so new API parameters work without a package update.
 | Chat Completions | `Ai::chatCompletions()` | create, stream, list/retrieve/update/delete stored completions, list messages |
 | Completions (legacy) | `Ai::completions()` | create, stream |
 | Embeddings | `Ai::embeddings()` | create |
-| Audio | `Ai::audio()`, `Ai::diarize()` | speech (+ SSE), transcriptions (+ streaming, diarization), translations, custom voices |
+| Audio | `Ai::audio()`, `Ai::diarize()` | speech (+ SSE), transcriptions (+ streaming, diarization), translations, custom voices, voice consents |
 | Images | `Ai::images()` | generate (+ stream), edit (+ stream), variations |
 | Videos (Sora) | `Ai::videos()` | create, retrieve, list, delete, remix, edit, extend, download content, characters |
 | Models | `Ai::models()` | list, retrieve, delete fine-tuned models |
