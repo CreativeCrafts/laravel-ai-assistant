@@ -112,9 +112,6 @@ responses(): ResponsesBuilder
 
 `CreativeCrafts\LaravelAiAssistant\Chat\ChatSession`
 
-> The tool, attachment and response-format methods below currently send pre-Responses API shapes. See
-> [Current limitations](chat-sessions-and-tools.md#current-limitations-of-chatsession) for working alternatives.
-
 ```php
 setUserMessage(string $text): self
 instructions(string $instructions): self
@@ -153,6 +150,9 @@ setToolChoice(string|array $choice): self
 useFileSearch(bool $enabled = true): self
 getConfig(): array
 ```
+
+`useFileSearch()` and the `$useFileSearch` argument of `attachFiles()` have no effect: attached files are sent
+as `input_file` blocks, and searching needs a vector store with `includeFileSearchTool(['vs_...'])`.
 
 ### `Ai::diarize()`
 

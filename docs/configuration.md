@@ -102,9 +102,9 @@ See [Error handling & retries](error-handling.md) for how these interact.
 
 ## Tool calling
 
-These settings apply to the `ChatSession` tool helpers, which currently send pre-Responses tool shapes
-(see [Current limitations](chat-sessions-and-tools.md#current-limitations-of-chatsession)). The recommended
-[tool-calling loop](chat-sessions-and-tools.md#tool-function-calling) does not depend on them.
+These settings apply to the automatic tool loop of `Ai::chat()` (see
+[Tool calling](chat-sessions-and-tools.md#tool-function-calling)). A loop you run yourself with the repository
+does not read them.
 
 | Key | Env | Default | Notes |
 |---|---|---|---|

@@ -127,33 +127,22 @@ Ai::responses()->inConversation($conversationId)->model('gpt-5-mini')
 ### Tool calling
 
 ```php
-use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Services\ToolRegistry;
 
 // AppServiceProvider::boot(): the PHP implementation
 app(ToolRegistry::class)->register('get_order_status', fn (array $args) => Order::statusFor($args['order_number']));
 
-// Describe the tool in the Responses API format and let the model call it
-$response = app(ResponsesRepositoryContract::class)->createResponse([
-    'model' => 'gpt-5-mini',
-    'input' => 'Where is my order A-1042?',
-    'tools' => [[
-        'type' => 'function',
-        'name' => 'get_order_status',
-        'description' => 'Look up an order by number',
-        'parameters' => [
-            'type' => 'object',
-            'properties' => ['order_number' => ['type' => 'string']],
-            'required' => ['order_number'],
-            'additionalProperties' => false,
-        ],
-        'strict' => true,
-    ]],
-]);
+// Describe the tool; send() runs the calls the model makes and returns the final answer
+$answer = Ai::chat('Where is my order A-1042?')
+    ->includeFunctionCallTool('get_order_status', 'Look up an order by number', [
+        'properties' => ['order_number' => ['type' => 'string']],
+        'required' => ['order_number'],
+    ])
+    ->send()
+    ->text;
 ```
 
-Run each `function_call` item with the registry and send back `function_call_output` items. The full loop is
-in [Tool calling](docs/chat-sessions-and-tools.md#tool-function-calling).
+More in [Tool calling](docs/chat-sessions-and-tools.md#tool-function-calling).
 
 ### Audio
 
@@ -192,11 +181,10 @@ $video = Ai::videos()->create(['model' => 'sora-2', 'prompt' => 'A drone shot ov
 ```php
 $vector = Ai::embeddings()->create(['model' => 'text-embedding-3-small', 'input' => 'Refund policy'])['data'][0]['embedding'];
 
-$result = app(ResponsesRepositoryContract::class)->createResponse([
-    'model' => 'gpt-5-mini',
-    'input' => 'How long do refunds take?',
-    'tools' => [['type' => 'file_search', 'vector_store_ids' => ['vs_help_centre']]],
-]);
+$answer = Ai::chat('How long do refunds take?')
+    ->includeFileSearchTool(['vs_help_centre'])
+    ->send()
+    ->text;
 ```
 
 ## Documentation
