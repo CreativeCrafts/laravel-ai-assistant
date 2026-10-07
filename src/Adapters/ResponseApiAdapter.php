@@ -52,8 +52,8 @@ final class ResponseApiAdapter implements TextEndpointAdapter
             $request['messages'] = $unifiedRequest['messages'];
         }
 
-        // If input is not set but messages are provided, convert messages to Response API input
-        if (!isset($request['input']) && isset($unifiedRequest['instructions']) && isset($request['messages']) && is_array($request['messages'])) {
+        // If input is not set but messages are provided, convert messages to Response API input (the API has no messages field)
+        if (!isset($request['input']) && isset($request['messages']) && is_array($request['messages'])) {
             $converted = $this->convertMessagesToInput($request['messages']);
             if ($converted !== []) {
                 $request['input'] = $converted;
