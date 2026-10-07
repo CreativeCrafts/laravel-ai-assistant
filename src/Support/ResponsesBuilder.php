@@ -103,15 +103,24 @@ final class ResponsesBuilder
     }
 
     /**
-     * Send extra HTTP headers with the create/stream request, e.g. to opt into a beta:
-     * ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1']).
-     * Later calls merge into earlier ones; a repeated header name replaces the earlier value.
+     * Send extra HTTP headers with the Responses API requests made by send() and stream(), including the
+     * follow-up requests that continue a turn after tool calls, e.g. ->withHeaders(['OpenAI-Project' => 'proj_123']).
+     * Later calls merge into earlier ones; a header name repeated in any letter case replaces the earlier value.
+     * Requests routed to other endpoints (audio, images, chat completions) and retrieve(), resume(), cancel(),
+     * delete(), listInputItems(), countInputTokens() and compact() do not send these headers.
      *
      * @param array<string, string> $headers
      */
     public function withHeaders(array $headers): self
     {
-        $this->headers = array_merge($this->headers, $headers);
+        foreach ($headers as $name => $value) {
+            foreach (array_keys($this->headers) as $existing) {
+                if (strcasecmp((string)$existing, (string)$name) === 0) {
+                    unset($this->headers[$existing]);
+                }
+            }
+            $this->headers[$name] = $value;
+        }
         return $this;
     }
 

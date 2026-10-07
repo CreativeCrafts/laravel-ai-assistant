@@ -54,7 +54,8 @@ interface AudioRepositoryContract
     /**
      * Create a custom voice from a consented audio sample or a prompt (POST /v1/audio/voices).
      *
-     * @param array<string, mixed> $payload 'audio_sample' may be a path, SplFileInfo, stream resource or explicit part
+     * @param array<string, mixed> $payload 'audio_sample' may be a path, SplFileInfo, stream resource or explicit part;
+     *                                      'consent' is the ID of a voice consent recording (see createVoiceConsent())
      */
     public function createVoice(array $payload): array;
 

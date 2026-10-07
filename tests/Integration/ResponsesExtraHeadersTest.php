@@ -7,6 +7,7 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\ResponsesHttpRepository;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Support\ResponsesBuilder;
+use CreativeCrafts\LaravelAiAssistant\Tests\DataFactories\ResponsesFactory;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeConversationsRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\FakeResponsesRepository;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\RecordingHttpClient;
@@ -65,6 +66,18 @@ describe('ResponsesBuilder::withHeaders', function () {
         expect($this->responses->lastHeaders)->toBe(['OpenAI-Beta' => 'responses_multi_agent=v1', 'X-Trace' => 'abc']);
     });
 
+    it('replaces a header set earlier under any letter case', function () {
+        $builder = new ResponsesBuilder(app(AssistantService::class));
+        $builder->inConversation('conv_1')
+            ->withHeaders(['OpenAI-Beta' => 'first', 'X-Trace' => 'abc'])
+            ->withHeaders(['openai-beta' => 'second'])
+            ->inputItems()->appendUserText('Hi');
+
+        $builder->send();
+
+        expect($this->responses->lastHeaders)->toBe(['X-Trace' => 'abc', 'openai-beta' => 'second']);
+    });
+
     it('passes headers through the unified input send()', function () {
         (new ResponsesBuilder(app(AssistantService::class)))
             ->inConversation('conv_1')
@@ -73,6 +86,25 @@ describe('ResponsesBuilder::withHeaders', function () {
             ->send();
 
         expect($this->responses->lastHeaders)->toBe(['OpenAI-Beta' => 'responses_multi_agent=v1']);
+    });
+
+    it('keeps the headers on the request that continues a turn after tool calls', function () {
+        $this->responses->pushResponse(ResponsesFactory::withToolCalls('conv_1', [
+            ['id' => 'call_1', 'name' => 'unregistered_tool', 'arguments' => ['x' => 1]],
+        ]));
+        $this->responses->pushResponse(ResponsesFactory::afterToolResultsFinal('conv_1', 'done'));
+
+        $builder = new ResponsesBuilder(app(AssistantService::class));
+        $builder->inConversation('conv_1')
+            ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1'])
+            ->inputItems()->appendUserText('Hi');
+
+        $builder->send();
+
+        expect($this->responses->createdHeaders)->toBe([
+            ['OpenAI-Beta' => 'responses_multi_agent=v1'],
+            ['OpenAI-Beta' => 'responses_multi_agent=v1'],
+        ]);
     });
 
     it('passes headers through stream()', function () {

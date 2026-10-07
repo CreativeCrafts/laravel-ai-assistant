@@ -38,8 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     spend alerts, spend limits, usage and costs, users. Signed with `OPENAI_ADMIN_KEY` when configured.
 - Responses: `getResponse()` query parameters, `resumeStream()`, `compactResponse()`, `countInputTokens()`, and
   `Ai::responses()->retrieve()/resume()/cancel()/delete()/listInputItems()/countInputTokens()/compact()`.
-- Responses: extra request headers for `createResponse()` and `streamResponse()` (new optional `$headers` argument) and
-  `Ai::responses()->withHeaders([...])`, e.g. `['OpenAI-Beta' => 'responses_multi_agent=v1']` for multi-agent beta.
+- Responses: `createResponse()` and `streamResponse()` accept extra request headers (new optional `$headers` argument,
+  e.g. `['OpenAI-Beta' => 'responses_multi_agent=v1']`), and `Ai::responses()->withHeaders([...])` sends headers with
+  `send()` and `stream()`, including the follow-up requests that continue a turn after tool calls.
 - Conversations: `getItem()`, `include` parameters for `createItems()`, and
   `Ai::conversations()->retrieve()/update()/delete()/item()/addItems()/deleteItem()`, which act on the conversation
   selected with `use()` or `start()`.

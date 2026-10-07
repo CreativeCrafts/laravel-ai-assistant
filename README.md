@@ -103,13 +103,14 @@ $response = Ai::responses()
     ->send();
 ```
 
-Send extra request headers, for example to opt into the multi-agent beta:
+Send extra headers with the Responses API requests made by `send()` and `stream()` (including the follow-up
+request that continues a turn after tool calls), for example to attribute a request to another project:
 
 ```php
 $response = Ai::responses()
-    ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1'])
+    ->withHeaders(['OpenAI-Project' => 'proj_reporting'])
     ->input()
-    ->message('Plan and delegate this research task')
+    ->message('Summarise last week')
     ->send();
 ```
 

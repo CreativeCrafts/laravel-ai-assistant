@@ -28,6 +28,8 @@ If you bind your own implementations of these contracts, add the new methods/par
 
 ```php
 // ResponsesRepositoryContract
+public function createResponse(array $payload, array $headers = []): array;
+public function streamResponse(array $payload, array $headers = []): iterable;
 public function getResponse(string $responseId, array $params = []): array;
 public function resumeStream(string $responseId, array $params = []): iterable;
 public function compactResponse(array $payload): array;
@@ -44,6 +46,12 @@ public function list(array $params = []): array;
 // VectorStoresRepositoryContract
 public function search(string $vectorStoreId, array $payload): array;
 ```
+
+Conversation turns (`Ai::responses()->send()`/`stream()` and the chat helpers built on them) now pass the `$headers`
+argument (`[]` when none are set), so mocks that pin the arguments of `createResponse()` or `streamResponse()`
+(for example Mockery's `->with($payload)`) must expect it for those calls.
+
+If you extend `StreamingService` and override `process()`, add the trailing `array $headers = []` parameter.
 
 3) **OpenAI webhooks**
 

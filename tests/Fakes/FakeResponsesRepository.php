@@ -14,6 +14,8 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
     public array $streamLines = [];
     public array $lastPayload = [];
     public array $lastHeaders = [];
+    /** @var array<int, array<string, string>> Headers of every createResponse() call, in order */
+    public array $createdHeaders = [];
     public array $canceled = [];
     public array $deleted = [];
     public ?array $lastResponse = null;
@@ -37,6 +39,7 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
     {
         $this->lastPayload = $payload;
         $this->lastHeaders = $headers;
+        $this->createdHeaders[] = $headers;
         $resp = array_shift($this->queue);
         if ($resp === null) {
             // default dummy response

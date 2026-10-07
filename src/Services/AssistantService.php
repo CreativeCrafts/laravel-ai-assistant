@@ -293,7 +293,8 @@ class AssistantService implements AudioProcessingContract
                 $results,
                 $model,
                 $instructions,
-                $idempotencyKey
+                $idempotencyKey,
+                $headers
             );
         }
 
@@ -302,13 +303,16 @@ class AssistantService implements AudioProcessingContract
 
     /**
      * Post tool_result items to the conversation and ask the model to continue the turn.
+     *
+     * @param array<string, string> $headers Extra request headers of the turn being continued
      */
     public function continueWithToolResults(
         string $conversationId,
         array $toolResults,
         ?string $model = null,
         ?string $instructions = null,
-        ?string $idempotencyKey = null
+        ?string $idempotencyKey = null,
+        array $headers = []
     ): array {
         // 1) Insert tool_result items in the conversation
         $items = [];
@@ -350,7 +354,7 @@ class AssistantService implements AudioProcessingContract
             presetInput: null
         );
         $__start = microtime(true);
-        $resp = $this->responsesRepository->createResponse($payload);
+        $resp = $this->responsesRepository->createResponse($payload, $headers);
         $envelope = $this->normalizeResponseEnvelope($resp);
         // Emit metrics after normalization for continueWithToolResults
         try {
