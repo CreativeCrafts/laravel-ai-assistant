@@ -695,7 +695,17 @@ class AiAssistant implements AiAssistantContract
         $instructions = $this->chatTextGeneratorConfig['instructions'] ?? null;
         $options = $this->options->toArray();
         $format = is_array($options['response_format']) || is_string($options['response_format']) ? $options['response_format'] : null;
-        $arr = $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions, null, (array)$options['tools'], $format);
+        $temperature = is_numeric($options['temperature'] ?? null) ? (float)$options['temperature'] : null;
+        $arr = $this->client->continueWithToolResults(
+            $conversationId,
+            $toolResults,
+            $model,
+            $instructions,
+            idempotencyKey: null,
+            tools: (array)$options['tools'],
+            responseFormat: $format,
+            temperature: $temperature,
+        );
         return ResponseEnvelope::fromArray($arr);
     }
 
@@ -719,7 +729,17 @@ class AiAssistant implements AiAssistantContract
         $instructions = $this->chatTextGeneratorConfig['instructions'] ?? null;
         $options = $this->options->toArray();
         $format = is_array($options['response_format']) || is_string($options['response_format']) ? $options['response_format'] : null;
-        $arr = $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions, null, (array)$options['tools'], $format);
+        $temperature = is_numeric($options['temperature'] ?? null) ? (float)$options['temperature'] : null;
+        $arr = $this->client->continueWithToolResults(
+            $conversationId,
+            $toolResults,
+            $model,
+            $instructions,
+            idempotencyKey: null,
+            tools: (array)$options['tools'],
+            responseFormat: $format,
+            temperature: $temperature,
+        );
         return ChatResponseDto::fromArray($arr);
     }
 

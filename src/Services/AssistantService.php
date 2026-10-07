@@ -286,7 +286,9 @@ class AssistantService implements AudioProcessingContract
                 tools: $tools,
                 responseFormat: $responseFormat,
                 headers: $headers,
-                options: $options
+                options: $options,
+                temperature: $temperature,
+                maxCompletionTokens: $maxCompletionTokens
             );
         }
 
@@ -303,6 +305,8 @@ class AssistantService implements AudioProcessingContract
      * @param array<string, mixed> $options Extra create parameters of the turn being continued. Its input and tool_choice
      *                                      are not reused: the tool outputs are this request's input, and a forced
      *                                      tool_choice would make the model call a tool again on every round.
+     * @param float|null $temperature Temperature of the turn, so the answer that follows the tool calls keeps it
+     * @param int|null $maxCompletionTokens Output token limit of the turn (max_output_tokens)
      */
     public function continueWithToolResults(
         string $conversationId,
@@ -313,7 +317,9 @@ class AssistantService implements AudioProcessingContract
         array $tools = [],
         array|string|null $responseFormat = null,
         array $headers = [],
-        array $options = []
+        array $options = [],
+        ?float $temperature = null,
+        ?int $maxCompletionTokens = null
     ): array {
         $outputs = [];
         foreach ($toolResults as $tr) {
@@ -342,8 +348,8 @@ class AssistantService implements AudioProcessingContract
             metadata: [],
             idempotencyKey: $idempotencyKey,
             toolChoice: null,
-            temperature: null,
-            maxCompletionTokens: null,
+            temperature: $temperature,
+            maxCompletionTokens: $maxCompletionTokens,
             presetInput: $outputs !== [] ? $outputs : null,
             options: $options
         );
