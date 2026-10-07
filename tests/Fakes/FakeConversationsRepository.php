@@ -47,10 +47,21 @@ final class FakeConversationsRepository implements ConversationsRepositoryContra
         return ['data' => $data, 'object' => 'list'];
     }
 
-    public function createItems(string $conversationId, array $items): array
+    public function createItems(string $conversationId, array $items, array $params = []): array
     {
         $this->items[$conversationId] = array_merge($this->items[$conversationId] ?? [], $items);
         return ['object' => 'list', 'data' => $items];
+    }
+
+    public function getItem(string $conversationId, string $itemId, array $params = []): array
+    {
+        foreach ($this->items[$conversationId] ?? [] as $item) {
+            if (($item['id'] ?? null) === $itemId) {
+                return $item;
+            }
+        }
+
+        return ['id' => $itemId];
     }
 
     public function deleteItem(string $conversationId, string $itemId): bool

@@ -19,9 +19,9 @@ use Illuminate\Support\Facades\Facade;
  * - For conversations: Use Ai::conversations()
  *
  * @see Ai
- * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::responses()
- * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::chat()
- * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::conversations()
+ * @see Ai::responses()
+ * @see Ai::chat()
+ * @see Ai::conversations()
  *
  * @method static \CreativeCrafts\LaravelAiAssistant\AiAssistant acceptPrompt(string $prompt) @deprecated Use Ai::chat() instead
  * @method static \CreativeCrafts\LaravelAiAssistant\Assistant init(?\CreativeCrafts\LaravelAiAssistant\Services\AssistantService $client = null) @deprecated Use Ai::responses() instead

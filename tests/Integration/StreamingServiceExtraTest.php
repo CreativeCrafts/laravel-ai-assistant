@@ -48,8 +48,12 @@ it('invokes onEvent callback and supports early termination via shouldStop', fun
         responseFormat: null,
         modalities: null,
         metadata: [],
-        onEvent: function ($evt) use (&$count) { $count++; },
-        shouldStop: function () use (&$count, $shouldStopAfter) { return $count >= $shouldStopAfter; }
+        onEvent: function ($evt) use (&$count) {
+        $count++;
+        },
+        shouldStop: function () use (&$count, $shouldStopAfter) {
+        return $count >= $shouldStopAfter;
+        }
     );
 
     // Consume generator

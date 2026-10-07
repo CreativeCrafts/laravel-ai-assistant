@@ -42,7 +42,7 @@ final class MultipartRequestBuilder
      * @var array<string, array<string>>
      */
     private array $allowedFormats = [
-        'audio' => ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'],
+        'audio' => ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'],
         'image' => ['png', 'jpg', 'jpeg', 'gif', 'webp'],
     ];
 

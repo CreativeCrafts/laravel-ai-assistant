@@ -70,7 +70,7 @@ final class AudioTranscriptionException extends RuntimeException
      */
     public static function unsupportedFormat(string $filePath, string $format): self
     {
-        $supportedFormats = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'];
+        $supportedFormats = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'];
         $supported = implode(', ', $supportedFormats);
 
         return new self(

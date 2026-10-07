@@ -31,9 +31,32 @@ interface ResponsesRepositoryContract
      * Retrieve a response by id.
      *
      * @param string $responseId
+     * @param array<string, mixed> $params Optional query parameters, e.g. ['include' => ['message.output_text.logprobs']]
      * @return array
      */
-    public function getResponse(string $responseId): array;
+    public function getResponse(string $responseId, array $params = []): array;
+
+    /**
+     * Resume streaming a response created with background=true and stream=true (GET /v1/responses/{id}?stream=true).
+     *
+     * @param array<string, mixed> $params Optional query parameters, e.g. ['starting_after' => 42]
+     * @return iterable<array<string, mixed>> Decoded Server-Sent Events
+     */
+    public function resumeStream(string $responseId, array $params = []): iterable;
+
+    /**
+     * Compact a long-running conversation into a smaller input for the next turn (POST /v1/responses/compact).
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function compactResponse(array $payload): array;
+
+    /**
+     * Count the input tokens a response request would use without generating it (POST /v1/responses/input_tokens).
+     *
+     * @param array<string, mixed> $payload The same parameters as a responses.create request
+     */
+    public function countInputTokens(array $payload): array;
 
     /**
      * List responses.

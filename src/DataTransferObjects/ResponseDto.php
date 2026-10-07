@@ -77,6 +77,17 @@ final readonly class ResponseDto
     }
 
     /**
+     * Speaker-annotated transcription when the response contains speaker-labelled segments (a diarization
+     * request), otherwise null. A diarized recording without any speech has no segments and also returns null.
+     */
+    public function diarization(): ?DiarizedTranscription
+    {
+        return DiarizedTranscription::isDiarized($this->raw)
+            ? DiarizedTranscription::fromArray($this->raw)
+            : null;
+    }
+
+    /**
      * Save audio content to a file.
      *
      * @param string $path The full path where the audio file should be saved

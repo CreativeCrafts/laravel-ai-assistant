@@ -9,6 +9,13 @@ parameters:
 
     ignoreErrors:
         - identifier: missingType.iterableValue
+        -
+            # Package config files are merged into the application's config, so env() is used correctly there.
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: config/*
+
+    # CI installs the latest PHPStan/Larastan releases (no lock file), so baseline entries fixed upstream must not fail the build.
+    reportUnmatchedIgnoredErrors: false
 
     tmpDir: build/phpstan
     noModelMake: false

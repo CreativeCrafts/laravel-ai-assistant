@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Support;
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseDto;
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
@@ -340,6 +342,74 @@ final class ResponsesBuilder
             toolChoice: $this->toolChoice,
             presetInput: $presetInput,
         );
+    }
+
+    /**
+     * Retrieve a stored response by id (GET /v1/responses/{id}).
+     *
+     * @param array<string, mixed> $params Optional query parameters, e.g. ['include' => ['message.output_text.logprobs']]
+     */
+    public function retrieve(string $responseId, array $params = []): array
+    {
+        return app(ResponsesRepositoryContract::class)->getResponse($responseId, $params);
+    }
+
+    /**
+     * Resume streaming a background response, optionally after a known sequence number.
+     *
+     * @return iterable<array<string, mixed>> Decoded Server-Sent Events
+     */
+    public function resume(string $responseId, ?int $startingAfter = null): iterable
+    {
+        $params = $startingAfter !== null ? ['starting_after' => $startingAfter] : [];
+
+        return app(ResponsesRepositoryContract::class)->resumeStream($responseId, $params);
+    }
+
+    /**
+     * Cancel a background response (POST /v1/responses/{id}/cancel).
+     */
+    public function cancel(string $responseId): bool
+    {
+        return app(ResponsesRepositoryContract::class)->cancelResponse($responseId);
+    }
+
+    /**
+     * Delete a stored response (DELETE /v1/responses/{id}).
+     */
+    public function delete(string $responseId): bool
+    {
+        return app(ResponsesRepositoryContract::class)->deleteResponse($responseId);
+    }
+
+    /**
+     * List the input items used to generate a response (GET /v1/responses/{id}/input_items).
+     *
+     * @param array<string, mixed> $params Query parameters, e.g. limit, order, after, include
+     */
+    public function listInputItems(string $responseId, array $params = []): array
+    {
+        return app(ResponsesInputItemsRepositoryContract::class)->list($responseId, $params);
+    }
+
+    /**
+     * Count the input tokens a request would use without generating a response (POST /v1/responses/input_tokens).
+     *
+     * @param array<string, mixed> $payload The same parameters as a responses.create request (model, input, tools, ...)
+     */
+    public function countInputTokens(array $payload): array
+    {
+        return app(ResponsesRepositoryContract::class)->countInputTokens($payload);
+    }
+
+    /**
+     * Compact a long conversation into a smaller input for the next turn (POST /v1/responses/compact).
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function compact(array $payload): array
+    {
+        return app(ResponsesRepositoryContract::class)->compactResponse($payload);
     }
 
     /**

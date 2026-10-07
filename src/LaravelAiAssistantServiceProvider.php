@@ -12,6 +12,7 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\FilesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ConfigurationValidationException;
+use CreativeCrafts\LaravelAiAssistant\Providers\ApiResourcesServiceProvider;
 use CreativeCrafts\LaravelAiAssistant\Providers\CoreServiceProvider;
 use CreativeCrafts\LaravelAiAssistant\Providers\HealthCheckServiceProvider;
 use CreativeCrafts\LaravelAiAssistant\Providers\MonitoringServiceProvider;
@@ -49,6 +50,7 @@ class LaravelAiAssistantServiceProvider extends PackageServiceProvider
         $this->app->register(MonitoringServiceProvider::class);
         $this->app->register(StorageServiceProvider::class);
         $this->app->register(CoreServiceProvider::class);
+        $this->app->register(ApiResourcesServiceProvider::class);
         $this->app->register(HealthCheckServiceProvider::class);
         $this->app->register(WebhookServiceProvider::class);
 

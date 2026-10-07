@@ -7,6 +7,8 @@ namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MaxRetryAttemptsExceededException;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
+use CreativeCrafts\LaravelAiAssistant\Support\QueryString;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use JsonException;
 
@@ -45,17 +47,17 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
      */
     public function getConversation(string $conversationId): array
     {
-        return $this->transport->getJson($this->endpoint("conversations/{$conversationId}"));
+        return $this->transport->getJson($this->endpoint('conversations/' . PathSegment::encode($conversationId)));
     }
 
     public function updateConversation(string $conversationId, array $payload): array
     {
-        return $this->transport->postJson($this->endpoint("conversations/{$conversationId}"), $payload, idempotent: true);
+        return $this->transport->postJson($this->endpoint('conversations/' . PathSegment::encode($conversationId)), $payload, idempotent: true);
     }
 
     public function deleteConversation(string $conversationId): bool
     {
-        return $this->transport->delete($this->endpoint("conversations/{$conversationId}"));
+        return $this->transport->delete($this->endpoint('conversations/' . PathSegment::encode($conversationId)));
     }
 
     /**
@@ -73,7 +75,7 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
         if (!empty($params)) {
             $query = '?' . http_build_query($params);
         }
-        return $this->transport->getJson($this->endpoint("conversations/{$conversationId}/items") . $query);
+        return $this->transport->getJson($this->endpoint('conversations/' . PathSegment::encode($conversationId) . '/items') . $query);
     }
 
     /**
@@ -85,10 +87,25 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
      * @throws ApiResponseValidationException|JsonException When the API returns an error response or the response format is invalid.
      * @throws MaxRetryAttemptsExceededException When the maximum number of retry attempts is exceeded.
      */
-    public function createItems(string $conversationId, array $items): array
+    public function createItems(string $conversationId, array $items, array $params = []): array
     {
         $payload = ['items' => $items];
-        return $this->transport->postJson($this->endpoint("conversations/{$conversationId}/items"), $payload, idempotent: true);
+        return $this->transport->postJson(QueryString::append($this->endpoint('conversations/' . PathSegment::encode($conversationId) . '/items'), $params), $payload, idempotent: true);
+    }
+
+    /**
+     * Retrieves a single item from a conversation via HTTP API request.
+     *
+     * @param string $conversationId The conversation ID that contains the item.
+     * @param string $itemId The item ID within the conversation.
+     * @param array $params Optional query parameters (e.g. include[]).
+     * @return array The decoded conversation item.
+     * @throws ApiResponseValidationException|JsonException When the API returns an error response or the response format is invalid.
+     * @throws MaxRetryAttemptsExceededException When the maximum number of retry attempts is exceeded.
+     */
+    public function getItem(string $conversationId, string $itemId, array $params = []): array
+    {
+        return $this->transport->getJson(QueryString::append($this->endpoint('conversations/' . PathSegment::encode($conversationId) . '/items/' . PathSegment::encode($itemId)), $params));
     }
 
     /**
@@ -102,7 +119,7 @@ final readonly class ConversationsHttpRepository implements ConversationsReposit
      */
     public function deleteItem(string $conversationId, string $itemId): bool
     {
-        return $this->transport->delete($this->endpoint("conversations/{$conversationId}/items/{$itemId}"));
+        return $this->transport->delete($this->endpoint('conversations/' . PathSegment::encode($conversationId) . '/items/' . PathSegment::encode($itemId)));
     }
 
     /**

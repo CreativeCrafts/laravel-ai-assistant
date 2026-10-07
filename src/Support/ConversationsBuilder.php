@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Support;
 
 use CreativeCrafts\LaravelAiAssistant\Adapters\AdapterFactory;
+use CreativeCrafts\LaravelAiAssistant\Contracts\ConversationsRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
+use CreativeCrafts\LaravelAiAssistant\Exceptions\MissingRequiredParameterException;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
 use CreativeCrafts\LaravelAiAssistant\Services\RequestRouter;
 use JsonException;
@@ -66,6 +68,61 @@ final class ConversationsBuilder
         return $this->service->listConversationItems($conv, $params);
     }
 
+    /**
+     * Retrieve the active conversation (set with use() or start()).
+     */
+    public function retrieve(): array
+    {
+        return $this->repository()->getConversation($this->requireConversationId());
+    }
+
+    /**
+     * Replace the metadata of the active conversation.
+     *
+     * @param array<string,mixed> $metadata
+     */
+    public function update(array $metadata): array
+    {
+        return $this->repository()->updateConversation($this->requireConversationId(), ['metadata' => $metadata]);
+    }
+
+    /**
+     * Delete the active conversation (set with use() or start()); its items are deleted with it.
+     */
+    public function delete(): bool
+    {
+        return $this->repository()->deleteConversation($this->requireConversationId());
+    }
+
+    /**
+     * Retrieve a single item of the active conversation.
+     *
+     * @param array<string,mixed> $params Optional query parameters, e.g. ['include' => [...]]
+     */
+    public function item(string $itemId, array $params = []): array
+    {
+        return $this->repository()->getItem($this->requireConversationId(), $itemId, $params);
+    }
+
+    /**
+     * Add items (messages, tool outputs, ...) to the active conversation without generating a response.
+     *
+     * @param array<int,array<string,mixed>> $items
+     * @param array<string,mixed> $params Optional query parameters, e.g. ['include' => [...]]
+     */
+    public function addItems(array $items, array $params = []): array
+    {
+        return $this->repository()->createItems($this->requireConversationId(), $items, $params);
+    }
+
+    /**
+     * Delete a single item from the active conversation.
+     */
+    public function deleteItem(string $itemId): bool
+    {
+        return $this->repository()->deleteItem($this->requireConversationId(), $itemId);
+    }
+
     public function input(): InputItemsBuilder
     {
         return $this->input;
@@ -104,11 +161,30 @@ final class ConversationsBuilder
             ->inConversation($conv);
     }
 
+    private function repository(): ConversationsRepositoryContract
+    {
+        return app(ConversationsRepositoryContract::class);
+    }
+
     private function ensureConversationId(): string
     {
         if (!is_string($this->conversationId) || $this->conversationId === '') {
             $this->conversationId = $this->service->createConversation();
         }
+        return $this->conversationId;
+    }
+
+    /**
+     * The active conversation for operations on an existing conversation, which must never start a new one.
+     *
+     * @throws MissingRequiredParameterException When no conversation is active
+     */
+    private function requireConversationId(): string
+    {
+        if (!is_string($this->conversationId) || $this->conversationId === '') {
+            throw new MissingRequiredParameterException('No active conversation: call use($conversationId) or start() first.');
+        }
+
         return $this->conversationId;
     }
 }

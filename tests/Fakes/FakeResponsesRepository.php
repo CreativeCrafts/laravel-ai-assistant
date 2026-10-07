@@ -69,9 +69,24 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
         return $this->streamLines;
     }
 
-    public function getResponse(string $responseId): array
+    public function getResponse(string $responseId, array $params = []): array
     {
         return $this->lastResponse ?? ['id' => $responseId, 'status' => 'completed'];
+    }
+
+    public function resumeStream(string $responseId, array $params = []): iterable
+    {
+        return [['type' => 'response.completed', 'response' => ['id' => $responseId]]];
+    }
+
+    public function compactResponse(array $payload): array
+    {
+        return ['object' => 'response.compaction', 'output' => []];
+    }
+
+    public function countInputTokens(array $payload): array
+    {
+        return ['object' => 'response.input_tokens', 'input_tokens' => 0];
     }
 
     public function cancelResponse(string $responseId): bool

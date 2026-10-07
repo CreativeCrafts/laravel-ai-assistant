@@ -42,6 +42,19 @@ return [
      */
     'organization' => env('OPENAI_ORGANIZATION'),
 
+    /**
+     * Your OpenAI project ID (optional).
+     * Sent as the OpenAI-Project header to scope requests made with a user or legacy key to a project.
+     */
+    'project' => env('OPENAI_PROJECT'),
+
+    /**
+     * Admin API key (optional) used for the Administration API (Ai::admin()) and fine-tuning
+     * checkpoint permissions. Create one at https://platform.openai.com/settings/organization/admin-keys.
+     * When unset, those requests are sent with the regular API key.
+     */
+    'admin_api_key' => env('OPENAI_ADMIN_KEY'),
+
     /*
     |--------------------------------------------------------------------------
     | Persistence Layer
@@ -210,7 +223,7 @@ return [
         /**
          * Supported audio file formats
          */
-        'supported_formats' => ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'],
+        'supported_formats' => ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'],
 
         /**
          * Timeout settings for audio endpoints (in seconds)

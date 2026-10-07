@@ -17,8 +17,8 @@ use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryCon
  *             - For conversations: Use Ai::conversations()
  *             This class will be removed in v4.0.
  *
- * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::responses()
- * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::conversations()
+ * @see Facades\Ai::responses()
+ * @see Facades\Ai::conversations()
  */
 final readonly class OpenAIClientFacade
 {
@@ -34,7 +34,7 @@ final readonly class OpenAIClientFacade
      * Access the Responses repository.
      *
      * @deprecated Since v3.0. Use Ai::responses() instead. Will be removed in v4.0.
-     * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::responses()
+     * @see Facades\Ai::responses()
      */
     public function responses(): ResponsesRepositoryContract
     {
@@ -52,7 +52,7 @@ final readonly class OpenAIClientFacade
      * Access the Conversations repository.
      *
      * @deprecated Since v3.0. Use Ai::conversations() instead. Will be removed in v4.0.
-     * @see \CreativeCrafts\LaravelAiAssistant\Facades\Ai::conversations()
+     * @see Facades\Ai::conversations()
      */
     public function conversations(): ConversationsRepositoryContract
     {

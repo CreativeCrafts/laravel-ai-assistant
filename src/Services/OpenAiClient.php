@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Services;
 
 use CreativeCrafts\LaravelAiAssistant\Enums\OpenAiEndpoint;
 use CreativeCrafts\LaravelAiAssistant\Http\MultipartRequestBuilder;
+use CreativeCrafts\LaravelAiAssistant\Support\MultipartFormData;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 use InvalidArgumentException;
 use RuntimeException;
@@ -92,6 +93,16 @@ final class OpenAiClient
      */
     private function getTimeoutForEndpoint(OpenAiEndpoint $endpoint): float
     {
+        $configured = match ($endpoint) {
+            OpenAiEndpoint::AudioTranscription => config('ai-assistant.audio.timeouts.transcription'),
+            OpenAiEndpoint::AudioTranslation => config('ai-assistant.audio.timeouts.translation'),
+            default => null,
+        };
+
+        if (is_numeric($configured) && (float)$configured > 0) {
+            return (float)$configured;
+        }
+
         return match (true) {
             $endpoint === OpenAiEndpoint::AudioSpeech => self::AUDIO_SPEECH_TIMEOUT,
             $endpoint->isImage() => self::IMAGE_TIMEOUT,
@@ -218,6 +229,11 @@ final class OpenAiClient
 
             $multipartData = $this->multipartBuilder->build();
 
+            // Array fields (e.g. known_speaker_names[] for diarization) must use OpenAI's repeated form fields
+            if ($this->hasArrayFields($multipartData)) {
+                $multipartData = $this->toExplicitParts($multipartData);
+            }
+
             // Multipart endpoints don't support idempotency in the same way
             return $this->transport->postMultipart($url, $multipartData, [], $timeout, false, $progressCallback);
         } catch (Throwable $e) {
@@ -227,6 +243,45 @@ final class OpenAiClient
                 $e
             );
         }
+    }
+
+    /**
+     * Whether any non-file field holds an array value.
+     *
+     * @param array<string,mixed> $fields
+     */
+    private function hasArrayFields(array $fields): bool
+    {
+        foreach ($fields as $value) {
+            if (is_array($value) && !array_key_exists('contents', $value)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Convert a name => value multipart map into explicit parts with OpenAI form encoding.
+     *
+     * @param array<string,mixed> $fields
+     * @return list<array{name: string, contents: mixed, filename?: string, headers?: array<string, string>}>
+     */
+    private function toExplicitParts(array $fields): array
+    {
+        $parts = [];
+        foreach ($fields as $name => $value) {
+            if (is_array($value) && array_key_exists('contents', $value)) {
+                $parts[] = MultipartFormData::filePart($name, $value);
+                continue;
+            }
+
+            foreach (MultipartFormData::encode([$name => $value]) as $part) {
+                $parts[] = $part;
+            }
+        }
+
+        return $parts;
     }
 
     /**

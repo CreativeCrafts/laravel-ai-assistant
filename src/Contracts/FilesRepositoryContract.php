@@ -15,9 +15,17 @@ interface FilesRepositoryContract
      *
      * @param string $filePath
      * @param string $purpose
+     * @param array<string, mixed> $params Extra form fields, e.g. ['expires_after' => ['anchor' => 'created_at', 'seconds' => 3600]]
      * @return array File resource as array
      */
-    public function upload(string $filePath, string $purpose = 'assistants'): array;
+    public function upload(string $filePath, string $purpose = 'assistants', array $params = []): array;
+
+    /**
+     * List files (GET /v1/files).
+     *
+     * @param array<string, mixed> $params Query parameters, e.g. purpose, limit, after, order
+     */
+    public function list(array $params = []): array;
 
     /**
      * Retrieve a file by id.

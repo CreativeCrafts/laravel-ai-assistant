@@ -5,6 +5,79 @@ All notable changes to `laravel-ai-assistant` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Laravel 13 support (requires PHP 8.3+).
+- Voice analysis: speaker diarization with OpenAI's `gpt-4o-transcribe-diarize` model.
+  - `Ai::diarize($file)` fluent builder: known speakers from 2–10 second reference samples (max 4), language,
+    temperature, automatic or server-VAD chunking, recordings from paths, streams or filesystem disks (`fromDisk()`).
+  - `DiarizedTranscription` result: `speakers()`, `segmentsFor()`, `textFor()`, `speakingTime()`, `speakingShare()`,
+    `dominantSpeaker()`, `turns()`, `renameSpeakers()`, `toTranscript()`, `toWebVtt()`.
+  - Streaming diarization: `->stream()` yields `DiarizedSegment` objects as soon as each speaker segment is final.
+  - Unified builder support: `->input()->audio(['file' => ..., 'action' => 'diarize', 'known_speakers' => [...]])`,
+    with speakers, speaking time and segments in the response metadata and `ResponseDto::diarization()`.
+- `Ai::audio()` low-level Audio API repository: speech (incl. SSE streaming), transcriptions (incl. streaming),
+  translations and custom voice creation (`POST /v1/audio/voices`).
+- `OpenAITransport::request()` and `streamRequest()` for any HTTP method with JSON, multipart or raw bodies,
+  OpenAI-style query encoding and SSE streaming (including multipart uploads).
+- Full OpenAI API coverage through low-level repositories on the `Ai` facade:
+  - `Ai::chatCompletions()` (incl. streaming and stored completions), `Ai::completions()`, `Ai::embeddings()`,
+    `Ai::images()` (incl. streaming), `Ai::videos()`, `Ai::models()`, `Ai::uploads()` (incl. `uploadFile()` for
+    multi-part uploads up to 8 GB), `Ai::containers()`, `Ai::containerFiles()`, `Ai::fineTuningJobs()`,
+    `Ai::fineTuningCheckpointPermissions()`, `Ai::graders()`, `Ai::evals()`, `Ai::evalRuns()`, `Ai::realtime()`
+    (client secrets, WebRTC `createCall()`, SIP call control, translation secrets), `Ai::live()`,
+    `Ai::webhookEndpoints()`, `Ai::skills()`, `Ai::decisions()`, `Ai::contentProvenanceChecks()`, `Ai::safety()`.
+  - Beta: `Ai::chatKit()`, `Ai::agents()`, `Ai::agentSessions()` (incl. event streaming), `Ai::agentEnvironments()`,
+    `Ai::vaults()`.
+  - Administration API via `Ai::admin()`: admin API keys, audit logs, certificates, data retention, external storage,
+    groups, invites, projects, project users/groups/service accounts/API keys/rate limits/permissions, roles,
+    spend alerts, spend limits, usage and costs, users. Signed with `OPENAI_ADMIN_KEY` when configured.
+- Responses: `getResponse()` query parameters, `resumeStream()`, `compactResponse()`, `countInputTokens()`, and
+  `Ai::responses()->retrieve()/resume()/cancel()/delete()/listInputItems()/countInputTokens()/compact()`.
+- Conversations: `getItem()`, `include` parameters for `createItems()`, and
+  `Ai::conversations()->retrieve()/update()/delete()/item()/addItems()/deleteItem()`, which act on the conversation
+  selected with `use()` or `start()`.
+- Files: `list()` and extra upload fields (e.g. `expires_after`); vector stores: `search()`.
+- Webhooks: OpenAI Standard Webhooks signature verification (`webhook-id`/`webhook-timestamp`/`webhook-signature`,
+  `whsec_` secrets) in the webhook route and the `verify.ai.webhook` middleware, plus an `OpenAiWebhookReceived`
+  event for every verified event (batch, fine-tuning, eval, realtime call and response events).
+- `OPENAI_PROJECT` (OpenAI-Project header) and `OPENAI_ADMIN_KEY` configuration.
+- Path parameters are percent-encoded like the official SDKs, so IDs cannot inject path segments or queries, in the
+  new API resource repositories and in the Responses, Conversations and Vector Stores repositories.
+
+### Fixed
+
+- Response input items are listed from `GET /v1/responses/{id}/input_items` (was the non-existent `/input/items`).
+- Webhook events in OpenAI's format (`data.id`) resolve the response id instead of the event id.
+
+### Deprecated
+
+- `ResponsesInputItemsRepositoryContract::append()`: the OpenAI API has no endpoint for appending input items.
+- `Ai::assistants()`: OpenAI deprecated the Assistants API (shutdown announced for August 26, 2026).
+
+### Changed
+
+- Multipart array fields are sent with OpenAI's form encoding (`name[]`, `name[key]`) instead of JSON strings.
+- Transport responses: empty bodies decode to `[]`; `video/*`, `image/*`, `application/sdp` and other binary
+  bodies are returned as `content` + `content_type`; all `text/*` bodies are returned as `text`.
+- Audio transcription and translation accept `flac` and `ogg` recordings.
+- Audio transcription and translation requests honor `ai-assistant.audio.timeouts.*`.
+- Development tooling: Larastan 3 / PHPStan 2 (existing findings moved to `phpstan-baseline.neon`) and Pest 4 on
+  Laravel 13. CI runs the test suite on Laravel 12 and 13 with PHP 8.2–8.4; the Laravel 11 jobs were removed because
+  `roave/security-advisories` blocks every Laravel 11 release, so the dev dependencies cannot be installed with it.
+- Coverage reports (HTML, text, Clover) are written by `composer test-coverage` instead of being configured in
+  `phpunit.xml.dist`: PHPUnit 12 runs no tests when reports are configured and no coverage driver is installed.
+
+### Breaking
+
+- Custom `OpenAITransport` implementations must implement `request()` and `streamRequest()`.
+- Custom implementations of these internal contracts must add the new methods/parameters:
+  `ResponsesRepositoryContract` (`getResponse()` `$params`, `resumeStream()`, `compactResponse()`, `countInputTokens()`),
+  `ConversationsRepositoryContract` (`getItem()`, `createItems()` `$params`), `FilesRepositoryContract` (`list()`,
+  `upload()` `$params`) and `VectorStoresRepositoryContract` (`search()`).
+
 ## [3.1] - 2026-02-04
 
 ### Added
