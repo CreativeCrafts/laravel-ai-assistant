@@ -22,6 +22,11 @@ final readonly class VaultsHttpRepository extends AbstractHttpRepository impleme
         return $this->getJson($this->path('vaults/%s', $vaultId));
     }
 
+    public function update(string $vaultId, array $payload): array
+    {
+        return $this->postJson($this->path('vaults/%s', $vaultId), $payload);
+    }
+
     public function list(array $params = []): array
     {
         return $this->getJson('vaults', $params);
