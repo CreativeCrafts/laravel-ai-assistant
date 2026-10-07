@@ -210,3 +210,38 @@ it('keeps the JSON output format on the answer that follows a tool call', functi
     expect($this->responses->lastPayload['input'][0]['type'])->toBe('function_call_output')
         ->and($this->responses->lastPayload['text']['format']['name'])->toBe('ticket');
 });
+
+it('keeps the temperature and output token limit on the answer that follows a tool call', function () {
+    $this->responses->pushResponse(ResponsesFactory::withToolCalls('conv_1', [
+        ['id' => 'call_1', 'name' => 'missing_tool', 'arguments' => []],
+    ]));
+    $this->responses->pushResponse(ResponsesFactory::afterToolResultsFinal('conv_1', 'done'));
+
+    Ai::chat('Hello')
+        ->includeFunctionCallTool('missing_tool', 'Not registered', [])
+        ->setTemperature(0.2)
+        ->send();
+
+    expect($this->responses->lastPayload['input'][0]['type'])->toBe('function_call_output')
+        ->and($this->responses->lastPayload['temperature'])->toBe(0.2);
+
+    $this->responses->pushResponse(ResponsesFactory::withToolCalls('conv_2', [
+        ['id' => 'call_2', 'name' => 'missing_tool', 'arguments' => []],
+    ]));
+    $this->responses->pushResponse(ResponsesFactory::afterToolResultsFinal('conv_2', 'done'));
+
+    app(AssistantService::class)->sendTurn('conv_2', null, 'gpt-test', [], [], maxCompletionTokens: 64);
+
+    expect($this->responses->lastPayload['input'][0]['type'])->toBe('function_call_output')
+        ->and($this->responses->lastPayload['max_output_tokens'])->toBe(64);
+});
+
+it('keeps the session temperature when tool results are sent manually', function () {
+    $session = Ai::chat('Hello')->setTemperature(0.4);
+    $session->send();
+
+    $session->continueWithToolResults([['tool_call_id' => 'call_9', 'output' => 'ok']]);
+
+    expect($this->responses->lastPayload['input'][0]['call_id'])->toBe('call_9')
+        ->and($this->responses->lastPayload['temperature'])->toBe(0.4);
+});

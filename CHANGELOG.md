@@ -62,6 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `setResponseFormatText()`, `setResponseFormatJson()`, `setResponseFormatJsonSchema()` and `Ai::quick()`'s
   `response_format` were never sent with the request; they now are.
 - `ChatSession::setTemperature()` was never sent with the request; it now is.
+- The answer that follows a tool call keeps the turn's temperature and output token limit, both in the automatic
+  tool loop and with `continueWithToolResults()`. Before, the continuation fell back to the model's defaults.
 - Files and images attached to a chat turn are no longer re-sent with every later turn of the session.
 - A function tool without parameters no longer crashes `ChatSession::send()`.
 

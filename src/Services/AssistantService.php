@@ -276,7 +276,9 @@ class AssistantService implements AudioProcessingContract
                 $instructions,
                 $idempotencyKey,
                 $tools,
-                $responseFormat
+                $responseFormat,
+                $temperature,
+                $maxCompletionTokens
             );
         }
 
@@ -289,6 +291,8 @@ class AssistantService implements AudioProcessingContract
      * @param array<int, array{tool_call_id?: string, output?: mixed}> $toolResults tool_call_id is the call_id of the function_call item
      * @param array $tools Tools to keep available, so the model can call another tool
      * @param array|string|null $responseFormat Output format of the turn, which applies to the answer that follows the tool calls
+     * @param float|null $temperature Temperature of the turn, so the answer that follows the tool calls keeps it
+     * @param int|null $maxCompletionTokens Output token limit of the turn (max_output_tokens)
      */
     public function continueWithToolResults(
         string $conversationId,
@@ -297,7 +301,9 @@ class AssistantService implements AudioProcessingContract
         ?string $instructions = null,
         ?string $idempotencyKey = null,
         array $tools = [],
-        array|string|null $responseFormat = null
+        array|string|null $responseFormat = null,
+        ?float $temperature = null,
+        ?int $maxCompletionTokens = null
     ): array {
         $outputs = [];
         foreach ($toolResults as $tr) {
@@ -325,8 +331,8 @@ class AssistantService implements AudioProcessingContract
             metadata: [],
             idempotencyKey: $idempotencyKey,
             toolChoice: null,
-            temperature: null,
-            maxCompletionTokens: null,
+            temperature: $temperature,
+            maxCompletionTokens: $maxCompletionTokens,
             presetInput: $outputs !== [] ? $outputs : null
         );
         $__start = microtime(true);
