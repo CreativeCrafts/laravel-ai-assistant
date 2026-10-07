@@ -44,8 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `whsec_` secrets) in the webhook route and the `verify.ai.webhook` middleware, plus an `OpenAiWebhookReceived`
   event for every verified event (batch, fine-tuning, eval, realtime call and response events).
 - `OPENAI_PROJECT` (OpenAI-Project header) and `OPENAI_ADMIN_KEY` configuration.
-- Path parameters are percent-encoded like the official SDKs, so IDs cannot inject path segments or queries, in the
-  new API resource repositories and in the Responses, Conversations and Vector Stores repositories.
+- Path parameters are percent-encoded like the official SDKs in every repository, so IDs cannot inject path segments or queries.
 
 ### Fixed
 
@@ -69,6 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `roave/security-advisories` blocks every Laravel 11 release, so the dev dependencies cannot be installed with it.
 - Coverage reports (HTML, text, Clover) are written by `composer test-coverage` instead of being configured in
   `phpunit.xml.dist`: PHPUnit 12 runs no tests when reports are configured and no coverage driver is installed.
+- Empty, `.` and `..` IDs passed to the Files, Batches, Assistants, Vector Store Files and Vector Store File Batches
+  repositories throw an `InvalidArgumentException` instead of sending a request to the wrong URL.
 
 ### Breaking
 

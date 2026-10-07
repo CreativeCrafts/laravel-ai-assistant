@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\AssistantsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 
 /**
@@ -27,17 +28,17 @@ final readonly class AssistantsHttpRepository implements AssistantsRepositoryCon
 
     public function retrieve(string $assistantId): array
     {
-        return $this->transport->getJson($this->endpoint("assistants/{$assistantId}"), self::BETA_HEADER);
+        return $this->transport->getJson($this->endpoint('assistants/' . PathSegment::encode($assistantId)), self::BETA_HEADER);
     }
 
     public function update(string $assistantId, array $payload): array
     {
-        return $this->transport->postJson($this->endpoint("assistants/{$assistantId}"), $payload, self::BETA_HEADER);
+        return $this->transport->postJson($this->endpoint('assistants/' . PathSegment::encode($assistantId)), $payload, self::BETA_HEADER);
     }
 
     public function delete(string $assistantId): bool
     {
-        return $this->transport->delete($this->endpoint("assistants/{$assistantId}"), self::BETA_HEADER);
+        return $this->transport->delete($this->endpoint('assistants/' . PathSegment::encode($assistantId)), self::BETA_HEADER);
     }
 
     public function list(array $params = []): array

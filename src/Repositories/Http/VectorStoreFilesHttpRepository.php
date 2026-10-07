@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoreFilesRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 
 /**
@@ -22,22 +23,22 @@ final readonly class VectorStoreFilesHttpRepository implements VectorStoreFilesR
 
     public function create(string $vectorStoreId, array $payload): array
     {
-        return $this->transport->postJson($this->endpoint("vector_stores/{$vectorStoreId}/files"), $payload, self::BETA_HEADER);
+        return $this->transport->postJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/files'), $payload, self::BETA_HEADER);
     }
 
     public function retrieve(string $vectorStoreId, string $fileId): array
     {
-        return $this->transport->getJson($this->endpoint("vector_stores/{$vectorStoreId}/files/{$fileId}"), self::BETA_HEADER);
+        return $this->transport->getJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/files/' . PathSegment::encode($fileId)), self::BETA_HEADER);
     }
 
     public function update(string $vectorStoreId, string $fileId, array $payload): array
     {
-        return $this->transport->postJson($this->endpoint("vector_stores/{$vectorStoreId}/files/{$fileId}"), $payload, self::BETA_HEADER);
+        return $this->transport->postJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/files/' . PathSegment::encode($fileId)), $payload, self::BETA_HEADER);
     }
 
     public function delete(string $vectorStoreId, string $fileId): bool
     {
-        return $this->transport->delete($this->endpoint("vector_stores/{$vectorStoreId}/files/{$fileId}"), self::BETA_HEADER);
+        return $this->transport->delete($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/files/' . PathSegment::encode($fileId)), self::BETA_HEADER);
     }
 
     public function list(string $vectorStoreId, array $params = []): array
@@ -46,13 +47,13 @@ final readonly class VectorStoreFilesHttpRepository implements VectorStoreFilesR
         if ($params !== []) {
             $query = '?' . http_build_query($params);
         }
-        return $this->transport->getJson($this->endpoint("vector_stores/{$vectorStoreId}/files") . $query, self::BETA_HEADER);
+        return $this->transport->getJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/files') . $query, self::BETA_HEADER);
     }
 
     public function content(string $vectorStoreId, string $fileId): array
     {
         return $this->transport->getContent(
-            $this->endpoint("vector_stores/{$vectorStoreId}/files/{$fileId}/content"),
+            $this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/files/' . PathSegment::encode($fileId) . '/content'),
             self::BETA_HEADER
         );
     }
