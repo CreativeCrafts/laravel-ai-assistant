@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesInputItemsRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Support\QueryString;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 
@@ -26,12 +27,12 @@ final readonly class ResponsesInputItemsHttpRepository implements ResponsesInput
     public function append(string $responseId, array $items): array
     {
         $payload = ['items' => $items];
-        return $this->transport->postJson($this->endpoint("responses/{$responseId}/input/items"), $payload, idempotent: true);
+        return $this->transport->postJson($this->endpoint('responses/' . PathSegment::encode($responseId) . '/input/items'), $payload, idempotent: true);
     }
 
     public function list(string $responseId, array $params = []): array
     {
-        return $this->transport->getJson(QueryString::append($this->endpoint("responses/{$responseId}/input_items"), $params));
+        return $this->transport->getJson(QueryString::append($this->endpoint('responses/' . PathSegment::encode($responseId) . '/input_items'), $params));
     }
 
     private function endpoint(string $path): string

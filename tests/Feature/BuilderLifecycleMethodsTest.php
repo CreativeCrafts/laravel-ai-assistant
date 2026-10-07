@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelAiAssistant\Exceptions\MissingRequiredParameterException;
 use CreativeCrafts\LaravelAiAssistant\Facades\Ai;
 use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\RecordingHttpClient;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
@@ -77,4 +78,42 @@ it('manages conversation items through Ai::conversations()', function () {
         ->and($http->lastRequest()->getMethod())->toBe('DELETE')
         ->and($conversation->delete())->toBeTrue()
         ->and($http->lastUri())->toBe('https://api.openai.com/v1/conversations/conv_1');
+});
+
+it('requires an active conversation instead of creating one', function (string $method, array $arguments) {
+    $http = bindRecordingTransport(new RecordingHttpClient());
+
+    expect(fn () => Ai::conversations()->{$method}(...$arguments))
+        ->toThrow(MissingRequiredParameterException::class, 'No active conversation')
+        ->and($http->history)->toBe([]);
+})->with([
+    'retrieve' => ['retrieve', []],
+    'update' => ['update', [['topic' => 'billing']]],
+    'delete' => ['delete', []],
+    'item' => ['item', ['msg_1']],
+    'addItems' => ['addItems', [[['type' => 'message', 'role' => 'user', 'content' => 'Hi']]]],
+    'deleteItem' => ['deleteItem', ['msg_1']],
+]);
+
+it('percent-encodes ids so they cannot reach other endpoints', function () {
+    $json = fn (string $body) => new Response(200, ['Content-Type' => 'application/json'], $body);
+    $http = bindRecordingTransport(new RecordingHttpClient(
+        $json('{"deleted":true}'),
+        $json('{"id":"x"}'),
+        $json('{"object":"list","data":[]}'),
+        $json('{"object":"list","data":[]}'),
+    ));
+
+    Ai::conversations()->use('conv_1')->deleteItem('../../../files/file-1');
+    expect($http->lastRequest()->getMethod())->toBe('DELETE')
+        ->and($http->lastUri())->toBe('https://api.openai.com/v1/conversations/conv_1/items/..%2F..%2F..%2Ffiles%2Ffile-1');
+
+    Ai::responses()->retrieve('resp/1?x#y');
+    expect($http->lastUri())->toBe('https://api.openai.com/v1/responses/resp%2F1%3Fx%23y');
+
+    Ai::responses()->listInputItems('../files');
+    expect($http->lastUri())->toBe('https://api.openai.com/v1/responses/..%2Ffiles/input_items');
+
+    Ai::vectorStores()->search('vs/../../files', ['query' => 'refunds']);
+    expect($http->lastUri())->toBe('https://api.openai.com/v1/vector_stores/vs%2F..%2F..%2Ffiles/search');
 });

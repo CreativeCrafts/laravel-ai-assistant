@@ -7,6 +7,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\ApiResponseValidationException;
 use CreativeCrafts\LaravelAiAssistant\Exceptions\MaxRetryAttemptsExceededException;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Support\QueryString;
 use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
@@ -93,12 +94,12 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
         if (!is_numeric($timeout)) {
             $timeout = 120;
         }
-        return $this->transport->getJson(QueryString::append($this->endpoint("responses/{$responseId}"), $params), timeout: (float)$timeout);
+        return $this->transport->getJson(QueryString::append($this->endpoint('responses/' . PathSegment::encode($responseId)), $params), timeout: (float)$timeout);
     }
 
     public function resumeStream(string $responseId, array $params = []): iterable
     {
-        yield from ServerSentEvents::decode($this->transport->streamRequest('GET', $this->endpoint("responses/{$responseId}"), [
+        yield from ServerSentEvents::decode($this->transport->streamRequest('GET', $this->endpoint('responses/' . PathSegment::encode($responseId)), [
             'query' => array_merge($params, ['stream' => true]),
         ]));
     }
@@ -130,7 +131,7 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
             $timeout = 120;
         }
         // We ignore the response body; exceptions will be thrown by the transport if needed
-        $this->transport->postJson($this->endpoint("responses/{$responseId}/cancel"), [], timeout: (float)$timeout);
+        $this->transport->postJson($this->endpoint('responses/' . PathSegment::encode($responseId) . '/cancel'), [], timeout: (float)$timeout);
         return true;
     }
 
@@ -145,7 +146,7 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
      */
     public function deleteResponse(string $responseId): bool
     {
-        return $this->transport->delete($this->endpoint("responses/{$responseId}"));
+        return $this->transport->delete($this->endpoint('responses/' . PathSegment::encode($responseId)));
     }
 
     /**

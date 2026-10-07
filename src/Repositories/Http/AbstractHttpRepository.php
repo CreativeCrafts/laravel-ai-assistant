@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 
 use CreativeCrafts\LaravelAiAssistant\Support\MultipartFormData;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Support\QueryString;
 use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
@@ -146,16 +147,11 @@ abstract readonly class AbstractHttpRepository
 
     /**
      * Percent-encode a single path parameter while preserving RFC 3986 path characters (like the official SDKs).
+     *
+     * @throws InvalidArgumentException For empty, "." and ".." values
      */
     protected function segment(string $value): string
     {
-        if ($value === '' || $value === '.' || $value === '..') {
-            throw new InvalidArgumentException("Invalid path parameter: '{$value}'.");
-        }
-
-        return strtr(rawurlencode($value), [
-            '%21' => '!', '%24' => '$', '%26' => '&', '%27' => "'", '%28' => '(', '%29' => ')', '%2A' => '*',
-            '%2B' => '+', '%2C' => ',', '%3B' => ';', '%3D' => '=', '%3A' => ':', '%40' => '@',
-        ]);
+        return PathSegment::encode($value);
     }
 }

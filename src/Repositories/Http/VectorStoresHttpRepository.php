@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\VectorStoresRepositoryContract;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 
 /**
@@ -27,17 +28,17 @@ final readonly class VectorStoresHttpRepository implements VectorStoresRepositor
 
     public function retrieve(string $vectorStoreId): array
     {
-        return $this->transport->getJson($this->endpoint("vector_stores/{$vectorStoreId}"), self::BETA_HEADER);
+        return $this->transport->getJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId)), self::BETA_HEADER);
     }
 
     public function update(string $vectorStoreId, array $payload): array
     {
-        return $this->transport->postJson($this->endpoint("vector_stores/{$vectorStoreId}"), $payload, self::BETA_HEADER);
+        return $this->transport->postJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId)), $payload, self::BETA_HEADER);
     }
 
     public function delete(string $vectorStoreId): bool
     {
-        return $this->transport->delete($this->endpoint("vector_stores/{$vectorStoreId}"), self::BETA_HEADER);
+        return $this->transport->delete($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId)), self::BETA_HEADER);
     }
 
     public function list(array $params = []): array
@@ -51,7 +52,7 @@ final readonly class VectorStoresHttpRepository implements VectorStoresRepositor
 
     public function search(string $vectorStoreId, array $payload): array
     {
-        return $this->transport->postJson($this->endpoint("vector_stores/{$vectorStoreId}/search"), $payload, self::BETA_HEADER);
+        return $this->transport->postJson($this->endpoint('vector_stores/' . PathSegment::encode($vectorStoreId) . '/search'), $payload, self::BETA_HEADER);
     }
 
     private function endpoint(string $path): string

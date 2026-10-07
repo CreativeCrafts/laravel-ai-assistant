@@ -37,13 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Responses: `getResponse()` query parameters, `resumeStream()`, `compactResponse()`, `countInputTokens()`, and
   `Ai::responses()->retrieve()/resume()/cancel()/delete()/listInputItems()/countInputTokens()/compact()`.
 - Conversations: `getItem()`, `include` parameters for `createItems()`, and
-  `Ai::conversations()->retrieve()/update()/delete()/item()/addItems()/deleteItem()`.
+  `Ai::conversations()->retrieve()/update()/delete()/item()/addItems()/deleteItem()`, which act on the conversation
+  selected with `use()` or `start()`.
 - Files: `list()` and extra upload fields (e.g. `expires_after`); vector stores: `search()`.
 - Webhooks: OpenAI Standard Webhooks signature verification (`webhook-id`/`webhook-timestamp`/`webhook-signature`,
   `whsec_` secrets) in the webhook route and the `verify.ai.webhook` middleware, plus an `OpenAiWebhookReceived`
   event for every verified event (batch, fine-tuning, eval, realtime call and response events).
 - `OPENAI_PROJECT` (OpenAI-Project header) and `OPENAI_ADMIN_KEY` configuration.
-- Path parameters are percent-encoded like the official SDKs so IDs cannot inject path segments or queries.
+- Path parameters are percent-encoded like the official SDKs, so IDs cannot inject path segments or queries, in the
+  new API resource repositories and in the Responses, Conversations and Vector Stores repositories.
 
 ### Fixed
 
