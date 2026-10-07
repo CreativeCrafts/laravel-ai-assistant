@@ -30,6 +30,19 @@ it('sends retrieve as GET /v1/vaults/{vaultId}', function () {
         ->and($request->getHeaderLine('OpenAI-Beta'))->toBe('agents=v1');
 });
 
+it('sends update as POST /v1/vaults/{vaultId}', function () {
+    $http = RecordingHttpClient::json(['id' => 'ok']);
+    $repository = new VaultsHttpRepository($http->transport());
+
+    expect($repository->update('vaultId_1', ['name' => 'Production']))->toBe(['id' => 'ok']);
+
+    $request = $http->lastRequest();
+    expect($request->getMethod())->toBe('POST')
+        ->and($http->lastUri())->toBe('https://api.openai.com/v1/vaults/vaultId_1')
+        ->and($http->lastJson())->toBe(['name' => 'Production'])
+        ->and($request->getHeaderLine('OpenAI-Beta'))->toBe('agents=v1');
+});
+
 it('sends list as GET /v1/vaults', function () {
     $http = RecordingHttpClient::json(['id' => 'ok']);
     $repository = new VaultsHttpRepository($http->transport());

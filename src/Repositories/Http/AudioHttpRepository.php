@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelAiAssistant\Repositories\Http;
 
 use CreativeCrafts\LaravelAiAssistant\Contracts\AudioRepositoryContract;
 use CreativeCrafts\LaravelAiAssistant\Support\MultipartFormData;
+use CreativeCrafts\LaravelAiAssistant\Support\PathSegment;
 use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
 use CreativeCrafts\LaravelAiAssistant\Transport\OpenAITransport;
 
@@ -72,6 +73,38 @@ final readonly class AudioHttpRepository implements AudioRepositoryContract
         return $this->transport->request('POST', $this->endpoint('audio/voices'), [
             'multipart' => MultipartFormData::encode($payload, ['audio_sample']),
         ]);
+    }
+
+    public function createVoiceConsent(array $payload): array
+    {
+        return $this->transport->request('POST', $this->endpoint('audio/voice_consents'), [
+            'multipart' => MultipartFormData::encode($payload, ['recording']),
+        ]);
+    }
+
+    public function listVoiceConsents(array $params = []): array
+    {
+        return $this->transport->request('GET', $this->endpoint('audio/voice_consents'), ['query' => $params]);
+    }
+
+    public function retrieveVoiceConsent(string $consentId): array
+    {
+        return $this->transport->request('GET', $this->voiceConsentEndpoint($consentId));
+    }
+
+    public function updateVoiceConsent(string $consentId, array $payload): array
+    {
+        return $this->transport->request('POST', $this->voiceConsentEndpoint($consentId), ['json' => $payload]);
+    }
+
+    public function deleteVoiceConsent(string $consentId): array
+    {
+        return $this->transport->request('DELETE', $this->voiceConsentEndpoint($consentId));
+    }
+
+    private function voiceConsentEndpoint(string $consentId): string
+    {
+        return $this->endpoint('audio/voice_consents/' . PathSegment::encode($consentId));
     }
 
     private function timeout(string $operation): ?float

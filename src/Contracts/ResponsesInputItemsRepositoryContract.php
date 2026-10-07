@@ -27,7 +27,8 @@ interface ResponsesInputItemsRepositoryContract
      *
      * @param string $responseId
      * @param array $params
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return array
      */
-    public function list(string $responseId, array $params = []): array;
+    public function list(string $responseId, array $params = [], array $headers = []): array;
 }

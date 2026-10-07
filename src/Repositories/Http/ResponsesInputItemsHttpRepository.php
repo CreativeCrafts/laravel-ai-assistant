@@ -30,9 +30,9 @@ final readonly class ResponsesInputItemsHttpRepository implements ResponsesInput
         return $this->transport->postJson($this->endpoint('responses/' . PathSegment::encode($responseId) . '/input/items'), $payload, idempotent: true);
     }
 
-    public function list(string $responseId, array $params = []): array
+    public function list(string $responseId, array $params = [], array $headers = []): array
     {
-        return $this->transport->getJson(QueryString::append($this->endpoint('responses/' . PathSegment::encode($responseId) . '/input_items'), $params));
+        return $this->transport->getJson(QueryString::append($this->endpoint('responses/' . PathSegment::encode($responseId) . '/input_items'), $params), $headers);
     }
 
     private function endpoint(string $path): string

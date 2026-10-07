@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelAiAssistant\Repositories\Http\AudioHttpRepository;
+use CreativeCrafts\LaravelAiAssistant\Tests\Fakes\RecordingHttpClient;
 use CreativeCrafts\LaravelAiAssistant\Transport\GuzzleOpenAITransport;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Response as Psr7Response;
@@ -169,4 +170,57 @@ it('creates custom voices from consented samples', function () {
     ]);
 
     expect($out['id'])->toBe('voice_1');
+});
+
+it('uploads voice consent recordings as multipart', function () {
+    $client = Mockery::mock(GuzzleClient::class);
+    $client->shouldReceive('request')
+        ->once()
+        ->withArgs(fn (string $method, string $uri, array $options) => $method === 'POST'
+            && $uri === '/v1/audio/voice_consents'
+            && audioPartPairs($options['multipart']) === [['name', 'John Doe'], ['language', 'en-US'], ['recording', 'resource']])
+        ->andReturn(new Psr7Response(200, ['Content-Type' => 'application/json'], json_encode(['id' => 'cons_1'])));
+
+    $out = (new AudioHttpRepository(new GuzzleOpenAITransport($client)))->createVoiceConsent([
+        'name' => 'John Doe',
+        'language' => 'en-US',
+        'recording' => $this->audioPath,
+    ]);
+
+    expect($out['id'])->toBe('cons_1');
+});
+
+it('lists, retrieves, updates and deletes voice consents', function () {
+    $http = RecordingHttpClient::json(['id' => 'cons_1']);
+    $repository = new AudioHttpRepository($http->transport());
+
+    expect($repository->listVoiceConsents(['limit' => 20]))->toBe(['id' => 'cons_1'])
+        ->and($http->lastRequest()->getMethod())->toBe('GET')
+        ->and($http->lastUri())->toBe('https://api.openai.com/v1/audio/voice_consents?limit=20');
+
+    $http = RecordingHttpClient::json(['id' => 'cons_1']);
+    $repository = new AudioHttpRepository($http->transport());
+    $repository->retrieveVoiceConsent('cons_1');
+    expect($http->lastRequest()->getMethod())->toBe('GET')
+        ->and($http->lastUri())->toBe('https://api.openai.com/v1/audio/voice_consents/cons_1');
+
+    $http = RecordingHttpClient::json(['id' => 'cons_1']);
+    $repository = new AudioHttpRepository($http->transport());
+    $repository->updateVoiceConsent('cons_1', ['name' => 'Jane Doe']);
+    expect($http->lastRequest()->getMethod())->toBe('POST')
+        ->and($http->lastUri())->toBe('https://api.openai.com/v1/audio/voice_consents/cons_1')
+        ->and($http->lastJson())->toBe(['name' => 'Jane Doe']);
+
+    $http = RecordingHttpClient::json(['id' => 'cons_1', 'deleted' => true]);
+    $repository = new AudioHttpRepository($http->transport());
+    expect($repository->deleteVoiceConsent('cons_1'))->toBe(['id' => 'cons_1', 'deleted' => true])
+        ->and($http->lastRequest()->getMethod())->toBe('DELETE')
+        ->and($http->lastUri())->toBe('https://api.openai.com/v1/audio/voice_consents/cons_1');
+});
+
+it('percent-encodes voice consent ids', function () {
+    $http = RecordingHttpClient::json(['id' => 'cons_1']);
+    (new AudioHttpRepository($http->transport()))->retrieveVoiceConsent('../files?x=1');
+
+    expect($http->lastUri())->toBe('https://api.openai.com/v1/audio/voice_consents/..%2Ffiles%3Fx=1');
 });
