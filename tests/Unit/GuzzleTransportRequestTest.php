@@ -75,6 +75,13 @@ it('returns an empty array for empty acknowledgements', function () {
     expect((new GuzzleOpenAITransport($client))->request('POST', '/v1/realtime/calls/call_1/hangup'))->toBe([]);
 });
 
+it('keeps empty text bodies as text, e.g. a silent recording transcribed with response_format=text', function (string $body) {
+    $client = Mockery::mock(GuzzleClient::class);
+    $client->shouldReceive('request')->once()->andReturn(new Psr7Response(200, ['Content-Type' => 'text/plain; charset=utf-8'], $body));
+
+    expect((new GuzzleOpenAITransport($client))->postMultipart('/v1/audio/transcriptions', ['model' => 'whisper-1']))->toBe(['text' => $body]);
+})->with(['empty' => [''], 'newline' => ["\n"]]);
+
 it('returns raw content for binary and SDP responses and text for text bodies', function (string $contentType, array $expected) {
     $client = Mockery::mock(GuzzleClient::class);
     $client->shouldReceive('request')->once()->andReturn(new Psr7Response(200, ['Content-Type' => $contentType], 'BODY'));

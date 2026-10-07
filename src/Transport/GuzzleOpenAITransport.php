@@ -677,13 +677,14 @@ final readonly class GuzzleOpenAITransport implements OpenAITransport
         $contentType = $response->getHeaderLine('Content-Type');
         $body = (string)$response->getBody();
 
+        // Text bodies (text/plain, text/vtt, ...) are returned as-is, even when empty
+        if (0 === mb_stripos($contentType, 'text/') && 0 !== mb_stripos($contentType, 'text/event-stream')) {
+            return ['text' => $body];
+        }
+
         // Some endpoints acknowledge with an empty body (e.g. 202 Accepted / 204 No Content)
         if (trim($body) === '') {
             return [];
-        }
-
-        if (0 === mb_stripos($contentType, 'text/') && 0 !== mb_stripos($contentType, 'text/event-stream')) {
-            return ['text' => $body];
         }
 
         if ($this->isBinaryContentType($contentType)) {
