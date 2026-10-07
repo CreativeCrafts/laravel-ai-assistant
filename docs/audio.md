@@ -173,7 +173,29 @@ $voice = Ai::audio()->createVoice([
 // $voice['id'] can then be used as the voice in createSpeech() requests
 ```
 
-<!-- Voice consents (createVoiceConsent, listVoiceConsents, ...) are being added in a follow-up release; document them here once they ship. -->
+### Voice consents
+
+A custom voice made from a recording needs a consent recording from the speaker. Upload it first, then pass its
+id as `consent` when you create the voice:
+
+```php
+$consent = Ai::audio()->createVoiceConsent([
+    'name' => 'John Doe',
+    'language' => 'en-US',
+    'recording' => storage_path('app/voices/john-consent.wav'),   // path, SplFileInfo or stream resource
+]);
+
+$voice = Ai::audio()->createVoice([
+    'name' => 'Brand narrator',
+    'audio_sample' => storage_path('app/voices/narrator-sample.wav'),
+    'consent' => $consent['id'],
+]);
+
+Ai::audio()->listVoiceConsents(['limit' => 20]);
+Ai::audio()->retrieveVoiceConsent($consent['id']);
+Ai::audio()->updateVoiceConsent($consent['id'], ['name' => 'John A. Doe']);
+Ai::audio()->deleteVoiceConsent($consent['id']);
+```
 
 ## Audio inside a chat
 

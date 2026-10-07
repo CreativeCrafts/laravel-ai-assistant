@@ -3,31 +3,6 @@
 Streaming shows the answer while it is being generated instead of after the whole response is ready.
 This guide covers streaming in PHP, to the browser (Inertia + React), and over websockets with Laravel Reverb.
 
-> **Known issue in the current release.** `Ai::stream()`, `ChatSession::stream()` and
-> `ResponsesBuilder::stream()` parse the stream with a parser that waits for the blank line between SSE
-> events, but the HTTP transport drops blank lines. Against the live API they currently emit a single merged
-> event at the end instead of text deltas. Until the fix ships, stream with the repository and
-> `ServerSentEvents::decode()`, which does not depend on blank lines:
->
-> ```php
-> use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
-> use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
->
-> $lines = app(ResponsesRepositoryContract::class)->streamResponse([
->     'model' => 'gpt-5-mini',
->     'instructions' => 'Answer in markdown.',
->     'input' => 'Tell me a short story about Laravel',
-> ]);
->
-> foreach (ServerSentEvents::decode($lines) as $event) {
->     if ($event['type'] === 'response.output_text.delta') {
->         echo $event['delta'];   // decoded events are the API's own payloads: no `data` wrapper
->     }
-> }
-> ```
->
-> The examples below show the intended `Ai::stream()` API; swap in the snippet above in the meantime.
-
 ## The event format
 
 Streams yield normalised Responses API events. The ones you will use most:
@@ -60,16 +35,16 @@ foreach (Ai::stream('Tell me a short story about Laravel') as $event) {
 
 ### Unified builder
 
-`ResponsesBuilder::stream()` yields the same events as plain arrays and accepts the usual builder options.
-Add the text with `inputItems()` (or `input()->imageInput()` for vision), then call `stream()` on the
-builder itself:
+`ResponsesBuilder::stream()` yields the same events as plain arrays and sends the same input and settings as
+`send()` would. `input()->message()` returns the input builder, so keep the builder in a variable and call
+`stream()` on it:
 
 ```php
 $builder = Ai::responses()
     ->model('gpt-5-mini')
     ->instructions('Answer in markdown.');
 
-$builder->inputItems()->appendUserText('Explain Laravel service providers');
+$builder->input()->message('Explain Laravel service providers');
 
 foreach ($builder->stream() as $event) {
     if ($event['type'] === 'response.output_text.delta') {
@@ -78,7 +53,8 @@ foreach ($builder->stream() as $event) {
 }
 ```
 
-`inputItems()` also offers `appendUserImageUrl($url)`, `appendUserImageId($fileId)` and `appendRaw($item)`.
+`withMessages()`, `inputItems()` and `input()->imageInput()` work the same way. `inputItems()` also offers
+`appendUserImageUrl($url)`, `appendUserImageId($fileId)` and `appendRaw($item)`.
 
 ### Chat sessions
 

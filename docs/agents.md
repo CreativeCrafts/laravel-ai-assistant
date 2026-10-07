@@ -110,10 +110,9 @@ Ai::vaults()->deleteCredential($vault['id'], $credential['id']);
 
 Ai::vaults()->list();
 Ai::vaults()->retrieve($vault['id']);
+Ai::vaults()->update($vault['id'], ['name' => 'CRM access (prod)', 'metadata' => ['team' => 'sales']]);
 Ai::vaults()->delete($vault['id']);
 ```
-
-<!-- Vault update() is being added in a follow-up release; document it here once it ships. -->
 
 ## Skills
 

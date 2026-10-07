@@ -42,6 +42,8 @@ The facade also exposes one accessor per API repository, listed below, and `admi
 inConversation(string $conversationId): self
 instructions(string $instructions): self
 model(string $model): self
+withHeaders(array $headers): self
+withOptions(array $options): self
 responseFormat(array|string $format): self
 temperature(float $temperature): self
 maxCompletionTokens(int $maxTokens): self
@@ -257,16 +259,18 @@ Properties: `id`, `speaker`, `start`, `end`, `text`.
 Low-level access: `app(ResponsesRepositoryContract::class)`.
 
 ```php
-createResponse(array $payload): array
-streamResponse(array $payload): iterable
-getResponse(string $responseId, array $params = []): array
-resumeStream(string $responseId, array $params = []): iterable
-compactResponse(array $payload): array
-countInputTokens(array $payload): array
+createResponse(array $payload, array $headers = []): array
+streamResponse(array $payload, array $headers = []): iterable
+getResponse(string $responseId, array $params = [], array $headers = []): array
+resumeStream(string $responseId, array $params = [], array $headers = []): iterable
+compactResponse(array $payload, array $headers = []): array
+countInputTokens(array $payload, array $headers = []): array
 listResponses(array $params = []): array
-cancelResponse(string $responseId): bool
-deleteResponse(string $responseId): bool
+cancelResponse(string $responseId, array $headers = []): bool
+deleteResponse(string $responseId, array $headers = []): bool
 ```
+
+`$headers` are extra HTTP headers for that request, e.g. `['OpenAI-Beta' => 'responses_multi_agent=v1']`.
 
 #### `ConversationsRepositoryContract`
 
@@ -319,6 +323,11 @@ createTranscription(array $payload): array
 streamTranscription(array $payload): iterable
 createTranslation(array $payload): array
 createVoice(array $payload): array
+createVoiceConsent(array $payload): array
+listVoiceConsents(array $params = []): array
+retrieveVoiceConsent(string $consentId): array
+updateVoiceConsent(string $consentId, array $payload): array
+deleteVoiceConsent(string $consentId): array
 ```
 
 #### `Ai::images()`
@@ -644,6 +653,7 @@ deleteTemplate(string $templateId): array
 ```php
 create(array $payload): array
 retrieve(string $vaultId): array
+update(string $vaultId, array $payload): array
 list(array $params = []): array
 delete(string $vaultId): array
 createCredential(string $vaultId, array $payload): array

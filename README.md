@@ -94,23 +94,14 @@ $invoice = json_decode($response->text, true);
 ### Streaming
 
 ```php
-use CreativeCrafts\LaravelAiAssistant\Contracts\ResponsesRepositoryContract;
-use CreativeCrafts\LaravelAiAssistant\Support\ServerSentEvents;
-
-$lines = app(ResponsesRepositoryContract::class)->streamResponse([
-    'model' => 'gpt-5-mini',
-    'input' => 'Tell me about Laravel Reverb',
-]);
-
-foreach (ServerSentEvents::decode($lines) as $event) {
-    if ($event['type'] === 'response.output_text.delta') {
-        echo $event['delta'];
+foreach (Ai::stream('Tell me about Laravel Reverb') as $event) {
+    if ($event->type === 'response.output_text.delta') {
+        echo $event->data['delta'];
     }
 }
 ```
 
-`Ai::stream()` has a known issue in this release; see the [Streaming guide](docs/streaming.md) for details and
-for streaming to Inertia + React or Laravel Reverb.
+The [Streaming guide](docs/streaming.md) covers streaming to Inertia + React and over Laravel Reverb.
 
 ### Multi-turn conversations
 

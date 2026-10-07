@@ -312,7 +312,38 @@ foreach (ServerSentEvents::decode($responses->streamResponse(['model' => 'gpt-5-
 $responses->listResponses(['limit' => 20]);
 ```
 
-<!-- Extra request headers (createResponse()/streamResponse() $headers and ResponsesBuilder::withHeaders()) are being added in a follow-up release; document them here once they ship. -->
+Both methods take extra request headers as a second argument: `createResponse($payload, $headers)` and
+`streamResponse($payload, $headers)`.
+
+## Extra headers and create options
+
+`withHeaders()` sends extra HTTP headers with every Responses API request the builder makes: `send()`,
+`stream()`, the follow-up request that continues a turn after tool calls, and `retrieve()`, `resume()`,
+`cancel()`, `delete()`, `listInputItems()`, `countInputTokens()` and `compact()`.
+
+`withOptions()` adds create parameters the builder has no method for to `send()` and `stream()`. OpenAI's
+multi-agent beta needs both:
+
+```php
+$response = Ai::responses()
+    ->model('gpt-5')
+    ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1'])
+    ->withOptions(['multi_agent' => ['enabled' => true]])
+    ->input()
+    ->message('Compare the pricing pages of our three main competitors')
+    ->send();
+```
+
+How they combine:
+
+- Later calls merge into earlier ones. A header name repeated in any letter case replaces the earlier value.
+- The builder's own settings (`model()`, `instructions()`, `responseFormat()`, `toolChoice()`, `temperature()`,
+  `maxCompletionTokens()`, the input and the conversation) win over the same keys in `withOptions()`. Options do
+  replace the configured default instructions and `max_output_tokens`.
+- `stream` and `_idempotency_key` in the options are ignored. The follow-up request after tool calls reuses the
+  options except `input` and `tool_choice`.
+- Builder turns run in a conversation, so `previous_response_id` can't be used as an option.
+- Requests routed to the audio, image or chat completions endpoints ignore both.
 
 ## Errors
 
