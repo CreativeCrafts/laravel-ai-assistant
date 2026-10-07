@@ -60,6 +60,8 @@ final class ResponsesBuilder
     private ?string $idempotencyKey = null;
     /** @var array<string, string> */
     private array $headers = [];
+    /** @var array<string, mixed> */
+    private array $options = [];
     private array|string|null $toolChoice = null;
 
     private InputItemsBuilder $inputItems;
@@ -103,11 +105,13 @@ final class ResponsesBuilder
     }
 
     /**
-     * Send extra HTTP headers with the Responses API requests made by send() and stream(), including the
-     * follow-up requests that continue a turn after tool calls, e.g. ->withHeaders(['OpenAI-Project' => 'proj_123']).
+     * Send extra HTTP headers with every Responses API request this builder makes: send() and stream() (including the
+     * follow-up requests that continue a turn after tool calls), retrieve(), resume(), cancel(), delete(),
+     * listInputItems(), countInputTokens() and compact(), e.g. ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1']).
      * Later calls merge into earlier ones; a header name repeated in any letter case replaces the earlier value.
-     * Requests routed to other endpoints (audio, images, chat completions) and retrieve(), resume(), cancel(),
-     * delete(), listInputItems(), countInputTokens() and compact() do not send these headers.
+     * Requests routed to other endpoints (audio, images, chat completions) do not send these headers, and neither do
+     * the Conversations API calls a turn makes (creating the conversation when inConversation() is not used, posting
+     * tool results).
      *
      * @param array<string, string> $headers
      */
@@ -121,6 +125,24 @@ final class ResponsesBuilder
             }
             $this->headers[$name] = $value;
         }
+        return $this;
+    }
+
+    /**
+     * Send extra Responses API create parameters with send() and stream() for fields this builder has no method for,
+     * e.g. ->withOptions(['multi_agent' => ['enabled' => true]]). Later calls merge into earlier ones, key by key.
+     * The builder's own settings (input, conversation, model(), instructions(), responseFormat(), toolChoice(),
+     * temperature(), maxCompletionTokens()) win over the same keys, though other text fields such as verbosity are kept
+     * next to responseFormat(); options do replace the configured default instructions and max_output_tokens.
+     * stream and _idempotency_key are ignored. The follow-up request that continues a turn after tool calls reuses the
+     * options except input and tool_choice. Turns run in a conversation, so previous_response_id cannot be used.
+     * Requests routed to other endpoints (audio, images, chat completions) ignore these options.
+     *
+     * @param array<string, mixed> $options
+     */
+    public function withOptions(array $options): self
+    {
+        $this->options = array_merge($this->options, $options);
         return $this;
     }
 
@@ -289,6 +311,7 @@ final class ResponsesBuilder
                 idempotencyKey: $this->idempotencyKey,
                 toolChoice: $this->toolChoice,
                 headers: $this->headers,
+                options: $this->options,
             );
             return ChatResponseDto::fromArray($arr);
         }
@@ -367,6 +390,7 @@ final class ResponsesBuilder
             toolChoice: $this->toolChoice,
             presetInput: $presetInput,
             headers: $this->headers,
+            options: $this->options,
         );
     }
 
@@ -377,7 +401,7 @@ final class ResponsesBuilder
      */
     public function retrieve(string $responseId, array $params = []): array
     {
-        return app(ResponsesRepositoryContract::class)->getResponse($responseId, $params);
+        return app(ResponsesRepositoryContract::class)->getResponse($responseId, $params, $this->headers);
     }
 
     /**
@@ -389,7 +413,7 @@ final class ResponsesBuilder
     {
         $params = $startingAfter !== null ? ['starting_after' => $startingAfter] : [];
 
-        return app(ResponsesRepositoryContract::class)->resumeStream($responseId, $params);
+        return app(ResponsesRepositoryContract::class)->resumeStream($responseId, $params, $this->headers);
     }
 
     /**
@@ -397,7 +421,7 @@ final class ResponsesBuilder
      */
     public function cancel(string $responseId): bool
     {
-        return app(ResponsesRepositoryContract::class)->cancelResponse($responseId);
+        return app(ResponsesRepositoryContract::class)->cancelResponse($responseId, $this->headers);
     }
 
     /**
@@ -405,7 +429,7 @@ final class ResponsesBuilder
      */
     public function delete(string $responseId): bool
     {
-        return app(ResponsesRepositoryContract::class)->deleteResponse($responseId);
+        return app(ResponsesRepositoryContract::class)->deleteResponse($responseId, $this->headers);
     }
 
     /**
@@ -415,7 +439,7 @@ final class ResponsesBuilder
      */
     public function listInputItems(string $responseId, array $params = []): array
     {
-        return app(ResponsesInputItemsRepositoryContract::class)->list($responseId, $params);
+        return app(ResponsesInputItemsRepositoryContract::class)->list($responseId, $params, $this->headers);
     }
 
     /**
@@ -425,7 +449,7 @@ final class ResponsesBuilder
      */
     public function countInputTokens(array $payload): array
     {
-        return app(ResponsesRepositoryContract::class)->countInputTokens($payload);
+        return app(ResponsesRepositoryContract::class)->countInputTokens($payload, $this->headers);
     }
 
     /**
@@ -435,7 +459,7 @@ final class ResponsesBuilder
      */
     public function compact(array $payload): array
     {
-        return app(ResponsesRepositoryContract::class)->compactResponse($payload);
+        return app(ResponsesRepositoryContract::class)->compactResponse($payload, $this->headers);
     }
 
     /**
@@ -564,6 +588,7 @@ final class ResponsesBuilder
                 maxCompletionTokens: $maxCompletionTokens,
                 presetInput: $presetInput,
                 headers: $this->headers,
+                options: $this->options,
             );
         }
 

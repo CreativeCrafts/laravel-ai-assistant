@@ -16,6 +16,8 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
     public array $lastHeaders = [];
     /** @var array<int, array<string, string>> Headers of every createResponse() call, in order */
     public array $createdHeaders = [];
+    /** @var array<int, array<string, mixed>> Payloads of every createResponse() call, in order */
+    public array $createdPayloads = [];
     public array $canceled = [];
     public array $deleted = [];
     public ?array $lastResponse = null;
@@ -40,6 +42,7 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
         $this->lastPayload = $payload;
         $this->lastHeaders = $headers;
         $this->createdHeaders[] = $headers;
+        $this->createdPayloads[] = $payload;
         $resp = array_shift($this->queue);
         if ($resp === null) {
             // default dummy response
@@ -75,34 +78,40 @@ final class FakeResponsesRepository implements ResponsesRepositoryContract
         return $this->streamLines;
     }
 
-    public function getResponse(string $responseId, array $params = []): array
+    public function getResponse(string $responseId, array $params = [], array $headers = []): array
     {
+        $this->lastHeaders = $headers;
         return $this->lastResponse ?? ['id' => $responseId, 'status' => 'completed'];
     }
 
-    public function resumeStream(string $responseId, array $params = []): iterable
+    public function resumeStream(string $responseId, array $params = [], array $headers = []): iterable
     {
+        $this->lastHeaders = $headers;
         return [['type' => 'response.completed', 'response' => ['id' => $responseId]]];
     }
 
-    public function compactResponse(array $payload): array
+    public function compactResponse(array $payload, array $headers = []): array
     {
+        $this->lastHeaders = $headers;
         return ['object' => 'response.compaction', 'output' => []];
     }
 
-    public function countInputTokens(array $payload): array
+    public function countInputTokens(array $payload, array $headers = []): array
     {
+        $this->lastHeaders = $headers;
         return ['object' => 'response.input_tokens', 'input_tokens' => 0];
     }
 
-    public function cancelResponse(string $responseId): bool
+    public function cancelResponse(string $responseId, array $headers = []): bool
     {
+        $this->lastHeaders = $headers;
         $this->canceled[] = $responseId;
         return true;
     }
 
-    public function deleteResponse(string $responseId): bool
+    public function deleteResponse(string $responseId, array $headers = []): bool
     {
+        $this->lastHeaders = $headers;
         $this->deleted[] = $responseId;
         return true;
     }

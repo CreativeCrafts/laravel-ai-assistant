@@ -85,35 +85,37 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
      *
      * @param string $responseId The unique identifier of the response to retrieve
      * @param array<string, mixed> $params Optional query parameters (include[], include_obfuscation, starting_after)
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return array The response data as an associative array containing the AI response details
      * @throws ApiResponseValidationException When the API returns an error response (status >= 400) or when the response format is invalid
      * @throws MaxRetryAttemptsExceededException When the maximum number of retry attempts is exceeded due to transport errors
      * @throws JsonException When the response body cannot be decoded as valid JSON
      */
-    public function getResponse(string $responseId, array $params = []): array
+    public function getResponse(string $responseId, array $params = [], array $headers = []): array
     {
         $timeout = Config::integer(key: 'ai-assistant.responses.timeout', default: 120);
         if (!is_numeric($timeout)) {
             $timeout = 120;
         }
-        return $this->transport->getJson(QueryString::append($this->endpoint('responses/' . PathSegment::encode($responseId)), $params), timeout: (float)$timeout);
+        return $this->transport->getJson(QueryString::append($this->endpoint('responses/' . PathSegment::encode($responseId)), $params), $headers, timeout: (float)$timeout);
     }
 
-    public function resumeStream(string $responseId, array $params = []): iterable
+    public function resumeStream(string $responseId, array $params = [], array $headers = []): iterable
     {
         yield from ServerSentEvents::decode($this->transport->streamRequest('GET', $this->endpoint('responses/' . PathSegment::encode($responseId)), [
             'query' => array_merge($params, ['stream' => true]),
+            'headers' => $headers,
         ]));
     }
 
-    public function compactResponse(array $payload): array
+    public function compactResponse(array $payload, array $headers = []): array
     {
-        return $this->transport->request('POST', $this->endpoint('responses/compact'), ['json' => $payload]);
+        return $this->transport->request('POST', $this->endpoint('responses/compact'), ['json' => $payload, 'headers' => $headers]);
     }
 
-    public function countInputTokens(array $payload): array
+    public function countInputTokens(array $payload, array $headers = []): array
     {
-        return $this->transport->request('POST', $this->endpoint('responses/input_tokens'), ['json' => $payload]);
+        return $this->transport->request('POST', $this->endpoint('responses/input_tokens'), ['json' => $payload, 'headers' => $headers]);
     }
 
     /**
@@ -121,19 +123,20 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
      * Delegates to the transport layer to ensure unified retries and exception handling.
      *
      * @param string $responseId The unique identifier of the response to be cancelled
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return bool Always returns true when the cancellation request is successful
      * @throws ApiResponseValidationException When the API returns an error response (status >= 400)
      * @throws MaxRetryAttemptsExceededException When the maximum number of retry attempts is exceeded during the request
      * @throws JsonException When the response body cannot be decoded as valid JSON
      */
-    public function cancelResponse(string $responseId): bool
+    public function cancelResponse(string $responseId, array $headers = []): bool
     {
         $timeout = Config::integer(key: 'ai-assistant.responses.timeout', default: 120);
         if (!is_numeric($timeout)) {
             $timeout = 120;
         }
         // We ignore the response body; exceptions will be thrown by the transport if needed
-        $this->transport->postJson($this->endpoint('responses/' . PathSegment::encode($responseId) . '/cancel'), [], timeout: (float)$timeout);
+        $this->transport->postJson($this->endpoint('responses/' . PathSegment::encode($responseId) . '/cancel'), [], $headers, timeout: (float)$timeout);
         return true;
     }
 
@@ -142,13 +145,14 @@ final readonly class ResponsesHttpRepository implements ResponsesRepositoryContr
      * Delegates to the transport layer to ensure unified retries and exception handling.
      *
      * @param string $responseId The unique identifier of the response to be deleted
+     * @param array<string, string> $headers Extra request headers, e.g. ['OpenAI-Beta' => 'responses_multi_agent=v1']
      * @return bool Always returns true when the deletion is successful
      * @throws ApiResponseValidationException When the API returns an error response (status >= 400)
      * @throws MaxRetryAttemptsExceededException When the maximum number of retry attempts is exceeded during the request
      */
-    public function deleteResponse(string $responseId): bool
+    public function deleteResponse(string $responseId, array $headers = []): bool
     {
-        return $this->transport->delete($this->endpoint('responses/' . PathSegment::encode($responseId)));
+        return $this->transport->delete($this->endpoint('responses/' . PathSegment::encode($responseId)), $headers);
     }
 
     /**

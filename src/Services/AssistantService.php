@@ -166,6 +166,11 @@ class AssistantService implements AudioProcessingContract
     /**
      * Build and send a Responses.create turn.
      * Returns a normalized ResponseEnvelope array.
+     *
+     * @param array<string, string> $headers Extra request headers, also sent when the turn continues after tool calls
+     * @param array<string, mixed> $options Extra create parameters, e.g. ['multi_agent' => ['enabled' => true]]. Fields
+     *                                      set from the other arguments replace the same keys; configured defaults
+     *                                      only fill in keys missing here (see ResponsesBuilder::withOptions())
      */
     public function sendTurn(
         string $conversationId,
@@ -182,6 +187,7 @@ class AssistantService implements AudioProcessingContract
         ?int $maxCompletionTokens = null,
         ?array $presetInput = null,
         array $headers = [],
+        array $options = [],
     ): array {
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
@@ -196,7 +202,8 @@ class AssistantService implements AudioProcessingContract
             $toolChoice,
             $temperature,
             $maxCompletionTokens,
-            $presetInput
+            $presetInput,
+            $options
         );
         $__start = microtime(true);
         $resp = $this->responsesRepository->createResponse($payload, $headers);
@@ -294,7 +301,8 @@ class AssistantService implements AudioProcessingContract
                 $model,
                 $instructions,
                 $idempotencyKey,
-                $headers
+                $headers,
+                $options
             );
         }
 
@@ -305,6 +313,9 @@ class AssistantService implements AudioProcessingContract
      * Post tool_result items to the conversation and ask the model to continue the turn.
      *
      * @param array<string, string> $headers Extra request headers of the turn being continued
+     * @param array<string, mixed> $options Extra create parameters of the turn being continued. Its input and tool_choice
+     *                                      are not reused: the conversation already holds the input, and a forced
+     *                                      tool_choice would make the model call a tool again on every round.
      */
     public function continueWithToolResults(
         string $conversationId,
@@ -312,7 +323,8 @@ class AssistantService implements AudioProcessingContract
         ?string $model = null,
         ?string $instructions = null,
         ?string $idempotencyKey = null,
-        array $headers = []
+        array $headers = [],
+        array $options = []
     ): array {
         // 1) Insert tool_result items in the conversation
         $items = [];
@@ -338,6 +350,7 @@ class AssistantService implements AudioProcessingContract
         }
 
         // 2) Trigger a new responses.create referencing same conversation
+        unset($options['input'], $options['tool_choice']);
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
             $instructions,
@@ -351,7 +364,8 @@ class AssistantService implements AudioProcessingContract
             toolChoice: null,
             temperature: null,
             maxCompletionTokens: null,
-            presetInput: null
+            presetInput: null,
+            options: $options
         );
         $__start = microtime(true);
         $resp = $this->responsesRepository->createResponse($payload, $headers);
@@ -489,6 +503,11 @@ class AssistantService implements AudioProcessingContract
     /**
      * Stream a Responses.create turn and yield normalized events.
      * If a callback is provided, it will be called with each normalized event.
+     *
+     * @param array<string, string> $headers Extra request headers
+     * @param array<string, mixed> $options Extra create parameters, e.g. ['multi_agent' => ['enabled' => true]]. Fields
+     *                                      set from the other arguments replace the same keys; configured defaults
+     *                                      only fill in keys missing here (see ResponsesBuilder::withOptions())
      */
     public function streamTurn(
         string $conversationId,
@@ -507,6 +526,7 @@ class AssistantService implements AudioProcessingContract
         ?int $maxCompletionTokens = null,
         ?array $presetInput = null,
         array $headers = [],
+        array $options = [],
     ): Generator {
         $payload = $this->buildResponsesCreatePayload(
             $conversationId,
@@ -521,7 +541,8 @@ class AssistantService implements AudioProcessingContract
             $toolChoice,
             $temperature,
             $maxCompletionTokens,
-            $presetInput
+            $presetInput,
+            $options
         );
 
         $request = CompletionRequest::fromArray($payload);
@@ -783,15 +804,22 @@ class AssistantService implements AudioProcessingContract
         ?float $temperature = null,
         ?int $maxCompletionTokens = null,
         ?array $presetInput = null,
+        array $options = [],
     ): array {
-        $payload = [];
+        // Extra create parameters (e.g. multi_agent) are the base of the payload: the fields set below replace keys of
+        // the same name, while the configured defaults only fill in keys the options leave out. stream is set by the
+        // repository and _idempotency_key below, so the options cannot set either.
+        unset($options['stream'], $options['_idempotency_key']);
+        $payload = $options;
         $defaultModel = config('ai-assistant.default_model', config('ai-assistant.chat_model', config('ai-assistant.model')));
-        $payload['model'] = $model ?: (is_string($defaultModel) ? $defaultModel : '');
+        if (($model !== null && $model !== '') || !array_key_exists('model', $payload)) {
+            $payload['model'] = $model ?: (is_string($defaultModel) ? $defaultModel : '');
+        }
         $payload['conversation'] = $conversationId;
         $instr = $instructions;
         $defaultInstrConfig = config('ai-assistant.default_instructions', '');
         $defaultInstr = is_string($defaultInstrConfig) ? $defaultInstrConfig : '';
-        if (($instr === null || $instr === '') && $defaultInstr !== '') {
+        if (($instr === null || $instr === '') && $defaultInstr !== '' && !array_key_exists('instructions', $payload)) {
             $instr = $defaultInstr;
         }
         if ($instr !== null && $instr !== '') {
@@ -846,9 +874,10 @@ class AssistantService implements AudioProcessingContract
             $payload['metadata'] = $metadata;
         }
         if ($responseFormat !== null) {
+            // Keep other text options, such as verbosity, next to the format
             $payload['text'] = [
                 'format' => $responseFormat,
-            ];
+            ] + (isset($payload['text']) && is_array($payload['text']) ? $payload['text'] : []);
         }
         if ($modalities !== null) {
             $payload['modalities'] = $modalities;
@@ -877,11 +906,11 @@ class AssistantService implements AudioProcessingContract
         // Map legacy max_completion_tokens to Responses max_output_tokens
         // Prioritize parameter over config
         $maxOut = $maxCompletionTokens;
-        if ($maxOut === null) {
+        if ($maxOut === null && !array_key_exists('max_output_tokens', $payload)) {
             $maxOut = config('ai-assistant.responses.max_output_tokens');
-        }
-        if ($maxOut === null) {
-            $maxOut = config('ai-assistant.max_completion_tokens');
+            if ($maxOut === null) {
+                $maxOut = config('ai-assistant.max_completion_tokens');
+            }
         }
         if (is_numeric($maxOut)) {
             $intMax = (int)$maxOut;

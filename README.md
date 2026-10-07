@@ -103,16 +103,22 @@ $response = Ai::responses()
     ->send();
 ```
 
-Send extra headers with the Responses API requests made by `send()` and `stream()` (including the follow-up
-request that continues a turn after tool calls), for example to attribute a request to another project:
+`withHeaders()` sends extra headers with every Responses API request the builder makes: `send()`, `stream()`, the
+follow-up request that continues a turn after tool calls, and the stored-response methods below. `withOptions()` adds
+create parameters the builder has no method for to `send()` and `stream()`. OpenAI's multi-agent beta needs both:
 
 ```php
 $response = Ai::responses()
-    ->withHeaders(['OpenAI-Project' => 'proj_reporting'])
+    ->model('gpt-5')
+    ->withHeaders(['OpenAI-Beta' => 'responses_multi_agent=v1'])
+    ->withOptions(['multi_agent' => ['enabled' => true]])
     ->input()
-    ->message('Summarise last week')
+    ->message('Compare the pricing pages of our three main competitors')
     ->send();
 ```
+
+The builder's own methods, such as `model()`, `instructions()` and `responseFormat()`, take precedence over the same
+keys in `withOptions()`. Requests routed to the audio, image or chat completions endpoints ignore both.
 
 ### Conversations
 
