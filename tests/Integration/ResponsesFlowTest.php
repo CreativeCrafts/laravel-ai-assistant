@@ -44,10 +44,9 @@ it('handles one-turn sync text', function () {
     expect($result['toolCalls'] ?? [])->toBeArray()->toBeEmpty();
 });
 
-it('supports multi-turn tool call followed by tool_result continuation', function () {
+it('supports multi-turn tool call followed by function_call_output continuation', function () {
     $assistant = app(AssistantService::class);
     $responses = app(ResponsesRepositoryContract::class);
-    $convs = app(ConversationsRepositoryContract::class);
 
     // Register a tool in the registry
     $tools = app(ToolRegistry::class);
@@ -84,17 +83,9 @@ it('supports multi-turn tool call followed by tool_result continuation', functio
 
     expect($result['messages'] ?? '')->toBe('The sum is 6');
 
-    // Conversation should contain tool_result item
-    $items = $convs->listItems($convId);
-    $flat = $items['data'] ?? [];
-    $hasToolResult = false;
-    foreach ($flat as $it) {
-        if (($it['type'] ?? '') === 'tool_result' && ($it['tool_call_id'] ?? '') === $toolCallId) {
-            $hasToolResult = true;
-            break;
-        }
-    }
-    expect($hasToolResult)->toBeTrue();
+    // The continuation sends the tool output for the call and keeps the conversation
+    expect(ResponsesFactory::functionCallOutputs($responses->lastPayload))->toBe([$toolCallId => '6'])
+        ->and($responses->lastPayload['conversation'] ?? null)->toBe($convId);
 });
 
 it('streams responses and yields accumulated deltas', function () {
@@ -127,7 +118,7 @@ it('streams responses and yields accumulated deltas', function () {
     expect($final['type'] ?? '')->toBe('response.completed');
 });
 
-it('auto-enables file_search when file_ids are provided', function () {
+it('sends file_ids as input_file blocks without adding a file_search tool', function () {
     $assistant = app(AssistantService::class);
     /** @var FakeResponsesRepository $responses */
     $responses = app(ResponsesRepositoryContract::class);
@@ -143,13 +134,6 @@ it('auto-enables file_search when file_ids are provided', function () {
     ]);
 
     $payload = $responses->lastPayload;
-    $tools = $payload['tools'] ?? [];
-    $hasFileSearch = false;
-    foreach ($tools as $t) {
-        if (($t['type'] ?? null) === 'file_search') {
-        $hasFileSearch = true;
-        break;
-        }
-    }
-    expect($hasFileSearch)->toBeTrue();
+    expect($payload['input'][0]['content'])->toContain(['type' => 'input_file', 'file_id' => 'file_123'])
+        ->and($payload)->not->toHaveKey('tools');
 });

@@ -205,6 +205,7 @@ final class TurnOptions
             'attachments' => $this->data['attachments'] ?? [],
             'tool_choice' => $this->data['tool_choice'] ?? null,
             'use_file_search' => $this->data['use_file_search'] ?? true,
+            'temperature' => $this->data['temperature'] ?? null,
         ];
     }
 }

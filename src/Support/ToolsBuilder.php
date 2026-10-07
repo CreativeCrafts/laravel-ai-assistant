@@ -138,19 +138,10 @@ final class ToolsBuilder
     public function includeFileSearchTool(array $vectorStoreIds = []): self
     {
         $tools = (array)($this->config['tools'] ?? []);
-        $already = false;
-        foreach ($tools as $t) {
-            if (($t['type'] ?? null) === 'file_search') {
-                $already = true;
-                break;
-            }
-        }
-        if ($already) {
+        if ($vectorStoreIds === [] && HostedTools::has($tools, 'file_search')) {
             Log::warning('[ToolsBuilder] includeFileSearchTool: duplicate file_search tool skipped');
-        } else {
-            $tools[] = ['type' => 'file_search'];
         }
-        $this->config['tools'] = $tools;
+        $this->config['tools'] = HostedTools::withFileSearch($tools, $vectorStoreIds);
 
         if ($vectorStoreIds !== []) {
             $this->config['tool_resources'] = array_merge(
@@ -169,19 +160,10 @@ final class ToolsBuilder
     public function includeCodeInterpreterTool(array $fileIds = []): self
     {
         $tools = (array)($this->config['tools'] ?? []);
-        $has = false;
-        foreach ($tools as $t) {
-            if (($t['type'] ?? null) === 'code_interpreter') {
-                $has = true;
-                break;
-            }
-        }
-        if ($has) {
+        if ($fileIds === [] && HostedTools::has($tools, 'code_interpreter')) {
             Log::warning('[ToolsBuilder] includeCodeInterpreterTool: duplicate code_interpreter tool skipped');
-        } else {
-            $tools[] = ['type' => 'code_interpreter'];
         }
-        $this->config['tools'] = $tools;
+        $this->config['tools'] = HostedTools::withCodeInterpreter($tools, $fileIds);
 
         if ($fileIds !== []) {
             $resources = (array)($this->config['tool_resources'] ?? []);
