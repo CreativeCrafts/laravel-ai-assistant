@@ -36,14 +36,13 @@ it('supports Responses list/get/cancel/delete and respects payload tools', funct
     $list = $responses->listResponses();
     expect(count($list['data'] ?? []))->toBeGreaterThanOrEqual(2);
 
-    // Create response with file_ids should auto-enable file_search
+    // file_ids are sent as input_file blocks
     $assistant->sendChatMessage($convId, 'with files', [
         'file_ids' => ['file_1'],
         'tools' => [],
     ]);
     $payload = $responses->lastPayload;
-    $hasFileSearch = collect($payload['tools'] ?? [])->contains(fn ($t) => ($t['type'] ?? null) === 'file_search');
-    expect($hasFileSearch)->toBeTrue();
+    expect($payload['input'][0]['content'])->toContain(['type' => 'input_file', 'file_id' => 'file_1']);
 
     // Last queued response becomes lastResponse
     $created = $responses->createResponse(['conversation' => $convId]);

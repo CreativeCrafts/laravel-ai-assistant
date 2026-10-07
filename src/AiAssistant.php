@@ -11,6 +11,7 @@ use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ChatResponseDto;
 use CreativeCrafts\LaravelAiAssistant\DataTransferObjects\ResponseEnvelope;
 use CreativeCrafts\LaravelAiAssistant\Services\AppConfig;
 use CreativeCrafts\LaravelAiAssistant\Services\AssistantService;
+use CreativeCrafts\LaravelAiAssistant\Support\HostedTools;
 use CreativeCrafts\LaravelAiAssistant\Support\StreamReader;
 use CreativeCrafts\LaravelAiAssistant\ValueObjects\TurnOptions;
 use Generator;
@@ -254,21 +255,12 @@ class AiAssistant implements AiAssistantContract
      */
     public function includeFileSearchTool(array $vectorStoreIds = []): self
     {
-        // Deduplicate file_search tool
+        // A second call merges its vector store ids into the existing file_search tool
         $tools = (array)($this->chatTextGeneratorConfig['tools'] ?? []);
-        $already = false;
-        foreach ($tools as $t) {
-            if (($t['type'] ?? null) === 'file_search') {
-                $already = true;
-                break;
-            }
-        }
-        if ($already) {
+        if ($vectorStoreIds === [] && HostedTools::has($tools, 'file_search')) {
             Log::warning('[AI Assistant] includeFileSearchTool: duplicate file_search tool skipped');
-        } else {
-            $tools[] = ['type' => 'file_search'];
         }
-        $this->setTurn('tools', $tools);
+        $this->setTurn('tools', HostedTools::withFileSearch($tools, $vectorStoreIds));
 
         if ($vectorStoreIds !== []) {
             $this->chatTextGeneratorConfig['tool_resources'] = array_merge(
@@ -407,21 +399,12 @@ class AiAssistant implements AiAssistantContract
      */
     public function includeCodeInterpreterTool(array $fileIds = []): self
     {
-        // Ensure tools array exists
+        // A second call merges its file ids into the existing code_interpreter container
         $tools = (array)($this->chatTextGeneratorConfig['tools'] ?? []);
-        $has = false;
-        foreach ($tools as $t) {
-            if (($t['type'] ?? null) === 'code_interpreter') {
-                $has = true;
-                break;
-            }
-        }
-        if ($has) {
+        if ($fileIds === [] && HostedTools::has($tools, 'code_interpreter')) {
             Log::warning('[AI Assistant] includeCodeInterpreterTool: duplicate code_interpreter tool skipped');
-        } else {
-            $tools[] = ['type' => 'code_interpreter'];
         }
-        $this->setTurn('tools', $tools);
+        $this->setTurn('tools', HostedTools::withCodeInterpreter($tools, $fileIds));
 
         if ($fileIds !== []) {
             // Merge file_ids under tool_resources.code_interpreter.file_ids uniquely
@@ -444,7 +427,7 @@ class AiAssistant implements AiAssistantContract
      */
     public function setResponseFormatText(): self
     {
-        $this->chatTextGeneratorConfig['response_format'] = 'text';
+        $this->setTurn('response_format', 'text');
         return $this;
     }
 
@@ -476,13 +459,13 @@ class AiAssistant implements AiAssistantContract
         } else {
             $name = 'response';
         }
-        $this->chatTextGeneratorConfig['response_format'] = [
+        $this->setTurn('response_format', [
             'type' => 'json_schema',
             'json_schema' => [
                 'name' => $name,
                 'schema' => $jsonSchema,
             ],
-        ];
+        ]);
         return $this;
     }
 
@@ -554,6 +537,9 @@ class AiAssistant implements AiAssistantContract
             if (array_key_exists($key, $this->chatTextGeneratorConfig)) {
                 unset($this->chatTextGeneratorConfig[$key]);
             }
+            // The turn options are what gets sent, so clear the key there too (otherwise files leak into later turns)
+            unset($this->turnOptions[$key]);
+            $this->options = $this->options->withRaw($key, null);
         }
         return $this;
     }
@@ -682,7 +668,8 @@ class AiAssistant implements AiAssistantContract
             $onEvent,
             $shouldStop,
             $idempotencyKey,
-            $toolChoice
+            $toolChoice,
+            isset($options['temperature']) && is_numeric($options['temperature']) ? (float)$options['temperature'] : null
         );
         $shouldReset = $this->autoReset ?? (bool)config('ai-assistant.reset_after_turn', true);
         if ($shouldReset) {
@@ -706,7 +693,9 @@ class AiAssistant implements AiAssistantContract
         }
         $model = $this->chatTextGeneratorConfig['model'] ?? null;
         $instructions = $this->chatTextGeneratorConfig['instructions'] ?? null;
-        $arr = $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions);
+        $options = $this->options->toArray();
+        $format = is_array($options['response_format']) || is_string($options['response_format']) ? $options['response_format'] : null;
+        $arr = $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions, null, (array)$options['tools'], $format);
         return ResponseEnvelope::fromArray($arr);
     }
 
@@ -728,7 +717,9 @@ class AiAssistant implements AiAssistantContract
         }
         $model = $this->chatTextGeneratorConfig['model'] ?? null;
         $instructions = $this->chatTextGeneratorConfig['instructions'] ?? null;
-        $arr = $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions);
+        $options = $this->options->toArray();
+        $format = is_array($options['response_format']) || is_string($options['response_format']) ? $options['response_format'] : null;
+        $arr = $this->client->continueWithToolResults($conversationId, $toolResults, $model, $instructions, null, (array)$options['tools'], $format);
         return ChatResponseDto::fromArray($arr);
     }
 
@@ -779,23 +770,7 @@ class AiAssistant implements AiAssistantContract
         if ($useFileSearch !== null) {
             $this->setTurn('use_file_search', (bool)$useFileSearch);
         }
-        // Optionally include file_search tool; respect use_file_search flag (default true)
-        $use = $this->chatTextGeneratorConfig['use_file_search'] ?? true;
-        if ($use) {
-            if (empty($this->chatTextGeneratorConfig['tools'])) {
-                $this->chatTextGeneratorConfig['tools'] = [];
-            }
-            $hasFileSearch = false;
-            foreach ($this->chatTextGeneratorConfig['tools'] as $t) {
-                if (is_array($t) && ($t['type'] ?? null) === 'file_search') {
-                    $hasFileSearch = true;
-                    break;
-                }
-            }
-            if (!$hasFileSearch) {
-                $this->chatTextGeneratorConfig['tools'][] = ['type' => 'file_search'];
-            }
-        }
+        // Attached files are sent as input_file blocks. Searching files needs a vector store: includeFileSearchTool(['vs_...'])
         return $this;
     }
 
